@@ -35,7 +35,7 @@ End Variables
 #If not using .Add it overrides implementation.
 
 Actions:
-DroneWait: id (Drone) (Wait) #Action name, var related to acting entity, other required vars, inheriting action
+DroneWait: id - Drone (Wait) #Action name, var related to acting entity, other required vars, inheriting action
 Precs:
 droneCharge id  > 0
 droneBoard id = false
@@ -119,10 +119,10 @@ Else:
 droneCharge id : 10
 End Case
 Case (droneCap id = 1):
-FindAll(pac - package) ((package onEntity pack = 1) And (package loc pack = id)):
+All(pac - package) ((package onEntity pack = 1) And (package loc pack = id)):
 package onEntity pack : 2
 package loc pack : trk
-End FindAll
+End All
 End Case
 Cost:
 2
@@ -174,7 +174,6 @@ Not (locType through = 1)
 Cost:
 3
 End Action
-
 End Actions
 
 EnvSteps:
@@ -182,29 +181,26 @@ EnvSteps:
 Urgency: 
 Cost:
 NewVal c : 0
-FindAll (req - request) #Fancy way to say "for req in request"
+All (req - request): #Fancy way to say "for req in request"
 c : c + 5
 c : c + (request urgency req) * 5 #Could be c + (request urgency req *5) + 5 if possible
-End FindALL
+End All
 c
 End EnvStep
 
 End EnvSteps
 
-# There is only one IterStep per Domain. Can use .Add but I choose to replace override, mostly because
-# Could possibly add requests before updating current ones.
-IterStep: newPacks, newReqs
-FindAll (req - request) (request keys)
-Case (request urgency req < 3)
+# There is only one IterStep per Domain. Addition of new packs and requests is automatic so not refered to.
+IterStep:
+All (req - request):
+Case (request urgency req < 3):
 Replace request req: #Some fancy way to replace the whole tuple...
 request type req, request loc req, request urgency req + 1
 #If it's too complicated, I'm fine with request urgency req: request urgency req +1
 #And making items request var
 End Replace
 End Case
-End FindAll
-package.Extend(newPacks) #Add all items
-newReqs.Extend(newReqs) #Add all items
+End All
 End IterStep
 
 End Domain

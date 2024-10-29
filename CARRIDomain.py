@@ -1,6 +1,28 @@
 import re
-from typing import List, Tuple, Dict, Set, Callable
+from typing import List, Tuple, Dict, Set
+from CARRIStringParser import parse_action_segments, parse_action_header
 
+class CARRIState:
+    def __init__(self, variables):
+        self.variables = variables
+
+    def get_variable(self, variableName: str):
+        """
+        Get the variable structure.
+        """
+        return self.variables[variableName]
+
+    def get_value(self, variableName: str, index: int):
+        """
+        Get the value of a variable by name.
+        """
+        return self.variables[variableName][index]
+
+    def set_variable(self, variableName, index, value):
+        """
+        Set the value of a variable by name.
+        """
+        self.variables[variableName][index] = value
 
 class CARRISimulator:
     def __init__(self):
@@ -29,12 +51,12 @@ class CARRISimulator:
                 return False
         return True
 
-    def apply_action(self, state, action):
+    def apply_action(self, problem, state, action):
         """
         Apply the action's effects to the state.
         """
         for effect in action['effects']:
-            self.apply_effect(effect, state)
+            self.apply_effect(problem, state, effect)
 
     def evaluate_condition(self, problem, state, condition):
         """
@@ -44,7 +66,7 @@ class CARRISimulator:
         # In a real implementation, you would parse the condition and check against the state.
         return True
 
-    def apply_effect(self, state, effect):
+    def apply_effect(self, problem, state, effect):
         """
         Apply an effect to the state.
         """
@@ -56,38 +78,34 @@ class CARRISimulator:
 class CARRIProblem:
     def __init__(self, constants):
         self.constants = constants  # Tuple of constant values
-        self.constants_dict = {name: idx for idx, name in enumerate(constants)}
 
-    def get_constant(self, name):
-        """
-        Get the value of a constant by name.
-        """
-        return self.constants[self.constants_dict[name]]
+    def get_variable(self, state: CARRIState, variableName: str):
+        if variableName in self.constants:
+            return self.constants[variableName]
+        else:
+            return state.get_variable(variableName)
 
-    def advanceState(self, simulator: CARRISimulator, state, action):
-        advnaceState = state.copy()
-        simulator.apply_action(advnaceState, action)
-        return advnaceState
+    def get_value(self, state: CARRIState, variableName: str, index: int):
+        if variableName in self.constants:
+            return self.constants[variableName][index]
+        else:
+            return state.get_value(variableName, index)
 
-
-class CARRIState:
-    def __init__(self, variables):
-        self.variables = variables  # Tuple of variable values
-        self.variables_dict = {name: idx for idx, name in enumerate(variables)}
-
-    def get_variable(self, name):
-        """
-        Get the value of a variable by name.
-        """
-        return self.variables[self.variables_dict[name]]
-
-    def set_variable(self, name, value):
+    def set_variable(self, state: CARRIState, variableName, index, value):
         """
         Set the value of a variable by name.
         """
-        variables_list = list(self.variables)
-        variables_list[self.variables_dict[name]] = value
-        self.variables = tuple(variables_list)
+        if variableName in self.constants:
+            self.constants[variableName][index] = value
+        else:
+            state.set_variable(variableName, index, value)
+
+
+
+    def advance_state(self, simulator: CARRISimulator, state, action):
+        advnaceState = state.copy()
+        simulator.apply_action(advnaceState, action)
+        return advnaceState
 
 
 class CARRITranslator:
@@ -102,11 +120,12 @@ class CARRITranslator:
         translated_sections = {}
         # Send sections to respective translators
         if "Variables" in sections:
+            print("Section Variables:")
             translated_sections["Variables"] = self.translate_variables(sections["Variables"])
             for name in translated_sections["Variables"]:
                 print(f"{name}: {translated_sections['Variables'][name]}")
         if "Actions" in sections:
-            print("actions:")
+            print("----------\nSection Actions:")
             translated_sections["Actions"] = self.translate_actions(sections["Actions"])
             print(translated_sections["Actions"])
         return translated_sections, self.problemFile
@@ -135,8 +154,15 @@ class CARRITranslator:
         domain_text = self.extract_domain_text()
         sections = {}
 
-        # Regex to identify sections and their contents
-        section_pattern = r"(?P<section_name>\w+):\s*\n(?P<section_content>.*?)(?=\n\w+:|$)"
+        # Define allowed section names explicitly
+        allowed_section_names = [
+            "Entities", "Variables", "Actions", "IterStep", "EnvSteps"
+        ]
+
+        # Regex to identify sections by allowed section names
+        section_pattern = r"(?P<section_name>(" + "|".join(
+            allowed_section_names) + r")):\s*\n(?P<section_content>.*?)(?=\n(" + "|".join(
+            allowed_section_names) + r")|$)"
         matches = re.finditer(section_pattern, domain_text, re.DOTALL)
 
         for match in matches:
@@ -241,52 +267,34 @@ class CARRIVariablesTranslator:
 class CARRIActionsTranslator:
     def __init__(self, actions_text):
         self.actions_text = actions_text
-        print(actions_text)
-
-    def extract_action_entity(self, action_text):
-        """
-        Extract the entity that the action is valid for.
-        """
-        lines = [line.strip() for line in action_text.split("\n") if line.strip()]
-        for line in lines:
-            if line.startswith("Entity"):
-                return line.split()[1]
-        return None
 
     def translate(self):
         """
-        Translates the Actions section to a list of actions with preconditions and effects.
+        Translates the Actions section to a list of actions with preconditions, effects, and costs.
         """
-        actions = []
-        lines = [line.strip() for line in self.actions_text.split("\n") if line.strip()]
-        current_action = {}
-        for line in lines:
-            if line.startswith("Action"):
-                if current_action:
-                    actions.append(current_action)
-                current_action = {
-                    "name": line.split()[1],
-                    "entity": None,  # Add entity field
-                    "parameters": [],
-                    "preconditions": [],
-                    "conflicting preconditions": [],
-                    "effects": [],
-                    "cost": 0
-                }
-            elif line.startswith("Entity"):
-                current_action["entity"] = line.split()[1]  # Extract entity information
-            elif line.startswith("Parameters"):
-                current_action["parameters"] = line.split()[1:]
-            elif line.startswith("Preconditions"):
-                current_action["preconditions"].append(line.split()[1:])
-            elif line.startswith("Conflicting Preconditions"):
-                current_action["conflicting preconditions"].append(line.split()[2:])
-            elif line.startswith("Effects"):
-                current_action["effects"].append(line.split()[1:])
-            elif line.startswith("Cost"):
-                current_action["cost"] = int(line.split()[1])
+        actions = {}
+        # Split the entire actions text by "End Action" to isolate each action block
+        action_blocks = self.actions_text.split("End Action")
 
-        if current_action:
-            actions.append(current_action)
-
+        for action_block in action_blocks:
+            action_block = action_block.strip()
+            if not action_block:
+                continue
+            # Identify the start of an action using the line format "<action_name>: ..."
+            lines = action_block.split("\n")
+            actionHeader = lines[0].strip()
+            actionName, entityParameter, entityType, parameters, inherits = parse_action_header(actionHeader)
+            # Initialize the current action dictionary
+            actions[actionName] = {
+                "entity par": entityParameter,
+                "entity type": entityType,
+                "parameters": parameters,
+                "inherits": inherits,
+            }
+            parse_action_segments(lines[1:], actions, actionName)
         return actions
+
+
+
+
+
