@@ -26,7 +26,7 @@ items request const: type INT, loc INT, urgency INT (Request)
 
 End Variables
 
-#Actions have 5 fields:
+#Actions have 4 fields:
 #Precs - preconditions that are aren't possibly conflicting
 #Confs - preconditions that other entities can (create conflict) 
 #Effects - Effects on variables
@@ -47,49 +47,49 @@ End Action
 
 DroneTravel: id - Drone, to (Travel) 
 Precs:
-locAdj (droneLoc id) ? to # In this case because locAdj is tuple of sets, it should do 'is to in locAdj[from]'
-Not (locType to = 2)
-droneCharge id > 0
-droneBoard id = false 
+	locAdj (droneLoc id) ? to # In this case because locAdj is tuple of sets, it should do 'is to in locAdj[from]'
+	Not (locType to = 2)
+	droneCharge id > 0
+	droneBoard id = false
 Effects:
-droneCharge id  : droneCharge id - 1
-droneLoc id : to
+	droneCharge id  : droneCharge id - 1
+	droneLoc id : to
 Cost:
 1
 End Action
 
 DronePick: id - Drone, pack (Pick)
 Precs:
-droneCharge id > 0
-droneBoard id = false 
-droneLoc id = package loc pack
-droneCap id < 1
+	droneCharge id > 0
+	droneBoard id = false 
+	droneLoc id = package loc pack
+	droneCap id < 1
 Confs:
-packge onEntity pack = 0
+	packge onEntity pack = 0
 Effects:
-droneCap id : 0
-droneCharge id  : droneCharge id - 1
-package loc pack : id
-package onEntity pack : 1
+	droneCap id : 0
+	droneCharge id  : droneCharge id - 1
+	package loc pack : id
+	package onEntity pack : 1
 Cost:
 1
 End Action
 
 DroneDeliver: id - Drone, pack, req (Deliver)
 Precs:
-droneCharge id > 0
-droneBoard id = false 
-droneLoc id = request loc req
-package onEntity pack = 1
-package loc pack = droneLoc id
-package type pack = request type req
+	droneCharge id > 0
+	droneBoard id = false
+	droneLoc id = request loc req
+	package onEntity pack = 1
+	package loc pack = droneLoc id
+	package type pack = request type req
 Confs:
-request exists req # Check if request still exists (Did other drone delivered ?)
+	request exists req # Check if request still exists (Did other drone delivered ?)
 Effects:
-droneCap id : 1
-droneCharge id  : droneCharge id - 1
-package remove : pack
-request remove : req
+	droneCap id : 1
+	droneCharge id  : droneCharge id - 1
+	package remove : pack
+	request remove : req
 Cost:
 1
 End Action
@@ -130,12 +130,12 @@ End Action
 
 DroneExitBoard: id - Drone, trk
 Precs:
-droneBoard : true
+droneBoard id : true
 droneLoc id = trk
 Not(locType(truckLoc trk) = 2)
 Effects:
 droneLoc id : truckLoc trk
-droneBoard : false
+droneBoard id : false
 Cost:
 1
 End Action
