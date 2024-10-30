@@ -24,6 +24,8 @@ class ExpressionNode:
         raise NotImplementedError("Must be implemented by subclasses")
     def copies(self, params: List):
         raise NotImplementedError("Must be implemented by subclasses")
+    def applicable(self) -> bool:
+        return NotImplemented("Must be implemented by subclasses")
     def __repr__(self):
         return self.__str__()
 
@@ -42,8 +44,11 @@ class ConstNode(ExpressionNode):
         """
         return self
 
+    def applicable(self) -> bool:
+        return True
+
 class ParameterNode(ExpressionNode):
-    def __init__(self, index, value=0):
+    def __init__(self, index, value=None):
         self.index = index
         self.value = value
     def __str__(self):
@@ -51,7 +56,7 @@ class ParameterNode(ExpressionNode):
     def __copy__(self):
         return ParameterNode(self.index, self.value)
 
-    def updateVariable(self, value):
+    def updateValue(self, value):
         self.value = value
     def evaluate(self, problem, state):
         return self.value
@@ -63,6 +68,9 @@ class ParameterNode(ExpressionNode):
         If it's an All's parameter, returning the same object.
         """
         return params[self.index]
+
+    def applicable(self) -> bool:
+        return self.value is not None
 
 class ValueIndexNode(ExpressionNode):
     def __init__(self, variableName: str, index: int):
@@ -80,6 +88,9 @@ class ValueIndexNode(ExpressionNode):
         """
         return self
 
+    def applicable(self) -> bool:
+        return True
+
 class ValueNode(ExpressionNode):
     def __init__(self, variableName: str, expression: ExpressionNode):
         self.variableName = variableName
@@ -95,6 +106,9 @@ class ValueNode(ExpressionNode):
         Copies object's expression
         """
         return ValueNode(self.variableName, self.expression.copies(params))
+
+    def applicable(self) -> bool:
+        return self.expression.applicable()
 
 class OperatorNode(ExpressionNode):
     def __init__(self, operator, *operands):
@@ -112,6 +126,9 @@ class OperatorNode(ExpressionNode):
         Copies object's expressions
         """
         return OperatorNode(self.operator, *[expression.copies(params) for expression in self.operands])
+
+    def applicable(self) -> bool:
+        return all(expression.applicable() for expression in self.operands)
 
 class Update:
     def apply(self, problem: CARRIProblem, state: CARRIState):
@@ -193,8 +210,8 @@ class CaseUpdate(Update):
 
 
 class AllUpdate(Update):
-    def __init__(self, variableName: str, parameter: ParameterNode, updates, condition: ExpressionNode = None):
-        self.variableName = variableName
+    def __init__(self, entityIndex: int, parameter: ParameterNode, updates, condition: ExpressionNode = None):
+        self.entityIndex = entityIndex
         # TODO: validate parameter's index is correct
         # Must have the id of len(Action's param) + position of nesting (starting at 0).
         self.parameter = parameter
@@ -203,14 +220,14 @@ class AllUpdate(Update):
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         if self.condition is None:
-            for p in problem.get_variable(state, self.variableName):
-                self.parameter.updateVariable(p)
+            for entity in problem.get_entity_ids(state, self.entityIndex):
+                self.parameter.updateValue(entity)
                 for update in self.updates:
                     update.apply(problem, state)
         else:
-            for p in problem.get_variable(state, self.variableName):
-                self.parameter.updateVariable(p)
-                if self.condition is None or self.condition.evaluate(problem, state):
+            for entity in problem.get_entity_ids(state, self.entityIndex):
+                self.parameter.updateValue(entity)
+                if self.condition.evaluate(problem, state):
                     for update in self.updates:
                         update.apply(problem, state)
 
@@ -221,6 +238,6 @@ class AllUpdate(Update):
         # Using the same parameter for all expressions and updates in block.
         params = params.copy()
         params.append(self.parameter)
-        return AllUpdate(self.variableName, self.parameter,
+        return AllUpdate(self.entityIndex, self.parameter,
                          [expression.copies(params) for expression in self.updates],
                          self.condition.copies(params) if self.condition else None)

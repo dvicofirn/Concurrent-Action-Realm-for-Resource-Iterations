@@ -4,7 +4,15 @@ from CARRILogic import ParameterNode
 FILEPATH = "C:\\Users\\USER\\Documents\\Python Scripts\\PycharmProjects\\Real-Time Multi-Agent Dynamic Delivery System\\Trucks and Drones Domain.CARRI"
 def main():
     translator = CARRITranslator()
-    translator.create_problem(FILEPATH, FILEPATH)
+    segments = translator.translate(FILEPATH, FILEPATH)[0]
+    entities = segments['Entities']
+    for entity in entities:
+        print(f"{entity} {entities[entity]}")
+
+    actionSegment = segments["Actions"]
+    for action in actionSegment:
+        print(action)
+        print(actionSegment[action])
 
 def tokenz(*vals):
     for val in vals:
@@ -16,7 +24,7 @@ def tok(val):
 def actiontokenz():
     noToTokenz = {'entity par', 'entity type', 'inherits', 'parameters'}
     translator = CARRITranslator()
-    sections = translator.create_problem(FILEPATH, FILEPATH)[0]
+    sections = translator.translate(FILEPATH, FILEPATH)[0]
     #print(sections[0])
 
     for name in sections["Actions"]:
@@ -73,6 +81,6 @@ def multiExpresTest():
         test_parse_expression(expr, parameters, paramExpressions)
 
 if __name__ == "__main__":
-    multiExpresTest()
+    #multiExpresTest()
     #actiontokenz()
-    #main()
+    main()

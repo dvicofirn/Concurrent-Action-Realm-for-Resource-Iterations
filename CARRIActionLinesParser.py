@@ -27,9 +27,9 @@ def parse_inside_segment(lines, start):
             part1 = partition[0].strip("(")
             parameter = part1.strip()
             part2 = partition[1].split(")")[0]
-            variable = part2.strip()
+            entity = part2.strip()
             segment, index = parse_inside_segment(lines, start + index + 1)
-            block = {"name": "all", "variable": variable, "parameter": parameter, "segment": segment}
+            block = {"name": "all", "entity": entity, "parameter": parameter, "segment": segment}
             part3 = partition[1].strip(part2 + ")")
             if "(" in part3:
                 condition = extract_within_brackets(part3).strip()
@@ -93,38 +93,30 @@ def parse_action_segments(action_lines, actions, actionName):
         actions[actionName][currentSection] = parse_segment(section_lines)
 
 def parse_action_header(actionHeader):
-    if ":" not in actionHeader:
-        raise AttributeError("No :")
+    # Define regex to parse the action header
+    pattern = r'^(?P<actionName>\w+):\s*(?P<params>.*?)(?:\((?P<inherits>\w+)\))?$'
+    match = re.match(pattern, actionHeader.strip())
 
-    # Extract action name and parameters
-    actionName, params = actionHeader.split(":")
-    actionName = actionName.strip()
+    if not match:
+        raise ValueError("Invalid format")
 
-    # Extracting entity variable, entity type, parameters, and inheritance if applicable
-    parametersAndInherits = [param.strip() for param in params.split(",")]
-    entityParameter, entityType, parameters, inherits = None, None, [], None
+    # Extract action name and inherited function if it exists
+    actionName = match.group('actionName')
+    inherits = match.group('inherits')
 
-    # Extract the entity variable and type
-    if "-" in parametersAndInherits[0]:
-        entityPart = parametersAndInherits[0].split("-")
-        entityParameter = entityPart[0].strip()
-        parameters.append(entityParameter)
-        entityType = entityPart[1].strip()
-    else:
-        raise AttributeError("No -")
+    # Process parameters and entities
+    params = match.group('params')
+    parameters, entities = [], []
 
-    if "(" in entityType:
-        entityInheritsSplit = entityType.split("(")
-        entityType = entityInheritsSplit[0].strip()
-        inherits = entityInheritsSplit[1].replace(")", "").strip()
-    else:
-        # Extract additional parameters and inheritance, if applicable
-        for part in parametersAndInherits[1:-1]:
-            parameters.append(part.strip())
-        part = parametersAndInherits[-1]
-        if "(" in part:
-            part = part.split("(")
-            parameters.append(part[0].strip())
-            inherits = part[1].replace(")", "").strip()
+    if params:
+        for param in params.split(','):
+            param = param.strip()
+            if '-' in param:
+                param_name, entity_name = map(str.strip, param.split('-'))
+                parameters.append(param_name)
+                entities.append(entity_name)
+            else:
+                raise AttributeError("Each parameter should include an entity with '-' separator")
 
-    return actionName, entityParameter, entityType, parameters, inherits
+    # Return results with empty lists and None for missing values
+    return actionName, parameters or None, entities or None, inherits

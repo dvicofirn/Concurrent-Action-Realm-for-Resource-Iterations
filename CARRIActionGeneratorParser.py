@@ -4,9 +4,10 @@ from CARRILogic import *
 from CARRILogicParser import parse_conditions, parse_effects
 
 class CARRIActionParser:
-    def __init__(self, parsedActions: Dict, implementedActions: Dict[str, ActionGenerator]) -> None:
+    def __init__(self, parsedActions: Dict, parsedEntities: Dict, implementedActions: Dict[str, ActionGenerator]) -> None:
         self.parsed_actions = parsedActions
         self.implementedActions = implementedActions
+        self.parsedEntities = parsedEntities
 
     def parse(self) -> List[ActionGenerator]:
         actionGenerators = []
@@ -24,8 +25,7 @@ class CARRIActionParser:
                 effects = []
                 cost = 0
 
-            entityPar = actionData["entity par"]
-            entityType = actionData["entity type"]
+            entities = [self.parsedEntities[entity][0] for entity in actionData["entity par"]]
             parameters = actionData["parameters"]
 
             # Actions parameters, updated each time a new parameter is created
@@ -36,22 +36,28 @@ class CARRIActionParser:
             # Parse Preconditions and Effects
             # (Implement parse_conditions and parse_effects methods accordingly)
             if "preconditions" in actionData:
-                preconditions=(parse_conditions(actionData["preconditions"], parameters))
+                preconditions=(parse_conditions(actionData["preconditions"],
+                                                parameters, paramExpressions))
 
             if "preconditions add" in actionData:
-                preconditions.extend(parse_conditions(actionData["preconditions add"], parameters))
+                preconditions.extend(parse_conditions(actionData["preconditions add"],
+                                                      parameters, paramExpressions))
 
             if "conflicting preconditions" in actionData:
-                conflictingPreconditions=(parse_conditions(actionData["conflicting preconditions"], parameters))
+                conflictingPreconditions=(parse_conditions(actionData["conflicting preconditions"],
+                                                           parameters, paramExpressions))
 
             if "conflicting preconditions add" in actionData:
-                conflictingPreconditions.extend(parse_conditions(actionData["conflicting preconditions add"], parameters))
+                conflictingPreconditions.extend(parse_conditions(actionData["conflicting preconditions add"],
+                                                                 parameters, paramExpressions))
 
             if "effects" in actionData:
-                effects=(parse_effects(actionData["effects"], parameters))
+                effects=(parse_effects(actionData["effects"],
+                                       parameters, paramExpressions, self.parsedEntities))
 
             if "effects add" in actionData:
-                effects.extend(parse_effects(actionData["effects add"], parameters))
+                effects.extend(parse_effects(actionData["effects add"],
+                                             parameters, paramExpressions, self.parsedEntities))
 
             # Parse Cost
             if "costs" in actionData:
@@ -60,15 +66,13 @@ class CARRIActionParser:
             # Create ActionGenerator instance
             action_generator = ActionGenerator(
                 name=actionName,
-                entityType=entityType,
-                entityPar=entityPar,
+                entities=entities,
                 params=parameters,
                 preconditions=preconditions,
                 conflictingPreconditions=conflictingPreconditions,
                 effects=effects,
                 cost=cost,
-                parameters = parameters,  # List of parameter names
-                paramExpressions = paramExpressions # Parameter objects
+                paramExpressions=paramExpressions # Parameter objects
             )
             actionGenerators.append(action_generator)
             self.implementedActions[actionName] = action_generator

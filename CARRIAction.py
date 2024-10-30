@@ -1,15 +1,18 @@
-from itertools import product
+from copy import copy
+from CARRIRealm import CARRIProblem, CARRIState
+from CARRILogic import ParameterNode
+from typing import List, Dict, Iterable
+
 
 class Action:
-    def __init__(self, name, entityType, entityPar, params ,preconditions, conflictingPreconditions, effects, cost):
+    def __init__(self, name, preconditions, conflictingPreconditions, effects, cost):
         self.name = name
-        self.entityType = entityType
-        self.entityPar = entityPar
-        self.params = params
         self.preconditions = preconditions  # List of Condition objects
         self.conflictingPreconditions = conflictingPreconditions
         self.effects = effects  # List of Effect objects
         self.cost = cost
+        # self.entities = entities # Currently not implemented
+        # self.params = params # Currently not implemented
 
     def validate(self, problem, state):
         return (all(precondition.evaluate(problem, state) for precondition in self.preconditions)
@@ -23,37 +26,32 @@ class Action:
             effect.apply(state)
 
     def __str__(self):
-        return str(self.name, self.params)
+        return str(self.name)
 
     def __repr__(self):
         return self.__str__()
 
 class ActionGenerator:
-    def __init__(self, name, entityType, entityPar, params, preconditions,
-                 conflictingPreconditions, effects, cost, parameters, paramExpressions):
+    def __init__(self, name, entities, params, preconditions,
+                 conflictingPreconditions, effects, cost, paramExpressions: List[ParameterNode]):
         self.name = name
-        self.entityType = entityType
-        self.entityPar = entityPar  # The main entity parameter (e.g., 'id')
-        self.params = params        # List of parameter names
+        self.entities = entities
+        self.params = params # List of parameter names
         self.preconditions = preconditions
         self.conflictingPreconditions = conflictingPreconditions
         self.effects = effects
         self.cost = cost
-        self.parameters = parameters # List of parameter names
         self.paramExpressions = paramExpressions # List of fitting expressions
 
-    def generate_action(self, parameters):
+    def generate_action(self):
         # Create an Action instance using the parameter values
-        newParams = [parameters.copy() for parameters in parameters]
+        newParams = [copy(par) for par in self.paramExpressions]
         preconditions = self.preconditions.copies(newParams)
         conflictingPreconditions = self.conflictingPreconditions.copies(newParams)
         effects = self.effects.copies(newParams)
         cost = self.cost.copies(newParams)
         action = Action(
             name=self.name,
-            entityType=self.entityType,
-            entityPar=self.entityPar,
-            params=tuple(self.parameters.keys()),
             preconditions=preconditions,
             conflictingPreconditions=conflictingPreconditions,
             effects=effects,
@@ -61,80 +59,90 @@ class ActionGenerator:
         )
         return action
 
+    """Currently not needed
+    def resetParams(self):
+        for param in self.paramExpressions:
+            param.updateValue(None)
+    """
+
 class ActionProducer:
-    def __init__(self, actionGenerators):
+    def __init__(self, actionGenerators: List[ActionGenerator]):
         self.actionGenerators = actionGenerators  # List of ActionGenerators
 
     def produce_actions(self, problem, state, entityId, entityType):
-        actions = []
-        for action_generator in self.actionGenerators:
-            if action_generator.entityType == entityType:
+        allActions = []
+        for actionGenerator in self.actionGenerators:
+            if actionGenerator.entities[0] == entityType:
                 # Generate all valid actions for the given entity_id
-                valid_actions = self.generate_valid_actions(action_generator, problem, state, entityId)
-                actions.extend(valid_actions)
-        return actions
+                actions = []
+                # Initialize parameter values with the fixed entity parameter (id)
+                actionGenerator.paramExpressions[0].updateValue(entityId)
+                if self.evaluate_partial_preconditions(actionGenerator, problem, state):
+                    # Start recursive parameter assignment
+                    self.assign_parameters_recursive(actionGenerator, problem, state, 1, actions)
+                allActions.extend(actions)
+                #actionGenerator.resetParams()
+        return allActions
 
-    def generate_valid_actions(self, actionGenerator, problem, state, entityId):
-        actions = []
-        # Initialize parameter values with the fixed entity parameter
-        entityParName = actionGenerator.entityPar
-        parameterValues = {entityParName: entityId}
-
-        # Generate parameter domains based on preconditions
-        parameterDomains = self.get_parameter_domains(actionGenerator, problem, state)
-
-        # Get other parameter names
-        parameter_names = actionGenerator[1:]
-
-        # Generate all combinations of parameter values
-        domain_lists = [parameterDomains[p] for p in parameter_names]
-
-        for values in product(*domain_lists):
-            params = parameterValues.copy()
-            params.update(dict(zip(parameter_names, values)))
-            # Set parameter values in ParameterNodes
-            for paramName, value in params.items():
-                index = actionGenerator.parameters.index(paramName)
-                actionGenerator.paramExpressions[index].updateVariable(value)
+    def assign_parameters_recursive(self, actionGenerator: ActionGenerator,
+                                    problem: CARRIProblem, state: CARRIState,
+                                    paramIndex: int, actions: List[Action]):
+        if paramIndex >= len(actionGenerator.params):
+            # All parameters are assigned, create and validate action
             action = actionGenerator.generate_action()
             if action.validate(problem, state):
                 actions.append(action)
+            return
 
-        return actions
+        # Get the next parameter to assign
+        paramName = actionGenerator.params[paramIndex]
+        paramEntityIndex = actionGenerator.entities[paramIndex]
 
-    def get_parameter_domains(self, actionGenerator, problem, state):
-        parameter_domains = {}
-        # For each parameter, derive possible values based on preconditions
-        for param in actionGenerator.params[1:]:
-            # Derive possible values for 'param' based on preconditions
-            possible_values = self.derive_possible_values(param, actionGenerator, problem, state)
-            parameter_domains[param] = possible_values
-        return parameter_domains
+        # Get possible values for this parameter
+        possible_values = problem.get_entity_ids(state, paramEntityIndex)
 
-    def derive_possible_values(self, param, actionGenerator, problem, state):
-        # Get parameter type if available
-        param_type = actionGenerator.param_types.get(param)
-        if param_type:
-            possible_values = problem.get_entities_of_type(param_type)
-        else:
-            possible_values = problem.get_all_ids()
+        # Filter possible values based on preconditions involving parameters assigned so far
+        filtered_values = self.filter_parameter_values(actionGenerator, problem, state,
+                                                       paramIndex, possible_values)
+
+        parameterNode = actionGenerator.paramExpressions[paramIndex]
+        # For each possible value, proceed to assign the next parameter
+        for value in filtered_values:
+            # Update the ParameterNode
+            parameterNode.updateValue(value)
+
+            # Recurse to assign the next parameter
+            self.assign_parameters_recursive(actionGenerator, problem, state, paramIndex + 1, actions)
+
+        # Clean up parameter values (backtrack)
+        parameterNode.updateValue(None)
+
+    def filter_parameter_values(self, actionGenerator: ActionGenerator,
+                                problem: CARRIProblem, state: CARRIState,
+                                paramIndex: int, possibleValues: Iterable):
         filtered_values = []
-        index = actionGenerator.parameters.index(param)
-        parameter_node = actionGenerator.paramExpressions[index]
-        for value in possible_values:
-            # Set parameter value
-            parameter_node.updateVariable(value)
-            # Evaluate preconditions
-            if all(precondition.evaluate(problem, state) for precondition in actionGenerator.preconditions + actionGenerator.conflictingPreconditions):
+        parameterNode = actionGenerator.paramExpressions[paramIndex]
+
+        for value in possibleValues:
+            # Set current parameter value
+            parameterNode.updateValue(value)
+
+            # Evaluate preconditions involving parameters assigned so far
+            if self.evaluate_partial_preconditions(actionGenerator, problem, state):
                 filtered_values.append(value)
+
         return filtered_values
 
+    def evaluate_partial_preconditions(self, actionGenerator, problem, state):
 
-    # Todo: check if needed
-    def check_precondition(self, precondition, param, value, parameter_values, problem, state):
-        # Update parameter_values with the new value
-        parameter_values[param] = value
-        result = precondition.evaluate(problem, state, parameter_values)
-        return result
+        # Evaluate preconditions
+        all_preconditions_met = True
+        for precondition in actionGenerator.preconditions + actionGenerator.conflictingPreconditions:
+            if precondition.applicable():
+                if not precondition.evaluate(problem, state):
+                    all_preconditions_met = False
+                    break
+        # Clean up parameter values in ParameterNodes (if necessary)
+        # (Not strictly necessary here, since we'll overwrite them in the next call)
+        return all_preconditions_met
 
-    # You may need to adjust the evaluate methods to accept parameter_values

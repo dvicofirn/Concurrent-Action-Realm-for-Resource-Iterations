@@ -16,7 +16,7 @@ def parse_conditions(conditions: List[str], parameters: List[str],
     return parsed_conditions
 
 def parse_effects(effects_list: List, parameters: List[str],
-                  paramExpressions: List[ParameterNode]) -> List[Update]:
+                  paramExpressions: List[ParameterNode], parsedEntities) -> List[Update]:
     updates = []
     for effect in effects_list:
         if isinstance(effect, str):
@@ -29,12 +29,12 @@ def parse_effects(effects_list: List, parameters: List[str],
                 condition_str = effect['condition']
                 condition = parse_expression(condition_str, parameters, paramExpressions)
                 segment = effect['segment']
-                updates_segment = parse_effects(segment, parameters, paramExpressions)
+                updates_segment = parse_effects(segment, parameters, paramExpressions, parsedEntities)
                 else_segment = effect.get('elseUpdates', [])
-                updates_else = parse_effects(else_segment, parameters, paramExpressions)
+                updates_else = parse_effects(else_segment, parameters, paramExpressions, parsedEntities)
                 updates.append(CaseUpdate(condition, updates_segment, updates_else))
             elif block_name == 'all':
-                variable_name = effect['variable']
+                entityIndex = parsedEntities[effect['entity']][0]
                 parameter_name = effect['parameter']
                 parameter_node = ParameterNode(len(paramExpressions))
                 # Extend parameters and paramExpressions for the new scope
@@ -46,8 +46,8 @@ def parse_effects(effects_list: List, parameters: List[str],
                     condition = parse_expression(condition_str, new_parameters, new_paramExpressions)
                 else:
                     condition = None
-                updates_segment = parse_effects(segment, new_parameters, new_paramExpressions)
-                updates.append(AllUpdate(variable_name, parameter_node, updates_segment, condition))
+                updates_segment = parse_effects(segment, new_parameters, new_paramExpressions, parsedEntities)
+                updates.append(AllUpdate(entityIndex, parameter_node, updates_segment, condition))
             else:
                 raise ValueError(f"Unknown block name: {block_name}")
         else:

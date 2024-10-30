@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict, Set
 from CARRIActionLinesParser import parse_action_segments, parse_action_header
 
 class CARRITranslator:
-    def create_problem(self, carriDomainPath, carriProblemPath) -> tuple:
+    def translate(self, carriDomainPath, carriProblemPath) -> tuple:
         self.domainFile = self.read_file(carriDomainPath)
         self.problemFile = self.read_file(carriProblemPath)
 
@@ -17,6 +17,8 @@ class CARRITranslator:
             translated_sections["Variables"] = self.translate_variables(sections["Variables"])
         if "Actions" in sections:
             translated_sections["Actions"] = self.translate_actions(sections["Actions"])
+        if "Entities" in sections:
+            translated_sections["Entities"] = self.translate_entities(sections["Entities"])
         return translated_sections, self.problemFile
 
     def read_file(self, file_path):
@@ -67,6 +69,8 @@ class CARRITranslator:
 
         return sections
 
+    def translate_entities(self, entities_text):
+        return CARRIEntitiesTranslator(entities_text).translate()
     def translate_variables(self, variables_text):
         """
         Pass the variables section to the Variables Translator.
@@ -79,6 +83,27 @@ class CARRITranslator:
         """
         return CARRIActionsTranslator(actions_text).translate()
 
+class CARRIEntitiesTranslator:
+    def __init__(self, variables_text):
+        self.variables_text = variables_text
+        self.entities = {}
+
+    def translate(self):
+        # Define a regex pattern to capture entities and their optional origins
+        pattern = r'([a-zA-Z\s]+?)(?:\s*\(\s*([a-zA-Z\s]+)\s*\))?(?=,|$)'
+
+        # Use regex findall to match each entity and optional origin in the text
+        matches = re.findall(pattern, self.variables_text)
+
+        for entity, inherits in matches:
+            entity_name = entity.strip()
+            if entity_name != " ":
+                inherits = inherits.strip() if inherits else None
+                if inherits == " ":
+                    inherits = None
+                self.entities[entity_name] = (len(self.entities), inherits)
+
+        return self.entities
 
 class CARRIVariablesTranslator:
     def __init__(self, variables_text):
@@ -172,12 +197,11 @@ class CARRIActionsTranslator:
             # Identify the start of an action using the line format "<action_name>: ..."
             lines = action_block.split("\n")
             actionHeader = lines[0].strip()
-            actionName, entityParameter, entityType, parameters, inherits = parse_action_header(actionHeader)
+            actionName, parameters, entities, inherits = parse_action_header(actionHeader)
             # Initialize the current action dictionary
             actions[actionName] = {
-                "entity par": entityParameter,
-                "entity type": entityType,
                 "parameters": parameters,
+                "entities": entities,
                 "inherits": inherits,
             }
             parse_action_segments(lines[1:], actions, actionName)
