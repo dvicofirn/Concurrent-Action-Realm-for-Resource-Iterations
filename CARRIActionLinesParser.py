@@ -21,6 +21,7 @@ def parse_inside_segment(lines, start):
                 segment, index = parse_inside_segment(lines, start + index + 1)
                 block["else Segment"] = segment
             segments.append(block)
+
         elif line.startswith("All"):
             partition = line.split("All")[1].strip().split("-")
             part1 = partition[0].strip("(")
@@ -48,6 +49,9 @@ def startsWithSection(line: str):
            "Confs:": "conflicting preconditions",
            "Effects:": "effects",
            "Cost:": "costs",
+           "Precs.Add:": "preconditions add",
+           "Confs.Add:": "conflicting preconditions add",
+           "Effects.Add:": "effects add"
            }
     for key in vals:
         if line.startswith(key):
@@ -74,20 +78,7 @@ def parse_action_segments(action_lines, actions, actionName):
                 actions[actionName][currentSection] = parse_segment(section_lines)
             currentSection = segmentName
             section_lines = []
-        elif ".Add:" in line:
-            if currentSection and section_lines:
-                actions[actionName][currentSection] = parse_segment(section_lines)
-            actions[actionName].setdefault("adds", {})
-            if line.startswith("Precs.Add:"):
-                currentSection = "adds preconditions"
-                actions[actionName]["adds"]["preconditions"] = []
-            elif line.startswith("Effects.Add:"):
-                currentSection = "adds effects"
-                actions[actionName]["adds"]["effects"] = []
-            elif line.startswith("Confs.Add:"):
-                currentSection = "adds confs"
-                actions[actionName]["adds"]["confs"] = []
-            section_lines = []
+
 
         elif line.startswith("EnvSteps:"):
             if currentSection and section_lines:

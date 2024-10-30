@@ -45,10 +45,10 @@ Cost:
 1
 End Action
 
-DroneTravel: id - Drone, to (Travel) 
+DroneTravel: id - Drone, to - Location (Travel) 
 Precs:
 	locAdj (droneLoc id) ? to # In this case because locAdj is tuple of sets, it should do 'is to in locAdj[from]'
-	Not (locType to = 2)
+	not (locType to = 2)
 	droneCharge id > 0
 	droneBoard id = false
 Effects:
@@ -58,7 +58,7 @@ Cost:
 1
 End Action
 
-DronePick: id - Drone, pack (Pick)
+DronePick: id - Drone, pack - Package (Pick)
 Precs:
 	droneCharge id > 0
 	droneBoard id = false 
@@ -75,7 +75,7 @@ Cost:
 1
 End Action
 
-DroneDeliver: id - Drone, pack, req (Deliver)
+DroneDeliver: id - Drone, pack - Package, req - Request (Deliver)
 Precs:
 	droneCharge id > 0
 	droneBoard id = false
@@ -104,12 +104,12 @@ Cost:
 40
 End Action
 
-DroneBoard: id - Drone, trk
+DroneBoard: id - Drone, trk - Truck
 Precs:
-((droneLoc id = truckLoc trk) And (droneBoard id = false) Or ((droneLoc id = trk) And (droneBoard = true))
+((droneLoc id = truckLoc trk) and (droneBoard id = false) or ((droneLoc id = trk) and (droneBoard = true))
 Confs:
 truckDroneCap trk < 4
-(truckPackCap < 8) Or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
+(truckPackCap < 8) or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
 Effects:
 droneLoc id : trk
 droneBoard id = true
@@ -119,7 +119,7 @@ Else:
 droneCharge id : 10
 End Case
 Case (droneCap id = 1):
-All(pac - package) ((package onEntity pack = 1) And (package loc pack = id)):
+All(pack - Package) ((package onEntity pack = 1) and (package loc pack = id)):
 package onEntity pack : 2
 package loc pack : trk
 End All
@@ -128,11 +128,11 @@ Cost:
 2
 End Action
 
-DroneExitBoard: id - Drone, trk
+DroneExitBoard: id - Drone, trk - Truck
 Precs:
 droneBoard id : true
 droneLoc id = trk
-Not(locType(truckLoc trk) = 2)
+not (locType(truckLoc trk) = 2)
 Effects:
 droneLoc id : truckLoc trk
 droneBoard id : false
@@ -140,37 +140,37 @@ Cost:
 1
 End Action
 
-DroneExitBoardWithPack: id - Drone, trk, pack (DroneExitBoard) #This is an example of addition to existing action
+DroneExitBoardWithPack: id - Drone, trk - Truck, pack - Package (DroneExitBoard) #This is an example of addition to existing action
 Precs.Add:
-package loc pack: trk
+	package loc pack: trk
 Confs: #Could also implement as Confs.Add
-package onEntity pack = 2 #Other drone might want to take it. It's fine to not re check package location
-Effects.Add:
-package onEntity pack : 1
-package loc pack : id
+	package onEntity pack = 2 #Other drone might want to take it. It's fine to not re check package location
+	Effects.Add:
+	package onEntity pack : 1
+	package loc pack : id
 End Action
 
 TruckWait: id - Truck (Wait)
 End Action
 #Action with no pre conditions or costs. Default cost is 0.
 
-TruckTravel: id - Truck, to (Travel)
+TruckTravel: id - Truck, to - Location (Travel)
 Precs:
 locAdj (truckLoc id) ? to
-Not (locType to = 1)
+not (locType to = 1)
 Effects:
 truckLoc id : to
 Cost:
 1
 End Action
 
-TruckTurbo: id - Truck, to, through (TruckTravel) #Here using TruckTravel's Effcts
+TruckTurbo: id - Truck, to - Location, through - Location (TruckTravel) #Here using TruckTravel's Effcts
 Precs:
 locAdj (truckLoc id) ? through
 locAdj through ? to
-Not (locAdj (truckLoc id) ? to)
-Not (locType to = 1)
-Not (locType through = 1)
+not (locAdj (truckLoc id) ? to)
+not (locType to = 1)
+not (locType through = 1)
 Cost:
 3
 End Action
@@ -181,7 +181,7 @@ EnvSteps:
 Urgency: 
 Cost:
 NewVal c : 0
-All (req - request): #Fancy way to say "for req in request"
+All (req - Request): #Fancy way to say "for req in request"
 c : c + 5
 c : c + (request urgency req) * 5 #Could be c + (request urgency req *5) + 5 if possible
 End All
@@ -192,7 +192,7 @@ End EnvSteps
 
 # There is only one IterStep per Domain. Addition of new packs and requests is automatic so not refered to.
 IterStep:
-All (req - request):
+All (req - Request):
 Case (request urgency req < 3):
 Replace request req: #Some fancy way to replace the whole tuple...
 request type req, request loc req, request urgency req + 1
