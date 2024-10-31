@@ -45,18 +45,18 @@ def actiontokenz():
     tok('package loc pack : trk')
     tok('(package onEntity pack = 1) And (package loc pack = id)')
 
-def expres(val, params, expParams):
-    print(f'{val}:{parse_expression(val, params, expParams)}')
+def expres(val, params, expParams, parsedEntities):
+    print(f'{val}:{parse_expression(val, params, expParams, parsedEntities)}')
     try:
-        print(parse_expression(val, params, expParams).evaluate(None, None))
+        print(parse_expression(val, params, expParams, parsedEntities).evaluate(None, None))
     except Exception as e:
         print("not yet")
 
-def test_parse_expression(expression_str, parameters, paramExpressions):
+def test_parse_expression(expression_str, parameters, paramExpressions, parsedEntities):
     print(f"Parsing expression: {expression_str}")
 
     try:
-        expressed = parse_expression(expression_str, parameters, paramExpressions)
+        expressed = parse_expression(expression_str, parameters, paramExpressions, parsedEntities)
         print(f"Parsed Expression Node:{expressed}\n")
     except Exception as e:
         print(f"Error parsing expression: {e}\n")
@@ -75,10 +75,13 @@ def multiExpresTest():
     'droneCap id < 1 and package onEntity pack = 0',
     '(package onEntity pack = 1) and (package loc pack = id)',
     'value1 param1 + value2 param2 / value3 - (value4 * value5)',
-    'value1 param1 ? param2'
+    'value1 param1 ? param2',
+    'value2 (value1 param1) ? param2',
+    'value2 (value1 param1) @ param2',
+    'value3 (value1 param1) @ value param2'
 ]
     for expr in expressions:
-        test_parse_expression(expr, parameters, paramExpressions)
+        test_parse_expression(expr, parameters, paramExpressions, [])
 
 if __name__ == "__main__":
     #multiExpresTest()

@@ -12,13 +12,13 @@ def parse_inside_segment(lines, start):
         line = lines[index]
         line = line.strip()
         if line.startswith("End") or line.startswith("Else"):
-            return segments, start + index
+            return segments, index
         if line.startswith("Case"):
             condition = extract_within_brackets(line.split("Case")[1]).strip()
-            segment, index = parse_inside_segment(lines, start + index + 1)
+            segment, index = parse_inside_segment(lines, index + 1)
             block = {"name": "case", "condition": condition, "segment": segment}
             if lines[index].startswith("Else"):
-                segment, index = parse_inside_segment(lines, start + index + 1)
+                segment, index = parse_inside_segment(lines, index + 1)
                 block["else Segment"] = segment
             segments.append(block)
 
@@ -28,7 +28,7 @@ def parse_inside_segment(lines, start):
             parameter = part1.strip()
             part2 = partition[1].split(")")[0]
             entity = part2.strip()
-            segment, index = parse_inside_segment(lines, start + index + 1)
+            segment, index = parse_inside_segment(lines, index + 1)
             block = {"name": "all", "entity": entity, "parameter": parameter, "segment": segment}
             part3 = partition[1].strip(part2 + ")")
             if "(" in part3:
@@ -38,7 +38,7 @@ def parse_inside_segment(lines, start):
         else:
             segments.append(line)
         index += 1
-    return segments, start + index
+    return segments, index
 
 def parse_segment(lines):
     return parse_inside_segment(lines, 0)[0]

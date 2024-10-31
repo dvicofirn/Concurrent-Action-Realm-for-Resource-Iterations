@@ -1,4 +1,4 @@
-
+from typing import Iterable
 
 class CARRIState:
     def __init__(self, variables):
@@ -76,6 +76,20 @@ class CARRISimulator:
 class CARRIProblem:
     def __init__(self, constants):
         self.constants = constants  # Tuple of constant values
+
+    # Todo: implement
+    def get_entity_ids(self, state: CARRIState, entityIndex: int) -> Iterable[int]:
+        raise NotImplementedError("Requires proper implementation")
+
+    def add_entity(self, state: CARRIState, entityIndex: int, *params):
+        raise NotImplementedError("Requires proper implementation")
+
+    def remove_entity(self, state: CARRIState, entityIndex: int, entityId):
+        raise NotImplementedError("Requires proper implementation")
+
+    def replace_entity(self, state: CARRIState, entityIndex: int,
+                       entityId: int, *newVals):
+        raise NotImplementedError("Requires proper implementation")
 
     def get_variable(self, state: CARRIState, variableName: str):
         if variableName in self.constants:

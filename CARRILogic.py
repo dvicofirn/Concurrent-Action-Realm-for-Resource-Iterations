@@ -16,7 +16,8 @@ operatorStringMap = {
     operator.and_: 'and',
     operator.or_: 'or',
     operator.not_: 'not',
-    operator.contains: '?'
+    operator.contains: '?',
+    operator.getitem: '@'
 }
 
 class ExpressionNode:
@@ -110,6 +111,24 @@ class ValueNode(ExpressionNode):
     def applicable(self) -> bool:
         return self.expression.applicable()
 
+class ExistingParameterNode(ExpressionNode):
+    def __init__(self, entityIndex: int, expression: ExpressionNode):
+        self.entityIndex = entityIndex
+        self.expression = expression
+    def __str__(self):
+        return "exists: "+ str(self.entityIndex) + " at (" +str(self.expression) + ") "
+    def evaluate(self, problem: CARRIProblem, state: CARRIState):
+        return self.expression.evaluate() in problem.get_entity_ids(state, self.entityIndex)
+
+    def copies(self, params: List):
+        """
+        Copies object's expression
+        """
+        return ExistingParameterNode(self.entityIndex, self.expression.copies(params))
+
+    def applicable(self) -> bool:
+        return self.expression.applicable()
+
 class OperatorNode(ExpressionNode):
     def __init__(self, operator, *operands):
         self.operator = operator  # A callable operator (e.g., operator.add)
@@ -166,6 +185,55 @@ class ExpressionIndexUpdate(Update):
         Copies object's expression
         """
         return ExpressionIndexUpdate(self.variableName, self.index, self.expression.copies(params))
+
+class ExpressionRemoveUpdate(Update):
+    def __init__(self, entityIndex: int, expression: ExpressionNode):
+        self.entityIndex = entityIndex
+        self.expression = expression
+
+    def apply(self, problem: CARRIProblem, state: CARRIState):
+        problem.remove_entity(state, self.entityIndex, self.expression.evaluate(problem, state))
+
+    def copies(self, params: List):
+        """
+        Copies object's expression
+        """
+        return ExpressionRemoveUpdate(self.entityIndex, self.expression.copies(params))
+
+class ExpressionAddUpdate(Update):
+    def __init__(self, entityIndex: int, *expressions: ExpressionNode):
+        self.entityIndex = entityIndex
+        self.expressions = expressions
+
+    def apply(self, problem: CARRIProblem, state: CARRIState):
+        problem.add_entity(state, self.entityIndex,
+                           *[expression.evaluate(problem, state) for expression in self.expressions])
+
+    def copies(self, params: List):
+        """
+        Copies object's expressions
+        """
+        return ExpressionAddUpdate(self.entityIndex,
+                                   *[expression.copies(params) for expression in self.expressions])
+
+class ExpressionReplaceUpdate(Update):
+    def __init__(self, entityIndex: int, expressionId: ExpressionNode, *expressions: ExpressionNode):
+        self.entityIndex = entityIndex
+        self.expressionId = expressionId
+        self.expressions = expressions
+
+    def apply(self, problem: CARRIProblem, state: CARRIState):
+        problem.replace_entity(state, self.entityIndex,
+                               self.expressionId.evaluate(problem, state),
+                               *[expr.evaluate(problem, state) for expr in self.expressions])
+
+    def copies(self, params: List):
+        """
+        Copies object's expressions
+        """
+        return ExpressionAddUpdate(self.entityIndex, self.expressionId.copies(params),
+                                   *[expression.copies(params) for expression in self.expressions])
+
 
 class ExpressionUpdate(Update):
     def __init__(self, variableName: str, expressionIndex: ExpressionNode, expressionValue: ExpressionNode):

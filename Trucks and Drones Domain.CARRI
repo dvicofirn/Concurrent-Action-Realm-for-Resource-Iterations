@@ -84,12 +84,12 @@ Precs:
 	package loc pack = droneLoc id
 	package type pack = request type req
 Confs:
-	request exists req # Check if request still exists (Did other drone delivered ?)
+	Request exists req # Check if request still exists (Did other drone delivered ?)
 Effects:
 	droneCap id : 1
 	droneCharge id  : droneCharge id - 1
-	package remove : pack
-	request remove : req
+	Package remove : pack
+	Request remove : req
 Cost:
 1
 End Action
@@ -130,7 +130,7 @@ End Action
 
 DroneExitBoard: id - Drone, trk - Truck
 Precs:
-droneBoard id : true
+droneBoard id = true
 droneLoc id = trk
 not (locType(truckLoc trk) = 2)
 Effects:
@@ -195,11 +195,10 @@ End EnvSteps
 IterStep:
 All (req - Request):
 Case (request urgency req < 3):
-Replace request req: #Some fancy way to replace the whole tuple...
-request type req, request loc req, request urgency req + 1
+	Request replace req: (request type req, request loc req, request urgency req + 1)
+	#Some fancy way to replace the whole tuple...
 #If it's too complicated, I'm fine with request urgency req: request urgency req +1
 #And making items request var
-End Replace
 End Case
 End All
 End IterStep
@@ -210,6 +209,7 @@ End Domain
 Example how variables should look like:
 const locType INT (Location) = (0, 1, 0, 2, 0, 0,...)
 const locAdj MULTY (Location)  = ({1,3}, {0,2}, {4,5,8}, {}, {10}, ...)
+const locAdjCost MATCH (Location) = ({1: 2, 2: 3, 4: 1}, {0: 2, 4: 2}, {}, ...)
 var droneLoc INT (Drone) = (1, 5, 8, 2,...)
 var droneBoard BOOL (Drone) = (False, False, True, False, ...)
 items package var: type INT, loc INT, onEntity INT (Package) =

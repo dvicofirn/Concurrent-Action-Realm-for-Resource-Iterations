@@ -90,8 +90,10 @@ class ActionProducer:
         if paramIndex >= len(actionGenerator.params):
             # All parameters are assigned, create and validate action
             action = actionGenerator.generate_action()
-            if action.validate(problem, state):
-                actions.append(action)
+            """If action was created after validating all parameters
+            in evaluate_partial_preconditions, no such need for the if statement.
+            if action.validate(problem, state):"""
+            actions.append(action)
             return
 
         # Get the next parameter to assign

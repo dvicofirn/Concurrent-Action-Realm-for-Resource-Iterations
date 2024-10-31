@@ -1,10 +1,11 @@
-from typing import List, Dict
+from typing import Dict
 from CARRIAction import ActionGenerator
 from CARRILogic import *
 from CARRILogicParser import parse_conditions, parse_effects
 
 class CARRIActionParser:
-    def __init__(self, parsedActions: Dict, parsedEntities: Dict, implementedActions: Dict[str, ActionGenerator]) -> None:
+    def __init__(self, parsedActions: Dict, parsedEntities: Dict,
+                 implementedActions: Dict[str, ActionGenerator]) -> None:
         self.parsed_actions = parsedActions
         self.implementedActions = implementedActions
         self.parsedEntities = parsedEntities
@@ -37,19 +38,19 @@ class CARRIActionParser:
             # (Implement parse_conditions and parse_effects methods accordingly)
             if "preconditions" in actionData:
                 preconditions=(parse_conditions(actionData["preconditions"],
-                                                parameters, paramExpressions))
+                                                parameters, paramExpressions, self.parsedEntities))
 
             if "preconditions add" in actionData:
                 preconditions.extend(parse_conditions(actionData["preconditions add"],
-                                                      parameters, paramExpressions))
+                                                      parameters, paramExpressions, self.parsedEntities))
 
             if "conflicting preconditions" in actionData:
                 conflictingPreconditions=(parse_conditions(actionData["conflicting preconditions"],
-                                                           parameters, paramExpressions))
+                                                           parameters, paramExpressions, self.parsedEntities))
 
             if "conflicting preconditions add" in actionData:
                 conflictingPreconditions.extend(parse_conditions(actionData["conflicting preconditions add"],
-                                                                 parameters, paramExpressions))
+                                                                 parameters, paramExpressions, self.parsedEntities))
 
             if "effects" in actionData:
                 effects=(parse_effects(actionData["effects"],
