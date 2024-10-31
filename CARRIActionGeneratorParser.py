@@ -7,8 +7,9 @@ class CARRIActionParser:
     def __init__(self, parsedActions: Dict, parsedEntities: Dict,
                  implementedActions: Dict[str, ActionGenerator]) -> None:
         self.parsed_actions = parsedActions
-        self.implementedActions = implementedActions
         self.parsedEntities = parsedEntities
+        self.implementedActions = implementedActions
+
 
     def parse(self) -> List[ActionGenerator]:
         actionGenerators = []
@@ -34,8 +35,7 @@ class CARRIActionParser:
             # Parse parameter types (you may need to define how parameter types are provided)
             # For this example, we'll assume parameter types are provided in actionData
 
-            # Parse Preconditions and Effects
-            # (Implement parse_conditions and parse_effects methods accordingly)
+            # Parse Preconditions, Effects & Cost
             parser = ContextParser(parameters, paramExpressions, self.parsedEntities)
             if "preconditions" in actionData:
                 preconditions = parser.parse(actionData["preconditions"], "conditions")
@@ -60,7 +60,7 @@ class CARRIActionParser:
                 cost = parser.parse(actionData["cost"], "cost")
 
             # Create ActionGenerator instance
-            action_generator = ActionGenerator(
+            actionGenerator = ActionGenerator(
                 name=actionName,
                 entities=entities,
                 params=parameters,
@@ -70,8 +70,11 @@ class CARRIActionParser:
                 cost=cost,
                 paramExpressions=paramExpressions # Parameter objects
             )
-            actionGenerators.append(action_generator)
-            self.implementedActions[actionName] = action_generator
+            # Reorder the preconditions for more efficient valid action production.
+            actionGenerator.reArrangePreconditions()
+            actionGenerators.append(actionGenerator)
+            # This allows next iterations to inherit from current action generator.
+            self.implementedActions[actionName] = actionGenerator
 
         return actionGenerators
 

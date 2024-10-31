@@ -6,14 +6,31 @@ FILEPATH = "C:\\Users\\USER\\Documents\\Python Scripts\\PycharmProjects\\Real-Ti
 def main():
     translator = CARRITranslator()
     segments = translator.translate(FILEPATH, FILEPATH)[0]
+    print("---Entities---")
     entities = segments['Entities']
     for entity in entities:
         print(f"{entity} {entities[entity]}")
 
+    print("---Variables---")
+    variableSegment = segments["Variables"]
+    for variable in variableSegment:
+        print(variable)
+        print(variableSegment[variable])
+
+    print("---Actions---")
     actionSegment = segments["Actions"]
     for action in actionSegment:
         print(action)
         print(actionSegment[action])
+
+    print("---EnvSteps---")
+    envStepsSegment = segments["EnvSteps"]
+    for envSteps in envStepsSegment:
+        print(envSteps)
+        print(envStepsSegment[envSteps])
+    print("---IterStep---")
+    print(segments["IterStep"])
+
 
 def tokenz(*vals):
     for val in vals:

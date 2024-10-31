@@ -44,14 +44,15 @@ def parse_segment(lines):
     return parse_inside_segment(lines, 0)[0]
 
 
-def startsWithSection(line: str):
-    vals= {"Precs:": "preconditions",
-           "Confs:": "conflicting preconditions",
-           "Effects:": "effects",
-           "Cost:": "cost",
-           "Precs.Add:": "preconditions add",
-           "Confs.Add:": "conflicting preconditions add",
-           "Effects.Add:": "effects add"
+def starts_with_section(line: str):
+    vals= {
+        "Precs:": "preconditions",
+        "Confs:": "conflicting preconditions",
+        "Effects:": "effects",
+        "Cost:": "cost",
+        "Precs Add:": "preconditions add",
+        "Confs Add:": "conflicting preconditions add",
+        "Effects Add:": "effects add"
            }
     for key in vals:
         if line.startswith(key):
@@ -72,18 +73,11 @@ def parse_action_segments(action_lines, actions, actionName):
         if not line:
             continue
 
-        segmentName = startsWithSection(line)
+        segmentName = starts_with_section(line)
         if segmentName is not None:
             if currentSection and section_lines:
                 actions[actionName][currentSection] = parse_segment(section_lines)
             currentSection = segmentName
-            section_lines = []
-
-
-        elif line.startswith("EnvSteps:"):
-            if currentSection and section_lines:
-                actions[actionName][currentSection] = parse_segment(section_lines)
-            currentSection = "environment steps"
             section_lines = []
         else:
             section_lines.append(line)

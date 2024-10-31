@@ -32,7 +32,7 @@ End Variables
 #Effects - Effects on variables
 #Cost - cost of action
 #In reality I plan on Implementing base Wait, Travel, Pick & Deliver
-#If not using .Add it overrides implementation.
+#If not using Add it overrides implementation.
 
 Actions:
 DroneWait: id - Drone (Wait) #Action name, var related to acting entity, other required vars, inheriting action
@@ -141,11 +141,11 @@ Cost:
 End Action
 
 DroneExitBoardWithPack: id - Drone, trk - Truck, pack - Package (DroneExitBoard) #This is an example of addition to existing action
-Precs.Add:
+Precs Add:
 	package loc pack: trk
-Confs: #Could also implement as Confs.Add
+Confs: #Could also implement as Confs Add
 	package onEntity pack = 2 #Other drone might want to take it. It's fine to not re check package location
-	Effects.Add:
+	Effects Add:
 	package onEntity pack : 1
 	package loc pack : id
 End Action
@@ -183,8 +183,8 @@ Urgency:
 Cost:
 NewVal c : 0
 All (req - Request): #Fancy way to say "for req in request"
-c : c + 5
-c : c + (request urgency req) * 5 #Could be c + (request urgency req *5) + 5 if possible
+	c : c + 5
+	c : c + (request urgency req) * 5 #Could be c + (request urgency req *5) + 5 if possible
 End All
 c
 End EnvStep

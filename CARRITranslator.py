@@ -1,6 +1,7 @@
 import re
 from typing import List, Tuple, Dict, Set
-from CARRIActionLinesParser import parse_action_segments, parse_action_header
+from CARRIActionLinesParser import parse_action_segments, parse_action_header, parse_segment
+
 
 class CARRITranslator:
     def translate(self, carriDomainPath, carriProblemPath) -> tuple:
@@ -13,12 +14,17 @@ class CARRITranslator:
         sections = self.split_sections()
         translated_sections = {}
         # Send sections to respective translators
+        if "Entities" in sections:
+            translated_sections["Entities"] = self.translate_entities(sections["Entities"])
         if "Variables" in sections:
             translated_sections["Variables"] = self.translate_variables(sections["Variables"])
         if "Actions" in sections:
             translated_sections["Actions"] = self.translate_actions(sections["Actions"])
-        if "Entities" in sections:
-            translated_sections["Entities"] = self.translate_entities(sections["Entities"])
+        if "EnvSteps" in sections:
+            translated_sections["EnvSteps"] = self.translate_env_steps(sections["EnvSteps"])
+        if "IterStep" in sections:
+            translated_sections["IterStep"] = self.translate_iter_step(sections["IterStep"])
+
         return translated_sections, self.problemFile
 
     def read_file(self, file_path):
@@ -71,6 +77,7 @@ class CARRITranslator:
 
     def translate_entities(self, entities_text):
         return CARRIEntitiesTranslator(entities_text).translate()
+
     def translate_variables(self, variables_text):
         """
         Pass the variables section to the Variables Translator.
@@ -82,6 +89,19 @@ class CARRITranslator:
         Pass the actions section to the Actions Translator.
         """
         return CARRIActionsTranslator(actions_text).translate()
+
+    def translate_env_steps(self, envsStepsText):
+        """
+        Pass the actions section to the Actions Translator.
+        """
+        return CARRIEnvStepsTranslator(envsStepsText).translate()
+
+    def translate_iter_step(self, envsStepsText):
+        """
+        Pass the actions section to the Actions Translator.
+        """
+        return CARRIIterStepTranslator(envsStepsText).translate()
+
 
 class CARRIEntitiesTranslator:
     def __init__(self, variables_text):
@@ -104,6 +124,7 @@ class CARRIEntitiesTranslator:
                 self.entities[entity_name] = (len(self.entities), inherits)
 
         return self.entities
+
 
 class CARRIVariablesTranslator:
     def __init__(self, variables_text):
@@ -184,7 +205,7 @@ class CARRIActionsTranslator:
 
     def translate(self):
         """
-        Translates the Actions section to a list of actions with preconditions, effects, and costs.
+        Translates the Actions section to a dictionary of actions with preconditions, effects, and costs.
         """
         actions = {}
         # Split the entire actions text by "End Action" to isolate each action block
@@ -206,3 +227,45 @@ class CARRIActionsTranslator:
             }
             parse_action_segments(lines[1:], actions, actionName)
         return actions
+
+
+class CARRIEnvStepsTranslator:
+    def __init__(self, envStepsText):
+        self.envStepsText = envStepsText
+
+    def translate(self):
+        """
+        Translates the EnvSteps section to a dictionary of env steps with effects, and costs.
+        """
+        envSteps = {}
+        # Split the entire actions text by "End EnvStep" to isolate each action block
+        envStepsBlocks = self.envStepsText.split("End EnvStep")
+
+        for envStepBlock in envStepsBlocks:
+            envStepBlock = envStepBlock.strip()
+            if not envStepBlock:
+                continue
+            # Identify the start of an action using the line format "<action_name>: ..."
+            lines = envStepBlock.split("\n")
+            name = lines[0].split(":", 1)[0].strip()
+            # Initialize the current envSteps dictionary
+            envSteps[name] = {}
+            parse_action_segments(lines[1:], envSteps, name)
+        return envSteps
+
+class CARRIIterStepTranslator:
+    def __init__(self, iterStepText):
+        self.iterStepText = iterStepText
+
+    def translate(self):
+        """
+        Translates the IterStep section to a list of effects.
+        """
+        # Identify the start of an action using the line format "<action_name>: ..."
+        lines = self.iterStepText.split("\n")
+        segmentLines = []
+        for line in lines:
+            line = line.strip()
+            if line:
+                segmentLines.append(line)
+        return parse_segment(segmentLines)
