@@ -19,12 +19,14 @@ operatorStringMap = {
     operator.contains: '?',
     operator.getitem: '@'
 }
-
-class ExpressionNode:
-    def evaluate(self, problem, state):
-        raise NotImplementedError("Must be implemented by subclasses")
+class Copies:
     def copies(self, params: List):
         raise NotImplementedError("Must be implemented by subclasses")
+
+class ExpressionNode(Copies):
+    def evaluate(self, problem, state):
+        raise NotImplementedError("Must be implemented by subclasses")
+
     def applicable(self) -> bool:
         return NotImplemented("Must be implemented by subclasses")
     def __repr__(self):
@@ -49,18 +51,8 @@ class ConstNode(ExpressionNode):
         return True
 
 class ParameterNode(ExpressionNode):
-    def __init__(self, index, value=None):
+    def __init__(self, index):
         self.index = index
-        self.value = value
-    def __str__(self):
-        return "par: "+ str(self.value) + " at " +str(self.index) + " "
-    def __copy__(self):
-        return ParameterNode(self.index, self.value)
-
-    def updateValue(self, value):
-        self.value = value
-    def evaluate(self, problem, state):
-        return self.value
 
     def copies(self, params: List):
         """
@@ -69,9 +61,40 @@ class ParameterNode(ExpressionNode):
         If it's an All's parameter, returning the same object.
         """
         return params[self.index]
+    def __copy__(self):
+        return NotImplemented("Must be implemented by subclasses")
+    def updateParam(self, newParam):
+        raise NotImplementedError("Must be implemented by subclasses")
 
+class ValueParameterNode(ParameterNode):
+    def __init__(self, index, value=None):
+        super().__init__(index)
+        self.value = value
+    def __str__(self):
+        return "par: " + str(self.value) + " at " + str(self.index) + " "
+    def __copy__(self):
+        return ValueParameterNode(self.index, self.value)
+    def updateParam(self, newParam):
+        self.value = newParam
+    def evaluate(self, problem, state):
+        return self.value
     def applicable(self) -> bool:
         return self.value is not None
+
+class ExpressingParameterNode(ParameterNode):
+    def __init__(self, index, expression=None):
+        super().__init__(index)
+        self.expression = expression
+    def __str__(self):
+        return "par: " + str(self.expression) + " at " + str(self.index) + " "
+    def __copy__(self):
+        return ExpressingParameterNode(self.index, self.expression)
+    def updateParam(self, newParam):
+        self.expression = newParam
+    def evaluate(self, problem, state):
+        return self.expression.evaluate(problem, state)
+    def applicable(self) -> bool:
+        return self.expression is not None
 
 class ValueIndexNode(ExpressionNode):
     def __init__(self, variableName: str, index: int):
@@ -111,20 +134,20 @@ class ValueNode(ExpressionNode):
     def applicable(self) -> bool:
         return self.expression.applicable()
 
-class ExistingParameterNode(ExpressionNode):
+class ExistingExpressionNode(ExpressionNode):
     def __init__(self, entityIndex: int, expression: ExpressionNode):
         self.entityIndex = entityIndex
         self.expression = expression
     def __str__(self):
         return "exists: "+ str(self.entityIndex) + " at (" +str(self.expression) + ") "
     def evaluate(self, problem: CARRIProblem, state: CARRIState):
-        return self.expression.evaluate() in problem.get_entity_ids(state, self.entityIndex)
+        return self.expression.evaluate(problem, state) in problem.get_entity_ids(state, self.entityIndex)
 
     def copies(self, params: List):
         """
         Copies object's expression
         """
-        return ExistingParameterNode(self.entityIndex, self.expression.copies(params))
+        return ExistingExpressionNode(self.entityIndex, self.expression.copies(params))
 
     def applicable(self) -> bool:
         return self.expression.applicable()
@@ -149,7 +172,7 @@ class OperatorNode(ExpressionNode):
     def applicable(self) -> bool:
         return all(expression.applicable() for expression in self.operands)
 
-class Update:
+class Update(Copies):
     def apply(self, problem: CARRIProblem, state: CARRIState):
         raise NotImplementedError("Must be implemented by subclasses")
 
@@ -278,9 +301,8 @@ class CaseUpdate(Update):
 
 
 class AllUpdate(Update):
-    def __init__(self, entityIndex: int, parameter: ParameterNode, updates, condition: ExpressionNode = None):
+    def __init__(self, entityIndex: int, parameter: ValueParameterNode, updates, condition: ExpressionNode = None):
         self.entityIndex = entityIndex
-        # TODO: validate parameter's index is correct
         # Must have the id of len(Action's param) + position of nesting (starting at 0).
         self.parameter = parameter
         self.updates = updates
@@ -289,12 +311,12 @@ class AllUpdate(Update):
     def apply(self, problem: CARRIProblem, state: CARRIState):
         if self.condition is None:
             for entity in problem.get_entity_ids(state, self.entityIndex):
-                self.parameter.updateValue(entity)
+                self.parameter.updateParam(entity)
                 for update in self.updates:
                     update.apply(problem, state)
         else:
             for entity in problem.get_entity_ids(state, self.entityIndex):
-                self.parameter.updateValue(entity)
+                self.parameter.updateParam(entity)
                 if self.condition.evaluate(problem, state):
                     for update in self.updates:
                         update.apply(problem, state)
@@ -309,3 +331,26 @@ class AllUpdate(Update):
         return AllUpdate(self.entityIndex, self.parameter,
                          [expression.copies(params) for expression in self.updates],
                          self.condition.copies(params) if self.condition else None)
+
+class CostExpression(ExpressionNode):
+    def __init__(self, updates: List[Update], costExpression: ExpressionNode):
+        self.updates = updates
+        self.costExpression = costExpression
+
+    def evaluate(self, problem, state):
+        # First, apply updates (e.g., 'NewVar' assignments)
+        for update in self.updates:
+            update.apply(problem, state)
+        # Then evaluate the cost expression
+        return self.costExpression.evaluate(problem, state)
+
+    def __str__(self):
+        return "Cost: " +str(self.costExpression) + " "
+
+    def copies(self, params: List):
+        """
+        Copies object's expressions
+        """
+        return CostExpression([expression.copies(params) for expression in self.updates],
+                              self.costExpression.copies(params))
+

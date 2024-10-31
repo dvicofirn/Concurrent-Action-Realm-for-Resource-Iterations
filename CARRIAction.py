@@ -1,11 +1,13 @@
 from copy import copy
 from CARRIRealm import CARRIProblem, CARRIState
-from CARRILogic import ParameterNode
+from CARRILogic import ExpressionNode, ParameterNode, Update
 from typing import List, Dict, Iterable
 
 
 class Action:
-    def __init__(self, name, preconditions, conflictingPreconditions, effects, cost):
+    def __init__(self, name: str, preconditions: List[ExpressionNode],
+                 conflictingPreconditions: List[ExpressionNode],
+                 effects: List[Update], cost: ExpressionNode):
         self.name = name
         self.preconditions = preconditions  # List of Condition objects
         self.conflictingPreconditions = conflictingPreconditions
@@ -21,9 +23,12 @@ class Action:
     def reValidate(self, problem, state):
         return all(precondition.evaluate(problem, state) for precondition in self.conflictingPreconditions)
 
-    def apply(self, state):
+    def apply(self, problem, state):
         for effect in self.effects:
-            effect.apply(state)
+            effect.apply(problem, state)
+
+    def cost(self, problem, state):
+        return self.cost.evaluate(problem, state)
 
     def __str__(self):
         return str(self.name)
@@ -76,7 +81,7 @@ class ActionProducer:
                 # Generate all valid actions for the given entity_id
                 actions = []
                 # Initialize parameter values with the fixed entity parameter (id)
-                actionGenerator.paramExpressions[0].updateValue(entityId)
+                actionGenerator.paramExpressions[0].updateParam(entityId)
                 if self.evaluate_partial_preconditions(actionGenerator, problem, state):
                     # Start recursive parameter assignment
                     self.assign_parameters_recursive(actionGenerator, problem, state, 1, actions)
@@ -111,13 +116,13 @@ class ActionProducer:
         # For each possible value, proceed to assign the next parameter
         for value in filtered_values:
             # Update the ParameterNode
-            parameterNode.updateValue(value)
+            parameterNode.updateParam(value)
 
             # Recurse to assign the next parameter
             self.assign_parameters_recursive(actionGenerator, problem, state, paramIndex + 1, actions)
 
         # Clean up parameter values (backtrack)
-        parameterNode.updateValue(None)
+        parameterNode.updateParam(None)
 
     def filter_parameter_values(self, actionGenerator: ActionGenerator,
                                 problem: CARRIProblem, state: CARRIState,
@@ -127,7 +132,7 @@ class ActionProducer:
 
         for value in possibleValues:
             # Set current parameter value
-            parameterNode.updateValue(value)
+            parameterNode.updateParam(value)
 
             # Evaluate preconditions involving parameters assigned so far
             if self.evaluate_partial_preconditions(actionGenerator, problem, state):

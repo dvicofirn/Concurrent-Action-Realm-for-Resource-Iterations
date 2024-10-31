@@ -1,6 +1,7 @@
 from CARRITranslator import CARRITranslator
-from CARRILogicParser import tokenize, parse_expression
-from CARRILogic import ParameterNode
+from CARRILogicParser import tokenize
+from CARRIContextParser import ContextParser
+from CARRILogic import ValueParameterNode
 FILEPATH = "C:\\Users\\USER\\Documents\\Python Scripts\\PycharmProjects\\Real-Time Multi-Agent Dynamic Delivery System\\Trucks and Drones Domain.CARRI"
 def main():
     translator = CARRITranslator()
@@ -45,25 +46,10 @@ def actiontokenz():
     tok('package loc pack : trk')
     tok('(package onEntity pack = 1) And (package loc pack = id)')
 
-def expres(val, params, expParams, parsedEntities):
-    print(f'{val}:{parse_expression(val, params, expParams, parsedEntities)}')
-    try:
-        print(parse_expression(val, params, expParams, parsedEntities).evaluate(None, None))
-    except Exception as e:
-        print("not yet")
-
-def test_parse_expression(expression_str, parameters, paramExpressions, parsedEntities):
-    print(f"Parsing expression: {expression_str}")
-
-    try:
-        expressed = parse_expression(expression_str, parameters, paramExpressions, parsedEntities)
-        print(f"Parsed Expression Node:{expressed}\n")
-    except Exception as e:
-        print(f"Error parsing expression: {e}\n")
 
 def multiExpresTest():
     parameters = ['id', 'pack', 'trk', 'to', 'param1', 'param2', 'param3', 'param4', 'param5']
-    paramExpressions = [ParameterNode(i) for i in range(len(parameters))]
+    paramExpressions = [ValueParameterNode(i) for i in range(len(parameters))]
     expressions = [
     'droneCharge id > 0',
     'droneCharge id > 0 and droneBoard id = false',
@@ -80,8 +66,6 @@ def multiExpresTest():
     'value2 (value1 param1) @ param2',
     'value3 (value1 param1) @ value param2'
 ]
-    for expr in expressions:
-        test_parse_expression(expr, parameters, paramExpressions, [])
 
 if __name__ == "__main__":
     #multiExpresTest()

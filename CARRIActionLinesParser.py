@@ -48,7 +48,7 @@ def startsWithSection(line: str):
     vals= {"Precs:": "preconditions",
            "Confs:": "conflicting preconditions",
            "Effects:": "effects",
-           "Cost:": "costs",
+           "Cost:": "cost",
            "Precs.Add:": "preconditions add",
            "Confs.Add:": "conflicting preconditions add",
            "Effects.Add:": "effects add"
