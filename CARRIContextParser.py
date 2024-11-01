@@ -35,7 +35,8 @@ class ContextParser:
         for effect in effectsList:
             if isinstance(effect, str):
                 update = self.parse_effect_line(effect, parameters, paramExpressions)
-                updates.append(update)
+                if len(update) > 0:
+                    updates.append(update)
             elif isinstance(effect, dict):
                 block_updates = self.parse_effects_block(effect, parameters.copy(), paramExpressions.copy())
                 updates.extend(block_updates)
@@ -73,7 +74,7 @@ class ContextParser:
                 _, expr_str = rest.split(':', 1)
                 expr_str = expr_str.strip()
                 expr_node = self.parse_expression(expr_str, parameters, paramExpressions)
-                entity_index = self.parsedEntities.get(entity_name)
+                entity_index = self.parsedEntities.get(entity_name)[0]
                 if entity_index is None:
                     raise ValueError(f"Unknown entity: {entity_name}")
                 updates.append(ExpressionRemoveUpdate(entity_index, expr_node))
@@ -92,7 +93,7 @@ class ContextParser:
                     expr_strs = [s.strip() for s in expr_list_str.split(',')]
                     expr_nodes = [self.parse_expression(expr_str, parameters, paramExpressions)
                                   for expr_str in expr_strs]
-                    entity_index = self.parsedEntities.get(entity_name)
+                    entity_index = self.parsedEntities.get(entity_name)[0]
                     if entity_index is None:
                         raise ValueError(f"Unknown entity: {entity_name}")
                     updates.append(ExpressionAddUpdate(entity_index, *expr_nodes))
@@ -116,7 +117,7 @@ class ContextParser:
                     expr_strs = [s.strip() for s in expr_list_str.split(',')]
                     expr_nodes = [self.parse_expression(expr_str, parameters, paramExpressions)
                                   for expr_str in expr_strs]
-                    entity_index = self.parsedEntities.get(entity_name)
+                    entity_index = self.parsedEntities.get(entity_name)[0]
                     if entity_index is None:
                         raise ValueError(f"Unknown entity: {entity_name}")
                     updates.append(ExpressionReplaceUpdate(entity_index, expr_id, *expr_nodes))
@@ -138,7 +139,7 @@ class ContextParser:
             condition = self.parse_expression(condition_str, parameters, paramExpressions)
             segment = effect['segment']
             updates_segment = self.parse_effects(segment, parameters, paramExpressions)
-            else_segment = effect.get('elseUpdates', [])
+            else_segment = effect.get('else segment', [])
             updates_else = self.parse_effects(else_segment, parameters, paramExpressions)
             updates.append(CaseUpdate(condition, updates_segment, updates_else))
         elif block_name == 'all':
@@ -175,6 +176,8 @@ class ContextParser:
             return ExpressionUpdate(lhs_node.variableName, lhs_node.expression, rhs_node)
         elif isinstance(lhs_node, ValueIndexNode):
             return ExpressionIndexUpdate(lhs_node.variableName, lhs_node.index, rhs_node)
+        elif isinstance(lhs_node, ExpressingParameterNode):
+            return ParameterUpdate(lhs_node, rhs_node)
         else:
             raise SyntaxError(f"Invalid LHS in update: {lhs_str}")
 
@@ -185,13 +188,14 @@ class ContextParser:
         # The last line is the cost expression
         cost_expr_str = cost_list[-1]
         # Parse the cost expression
-        costExpression = self.parse_expression(cost_expr_str, parameters, paramExpressions)
         # All preceding lines are updates
         updates_list = cost_list[:-1]
         # Check if there are updates in updates_list, return costExpression if not
         if not updates_list:
+            costExpression = self.parse_expression(cost_expr_str, parameters, paramExpressions)
             return costExpression
         # Parse updates (may include 'NewVal' declarations)
         updates = self.parse_effects(updates_list, parameters, paramExpressions)
+        costExpression = self.parse_expression(cost_expr_str, parameters, paramExpressions)
         # Return a structure that includes updates and the cost expression
         return CostExpression(updates, costExpression)

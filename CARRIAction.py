@@ -7,6 +7,10 @@ from typing import List, Dict, Iterable
 class Step:
     def __init__(self, effects: List[Update]):
         self.effects = effects # List of Effect objects
+    def __repr__(self):
+        return str(self.effects)
+    def __str__(self):
+        return "Step effects: " + str(self.effects)
 
     def apply(self, problem, state):
         for effect in self.effects:
@@ -17,14 +21,11 @@ class EnvStep(Step):
         super().__init__(effects)
         self.name = name
         self.cost = cost
+    def __str__(self):
+        return self.name + ":\nEffects: " + str(self.effects) + "\n" + str(self.cost)
 
     def cost(self, problem, state):
         return self.cost.evaluate(problem, state)
-    def __repr__(self):
-        return self.__str__()
-
-    def __str__(self):
-        return str(self.name)
 
 class Action(EnvStep):
     def __init__(self, name: str, preconditions: List[ExpressionNode],
@@ -61,6 +62,16 @@ class ActionGenerator:
         self.paramExpressions = paramExpressions # List of fitting expressions
         self.precsParamApplicableCount = []
         self.confPrecsParamApplicableCount = []
+    def __repr__(self):
+        return self.__str__()
+    def __str__(self):
+        return ("Action: " + self.name + "\nEntities: " + str(self.entities)
+                + "\nParams: " + str(self.params) + "\nPreconditions: " + str(self.preconditions)
+                + "\nConflictingPreconditions: " + str(self.conflictingPreconditions)
+                + "\nEffects: " + str(self.effects) + "\nCost: " + str(self.cost)
+                + "\nParamExpressions: " + str(self.paramExpressions)
+                + "\nPrecsParamApplicableCount: " + str(self.precsParamApplicableCount)
+                + "\nConflictingPreconditions: " + str(self.confPrecsParamApplicableCount))
 
     def generate_action(self):
         # Create an Action instance using the parameter values
@@ -89,18 +100,26 @@ class ActionGenerator:
         newOrderConfPrecs = []
         for index, expression in enumerate(self.paramExpressions):
             expression.updateParam(0)
-            for preInd, precondition in enumerate(self.preconditions):
+            notYet = []
+            for precondition in self.preconditions:
                 if precondition.applicable():
-                    newOrderPrecs.append(self.preconditions.pop(preInd))
+                    newOrderPrecs.append(precondition)
+                else:
+                    notYet.append(precondition)
             precsParamApplicableCount.append(len(newOrderPrecs))
+            self.preconditions = notYet
         self.resetParams()
 
         for index, expression in enumerate(self.paramExpressions):
             expression.updateParam(0)
-            for preInd, precondition in enumerate(self.conflictingPreconditions):
+            notYet = []
+            for precondition in self.conflictingPreconditions:
                 if precondition.applicable():
-                    newOrderConfPrecs.append(self.conflictingPreconditions.pop(preInd))
+                    newOrderConfPrecs.append(precondition)
+                else:
+                    notYet.append(precondition)
             confPrecsParamApplicableCount.append(len(newOrderConfPrecs))
+            self.conflictingPreconditions = notYet
         self.resetParams()
 
         self.precsParamApplicableCount = precsParamApplicableCount

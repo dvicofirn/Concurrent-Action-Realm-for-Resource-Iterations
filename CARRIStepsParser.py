@@ -2,7 +2,7 @@ from typing import Dict, List
 from CARRIAction import Step, EnvStep
 from CARRILogic import ConstNode
 from CARRIContextParser import ContextParser
-class CARRIEnvStepParser:
+class EnvStepParser:
     def __init__(self, parsedEnvSteps: Dict, parsedEntities: Dict) -> None:
         self.parsedEnvSteps = parsedEnvSteps
         self.parsedEntities = parsedEntities
@@ -28,7 +28,7 @@ class CARRIEnvStepParser:
             ))
         return envSteps
 
-class CARRIIterParser:
+class IterParser:
     def __init__(self, parsedIterStep: List[str], parsedEntities: Dict) -> None:
         self.parsedIterStep = parsedIterStep
         self.parsedEntities = parsedEntities

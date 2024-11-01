@@ -3,7 +3,7 @@ from CARRIAction import ActionGenerator
 from CARRILogic import *
 from CARRIContextParser import ContextParser
 
-class CARRIActionParser:
+class ActionGeneratorParser:
     def __init__(self, parsedActions: Dict, parsedEntities: Dict,
                  implementedActions: Dict[str, ActionGenerator]) -> None:
         self.parsed_actions = parsedActions
@@ -17,21 +17,33 @@ class CARRIActionParser:
             inherits = actionData.get('inherits')
             if inherits and inherits in self.implementedActions:
                 inheritedAction = self.implementedActions[inherits]
+                """
+                Copies should be shallow
+                Inheriting generators "impact" each other, but currently that doesn't
+                Really come to action, as each generator resets parameters after action.
+                """
+                paramExpressions = inheritedAction.paramExpressions.copy() # Should be shallow copy.
                 preconditions = inheritedAction.preconditions.copy()
                 conflictingPreconditions = inheritedAction.conflictingPreconditions.copy()
                 effects = inheritedAction.effects.copy()
                 cost = inheritedAction.cost
             else:
+                paramExpressions = []
                 preconditions = []
                 conflictingPreconditions = []
                 effects = []
                 cost = ConstNode(0)
 
-            entities = [self.parsedEntities[entity][0] for entity in actionData["entity par"]]
+            entities = [self.parsedEntities[entity][0] for entity in actionData["entities"]]
             parameters = actionData["parameters"]
 
-            # Actions parameters, updated each time a new parameter is created
-            paramExpressions = [ValueParameterNode(i) for i in range(len(parameters))]
+            """
+            Actions parameters, updated each time a new parameter is created
+            Create new parameters for newly introduced entities.
+            Don't re arrange existing parameter's order.
+            """
+            paramExpressions.extend([ValueParameterNode(len(paramExpressions) + i)
+                                     for i in range(len(parameters) - len(paramExpressions))])
             # Parse parameter types (you may need to define how parameter types are provided)
             # For this example, we'll assume parameter types are provided in actionData
 
@@ -53,7 +65,7 @@ class CARRIActionParser:
                 effects = parser.parse(actionData["effects"], "effects")
 
             if "effects add" in actionData:
-                effects.extendparser.parse(actionData["effects add"], "effects")
+                effects.extend(parser.parse(actionData["effects add"], "effects"))
 
             # Parse Cost
             if "cost" in actionData:

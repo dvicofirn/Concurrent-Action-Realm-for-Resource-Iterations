@@ -179,11 +179,16 @@ class Update(Copies):
     def copies(self, params: List):
         raise NotImplementedError("Must be implemented by subclasses")
 
+    def __repr__(self):
+        return self.__str__()
+
 class ConstUpdate(Update):
     def __init__(self, variableName: str, index: int, const: int):
         self.variableName = variableName
         self.const = const
         self.index = index
+    def __str__(self):
+        return "const update: " + str(self.variableName) + " <- " + str(self.const) + " at " + str(self.index) + " "
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         problem.set_variable(state, self.variableName, self.index, self.const)
@@ -199,6 +204,9 @@ class ExpressionIndexUpdate(Update):
         self.variableName = variableName
         self.index = index
         self.expression = expression
+    def __str__(self):
+        return ("exp update: " + str(self.variableName) + " <- ("
+                + str(self.expression) + ") at "+ str(self.index) + " ")
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         problem.set_variable(state, self.variableName, self.index, self.expression.evaluate(problem, state))
@@ -213,6 +221,8 @@ class ExpressionRemoveUpdate(Update):
     def __init__(self, entityIndex: int, expression: ExpressionNode):
         self.entityIndex = entityIndex
         self.expression = expression
+    def __str__(self):
+        return "remove from: " + str(self.entityIndex) + " <- (" + str(self.expression) + ") "
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         problem.remove_entity(state, self.entityIndex, self.expression.evaluate(problem, state))
@@ -227,6 +237,28 @@ class ExpressionAddUpdate(Update):
     def __init__(self, entityIndex: int, *expressions: ExpressionNode):
         self.entityIndex = entityIndex
         self.expressions = expressions
+    def __str__(self):
+        return ("add to: " + str(self.entityIndex) + " <- ("
+                + str([expression for expression in self.expressions]) + ") ")
+
+    def apply(self, problem: CARRIProblem, state: CARRIState):
+        problem.add_entity(state, self.entityIndex,
+                           *[expression.evaluate(problem, state) for expression in self.expressions])
+
+    def copies(self, params: List):
+        """
+        Copies object's expressions
+        """
+        return ExpressionAddUpdate(self.entityIndex,
+                                   *[expression.copies(params) for expression in self.expressions])
+
+class ExpressionAddUpdate(Update):
+    def __init__(self, entityIndex: int, *expressions: ExpressionNode):
+        self.entityIndex = entityIndex
+        self.expressions = expressions
+    def __str__(self):
+        return ("add to: " + str(self.entityIndex) + " <- ("
+                + str([expression for expression in self.expressions]) + ") ")
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         problem.add_entity(state, self.entityIndex,
@@ -244,6 +276,9 @@ class ExpressionReplaceUpdate(Update):
         self.entityIndex = entityIndex
         self.expressionId = expressionId
         self.expressions = expressions
+    def __str__(self):
+        return ("replace in: " + str(self.entityIndex) + " instead (" + str(self.expressionId) + ") <- ("
+                + str([expression for expression in self.expressions]) + ") ")
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         problem.replace_entity(state, self.entityIndex,
@@ -263,6 +298,9 @@ class ExpressionUpdate(Update):
         self.variableName = variableName
         self.expressionIndex = expressionIndex
         self.expressionValue = expressionValue
+    def __str__(self):
+        return ("exp update: " + str(self.variableName) + " at (" + str(self.expressionIndex) + ") <- ("
+                + str(self.expressionValue) + ") ")
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         problem.set_variable(state, self.variableName,
@@ -277,11 +315,31 @@ class ExpressionUpdate(Update):
                                 self.expressionIndex.copies(params),
                                 self.expressionValue.copies(params))
 
+class ParameterUpdate(Update):
+    def __init__(self, parameter: ExpressingParameterNode, expression: ExpressionNode):
+        self.parameter = parameter
+        self.expression = expression
+    def __str__(self):
+        return "par update: " + str(self.parameter) + ") <- (" + str(self.expression) + ") "
+
+    def apply(self, problem: CARRIProblem, state: CARRIState):
+        self.parameter.updateParam(self.expression.evaluate(problem, state))
+
+    def copies(self, params: List):
+        """
+        Copies object's operator & expression
+        """
+        return ParameterUpdate(self.parameter.copies(params), self.expression.copies(params))
+
+
 class CaseUpdate(Update):
     def __init__(self, condition: ExpressionNode, updates, elseUpdates=None):
         self.condition = condition
         self.updates = updates
         self.elseUpdates = elseUpdates if elseUpdates else []
+    def __str__(self):
+        return ("case by (" + str(self.condition) + ") updates (" + str([exp for exp in self.updates])+ ") otherwise ("
+                + str([exp for exp in self.elseUpdates]) + ") ")
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         if self.condition.evaluate(problem, state):
@@ -307,6 +365,9 @@ class AllUpdate(Update):
         self.parameter = parameter
         self.updates = updates
         self.condition = condition  # Optional condition to filter items
+    def __str__(self):
+        return ("all " + str(self.entityIndex) + " by (" + str(self.condition)
+                + ") updates (" + str([exp for exp in self.updates]) + ") ")
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         if self.condition is None:
@@ -336,6 +397,9 @@ class CostExpression(ExpressionNode):
     def __init__(self, updates: List[Update], costExpression: ExpressionNode):
         self.updates = updates
         self.costExpression = costExpression
+    def __str__(self):
+        return ("Cost Sgement:\nUpdate: " + str([update for update in self.updates])
+                + "\nCost: " +str(self.costExpression) + " ")
 
     def evaluate(self, problem, state):
         # First, apply updates (e.g., 'NewVar' assignments)
@@ -344,13 +408,13 @@ class CostExpression(ExpressionNode):
         # Then evaluate the cost expression
         return self.costExpression.evaluate(problem, state)
 
-    def __str__(self):
-        return "Cost: " +str(self.costExpression) + " "
-
     def copies(self, params: List):
         """
         Copies object's expressions
         """
         return CostExpression([expression.copies(params) for expression in self.updates],
                               self.costExpression.copies(params))
+
+    def applicable(self) -> bool:
+        return self.costExpression.applicable()
 

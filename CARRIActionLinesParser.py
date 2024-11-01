@@ -19,7 +19,7 @@ def parse_inside_segment(lines, start):
             block = {"name": "case", "condition": condition, "segment": segment}
             if lines[index].startswith("Else"):
                 segment, index = parse_inside_segment(lines, index + 1)
-                block["else Segment"] = segment
+                block["else segment"] = segment
             segments.append(block)
 
         elif line.startswith("All"):
@@ -106,9 +106,9 @@ def parse_action_header(actionHeader):
         for param in params.split(','):
             param = param.strip()
             if '-' in param:
-                param_name, entity_name = map(str.strip, param.split('-'))
+                param_name, entityName = map(str.strip, param.split('-'))
                 parameters.append(param_name)
-                entities.append(entity_name)
+                entities.append(entityName)
             else:
                 raise AttributeError("Each parameter should include an entity with '-' separator")
 

@@ -81,7 +81,7 @@ Precs:
 	droneBoard id = false
 	droneLoc id = request loc req
 	package onEntity pack = 1
-	package loc pack = droneLoc id
+	package loc pack = id
 	package type pack = request type req
 Confs:
 	Request exists req # Check if request still exists (Did other drone delivered ?)
@@ -97,8 +97,9 @@ End Action
 DroneEmergencyCharge: id - Drone
 Precs:
 droneCharge id = 0
-droneBoard id = false
-Confs:
+#droneBoard id = false I think this is unnecessary,
+#If a droneBoard = true, charge will be >=3
+Effects:
 droneCharge id : 10
 Cost:
 40
@@ -106,13 +107,13 @@ End Action
 
 DroneBoard: id - Drone, trk - Truck
 Precs:
-((droneLoc id = truckLoc trk) and (droneBoard id = false) or ((droneLoc id = trk) and (droneBoard = true))
+((droneLoc id = truckLoc trk) and (droneBoard id = false)) or ((droneLoc id = trk) and (droneBoard id = true))
 Confs:
 truckDroneCap trk < 4
-(truckPackCap < 8) or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
+(truckPackCap trk < 8) or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
 Effects:
 droneLoc id : trk
-droneBoard id = true
+droneBoard id : true
 Case (droneCharge id < 8):
 droneCharge id : droneCharge id + 3
 Else:
@@ -123,6 +124,7 @@ All(pack - Package) ((package onEntity pack = 1) and (package loc pack = id)):
 package onEntity pack : 2
 package loc pack : trk
 End All
+droneCap id : 0 
 End Case
 Cost:
 2
@@ -145,14 +147,14 @@ Precs Add:
 	package loc pack: trk
 Confs: #Could also implement as Confs Add
 	package onEntity pack = 2 #Other drone might want to take it. It's fine to not re check package location
-	Effects Add:
+Effects Add:
 	package onEntity pack : 1
 	package loc pack : id
 End Action
 
 TruckWait: id - Truck (Wait)
 End Action
-#Action with no pre conditions or costs. Default cost is 0.
+#Action with no preconditions or effects or costs. Default cost is 0.
 
 TruckTravel: id - Truck, to - Location (Travel)
 Precs:

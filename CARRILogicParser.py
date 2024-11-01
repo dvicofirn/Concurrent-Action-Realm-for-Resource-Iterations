@@ -180,7 +180,7 @@ class LogicParser:
                     index = self.parameters.index(param_name)
                     param_expr = self.paramExpressions[index]
                     # Get entity index from parsedEntities
-                    entity_index = self.parsedEntities.get(name)
+                    entity_index = self.parsedEntities.get(name)[0]
                     if entity_index is None:
                         raise ValueError(f"Unknown entity: {name}")
                     return ExistingExpressionNode(entity_index, param_expr)

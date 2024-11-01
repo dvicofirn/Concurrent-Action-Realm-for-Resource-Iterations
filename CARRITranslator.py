@@ -1,31 +1,54 @@
 import re
 from typing import List, Tuple, Dict, Set
 from CARRIActionLinesParser import parse_action_segments, parse_action_header, parse_segment
+from ActionGeneratorParser import ActionGeneratorParser
+from CARRIStepsParser import EnvStepParser, IterParser
 
 
 class CARRITranslator:
     def translate(self, carriDomainPath, carriProblemPath) -> tuple:
         self.domainFile = self.read_file(carriDomainPath)
         self.problemFile = self.read_file(carriProblemPath)
-
         """
         Split and send sections to their respective translators.
         """
         sections = self.split_sections()
-        translated_sections = {}
+        translatedSections = {
+            "Entities": {},
+            "Variables": {},
+            "Actions": {},
+            "EnvSteps": {},
+            "IterStep": {}
+        }
         # Send sections to respective translators
         if "Entities" in sections:
-            translated_sections["Entities"] = self.translate_entities(sections["Entities"])
+            translatedSections["Entities"] = self.translate_entities(sections["Entities"])
         if "Variables" in sections:
-            translated_sections["Variables"] = self.translate_variables(sections["Variables"])
+            translatedSections["Variables"] = self.translate_variables(sections["Variables"])
         if "Actions" in sections:
-            translated_sections["Actions"] = self.translate_actions(sections["Actions"])
+            translatedSections["Actions"] = self.translate_actions(sections["Actions"])
         if "EnvSteps" in sections:
-            translated_sections["EnvSteps"] = self.translate_env_steps(sections["EnvSteps"])
+            translatedSections["EnvSteps"] = self.translate_env_steps(sections["EnvSteps"])
         if "IterStep" in sections:
-            translated_sections["IterStep"] = self.translate_iter_step(sections["IterStep"])
+            translatedSections["IterStep"] = self.translate_iter_step(sections["IterStep"])
 
-        return translated_sections, self.problemFile
+        actionGenerators = ActionGeneratorParser(translatedSections["Actions"],
+                                                 translatedSections["Entities"],
+                                                 {}).parse()
+        envSteps = EnvStepParser(translatedSections["EnvSteps"], translatedSections["Entities"]).parse()
+        iterStep = IterParser(translatedSections["IterStep"], translatedSections["Entities"]).parse()
+
+        print("*-*Action Generators*-*")
+        for actionGenerator in actionGenerators:
+            print(actionGenerator)
+            print("---")
+        print("*-*Env Steps*-*")
+        for step in envSteps:
+            print(str(step))
+        print("*-*Iter step*-*")
+        print(str(iterStep))
+
+        return translatedSections, self.problemFile
 
     def read_file(self, file_path):
         """
@@ -116,12 +139,12 @@ class CARRIEntitiesTranslator:
         matches = re.findall(pattern, self.variables_text)
 
         for entity, inherits in matches:
-            entity_name = entity.strip()
-            if entity_name != " ":
+            entityName = entity.strip()
+            if entityName != " ":
                 inherits = inherits.strip() if inherits else None
                 if inherits == " ":
                     inherits = None
-                self.entities[entity_name] = (len(self.entities), inherits)
+                self.entities[entityName] = (len(self.entities), inherits)
 
         return self.entities
 
@@ -144,7 +167,7 @@ class CARRIVariablesTranslator:
             parts = line.split()
             var_type = parts[0]
             name = parts[1]  # Extract the variable name
-            entity = parts[-1].strip("()") if parts[-1].startswith("(") else ""  # Related entity without brackets
+            entities = parts[-1].strip("()") if parts[-1].startswith("(") else ""  # Related entities without brackets
 
             # Default type to INT if not specified
             variable_type = parts[2] if len(parts) > 2 else "INT"
@@ -165,7 +188,7 @@ class CARRIVariablesTranslator:
                 structure_type = List if "var:" in line else Tuple
                 details = {
                     "type": structure_type,
-                    "entity": entity,
+                    "entities": entities,
                     "key_vars_odd": key_vars_odd,
                     "key_vars_even": key_vars_even,
                     "is_constant": False
@@ -173,7 +196,7 @@ class CARRIVariablesTranslator:
             else:
                 details = {
                     "type": variable_type,
-                    "entity": entity,
+                    "entities": entities,
                     "is_constant": var_type == "const"
                 }
 
