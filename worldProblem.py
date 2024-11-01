@@ -63,22 +63,37 @@ class Problem:
     def generate_state_successors(self, state: State) -> deque:
         currentQueue = deque()
         currentQueue.append(self.create_hypo_state(state))
+
+        vehicleActions = []
         for vehicleId in state.vehicles:
-            nonConflictingActions, possibleConflictingActions = self.generate_vehicle_actions(state, vehicleId)
+            #action producer (problem, state, id, type)
+            vehicleActions.append(self.generate_vehicle_actions(state, vehicleId)) # (nonConflictingActions, possibleConflictingActions)
+
+        for vehicleId in state.vehicles: #range(len(vehicleActions)):
+            nonConflictingActions, possibleConflictingActions = vehicleActions[vehicleId]
             nextQueue = deque()
             while currentQueue:
+                #hypo state, transition, action <- queue.pop
                 hypoState = currentQueue.pop()
-                # Apply actions with no conflict
+                """Not Valid down"""
                 for action in nonConflictingActions:
                     nextQueue.append(self.apply_action(hypoState, action))
+                """Not Valid up"""
                 # Apply validatable actions if applicable on state.
                 for action in possibleConflictingActions:
                     if self.validate_action(hypoState, action):
+                        # hypo state = copy(hypo state)
+                        # hypo state = action.apply on state
+                        # transition append action
+                        # cost += action.get cost
+                        #queue <- hypo state, transition, cost
                         nextQueue.append(self.validate_action(hypoState, action))
             currentQueue = nextQueue
+
+        # Finished applying actions for all vehicles
+        #Env step is not part of transition but need to update cost.
         for state in currentQueue:
             self.apply_environmental_step(state)
-            state.sortDrones()
 
         return currentQueue
 

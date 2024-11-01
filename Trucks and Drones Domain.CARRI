@@ -19,9 +19,9 @@ var truckLoc INT (Truck)
 var truckDroneCap INT (Truck)
 var truckPackCap INT (Truck)
 
-items package var: type INT, loc INT, onEntity INT (Package)
+items Package var: type INT, loc INT, onEntity INT
 # Dictionary of lists, each list has 3 integers (Later will give example how interpreted)
-items request const: type INT, loc INT, urgency INT (Request)
+items Request const: type INT, loc INT, urgency INT
 #Dictionary of tuples. Despite urgency is changing, because it only changes between iterations, it will be #considered const.
 
 End Variables
@@ -62,15 +62,15 @@ DronePick: id - Drone, pack - Package (Pick)
 Precs:
 	droneCharge id > 0
 	droneBoard id = false 
-	droneLoc id = package loc pack
+	droneLoc id = Package loc pack
 	droneCap id < 1
 Confs:
 	packge onEntity pack = 0
 Effects:
 	droneCap id : 0
 	droneCharge id  : droneCharge id - 1
-	package loc pack : id
-	package onEntity pack : 1
+	Package loc pack : id
+	Package onEntity pack : 1
 Cost:
 1
 End Action
@@ -79,10 +79,10 @@ DroneDeliver: id - Drone, pack - Package, req - Request (Deliver)
 Precs:
 	droneCharge id > 0
 	droneBoard id = false
-	droneLoc id = request loc req
-	package onEntity pack = 1
-	package loc pack = id
-	package type pack = request type req
+	droneLoc id = Request loc req
+	Package onEntity pack = 1
+	Package loc pack = id
+	Package type pack = Request type req
 Confs:
 	Request exists req # Check if request still exists (Did other drone delivered ?)
 Effects:
@@ -120,9 +120,9 @@ Else:
 droneCharge id : 10
 End Case
 Case (droneCap id = 1):
-All(pack - Package) ((package onEntity pack = 1) and (package loc pack = id)):
-package onEntity pack : 2
-package loc pack : trk
+All(pack - Package) ((Package onEntity pack = 1) and (Package loc pack = id)):
+Package onEntity pack : 2
+Package loc pack : trk
 End All
 droneCap id : 0 
 End Case
@@ -144,12 +144,12 @@ End Action
 
 DroneExitBoardWithPack: id - Drone, trk - Truck, pack - Package (DroneExitBoard) #This is an example of addition to existing action
 Precs Add:
-	package loc pack: trk
+	Package loc pack: trk
 Confs: #Could also implement as Confs Add
-	package onEntity pack = 2 #Other drone might want to take it. It's fine to not re check package location
+	Package onEntity pack = 2 #Other drone might want to take it. It's fine to not re check package location
 Effects Add:
-	package onEntity pack : 1
-	package loc pack : id
+	Package onEntity pack : 1
+	Package loc pack : id
 End Action
 
 TruckWait: id - Truck (Wait)
@@ -184,9 +184,9 @@ EnvSteps:
 Urgency: 
 Cost:
 NewVal c : 0
-All (req - Request): #Fancy way to say "for req in request"
+All (req - Request): #Fancy way to say "for req in Request"
 	c : c + 5
-	c : c + (request urgency req) * 5 #Could be c + (request urgency req *5) + 5 if possible
+	c : c + (Request urgency req) * 5 #Could be c + (Request urgency req *5) + 5 if possible
 End All
 c
 End EnvStep
@@ -196,8 +196,8 @@ End EnvSteps
 # There is only one IterStep per Domain. Addition of new packs and requests is automatic so not refered to.
 IterStep:
 All (req - Request):
-Case (request urgency req < 3):
-	Request replace req: (request type req, request loc req, request urgency req + 1)
+Case (Request urgency req < 3):
+	Request replace req: (Request type req, Request loc req, Request urgency req + 1)
 	#Some fancy way to replace the whole tuple...
 #If it's too complicated, I'm fine with request urgency req: request urgency req +1
 #And making items request var
@@ -214,7 +214,7 @@ const locAdj MULTY (Location)  = ({1,3}, {0,2}, {4,5,8}, {}, {10}, ...)
 const locAdjCost MATCH (Location) = ({1: 2, 2: 3, 4: 1}, {0: 2, 4: 2}, {}, ...)
 var droneLoc INT (Drone) = (1, 5, 8, 2,...)
 var droneBoard BOOL (Drone) = (False, False, True, False, ...)
-items package var: type INT, loc INT, onEntity INT (Package) =
+items Package var: type INT, loc INT, onEntity INT (Package) =
 {0: [1, 2, 0], 1: [2, 4, 1], 3: [0, 0, 0], ...}
-items request const: type INT, loc INT, urgency INT (Request) =
+items Request const: type INT, loc INT, urgency INT (Request) =
 { 0: (2, 5, 0), 2: (0, 10, 0), 3: (1, 0, 1), ... }

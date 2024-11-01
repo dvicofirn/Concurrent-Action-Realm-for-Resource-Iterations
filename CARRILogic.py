@@ -205,8 +205,8 @@ class ExpressionIndexUpdate(Update):
         self.index = index
         self.expression = expression
     def __str__(self):
-        return ("exp update: " + str(self.variableName) + " <- ("
-                + str(self.expression) + ") at "+ str(self.index) + " ")
+        return ("exp idx update: " + str(self.variableName) + " <- ("
+                + str(self.expression) + ") at " + str(self.index) + " ")
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
         problem.set_variable(state, self.variableName, self.index, self.expression.evaluate(problem, state))

@@ -1,6 +1,7 @@
 import re
 from typing import List, Tuple, Dict, Set
 from CARRIActionLinesParser import parse_action_segments, parse_action_header, parse_segment
+from CARRIProblemParser import CARRIProblemParser
 from ActionGeneratorParser import ActionGeneratorParser
 from CARRIStepsParser import EnvStepParser, IterParser
 
@@ -38,6 +39,12 @@ class CARRITranslator:
         envSteps = EnvStepParser(translatedSections["EnvSteps"], translatedSections["Entities"]).parse()
         iterStep = IterParser(translatedSections["IterStep"], translatedSections["Entities"]).parse()
 
+        # Parse the problem file to get initial values
+        problem_text = self.extract_problem_text()
+        problem_parser = CARRIProblemParser(problem_text, translatedSections["Entities"],
+                                            translatedSections["Variables"])
+        initial_values, iterations = problem_parser.parse()
+
         print("*-*Action Generators*-*")
         for actionGenerator in actionGenerators:
             print(actionGenerator)
@@ -47,8 +54,17 @@ class CARRITranslator:
             print(str(step))
         print("*-*Iter step*-*")
         print(str(iterStep))
+        print("*-*Initial Values*-*")
+        for var_name, values in initial_values.items():
+            print(f"{var_name}: {values}")
 
-        return translatedSections, self.problemFile
+        print("*-*Iterations*-*")
+        for idx, iteration in enumerate(iterations):
+            print(f"Iteration {idx + 1}:")
+            for var_name, values in iteration.items():
+                print(f"  {var_name}: {values}")
+
+        return translatedSections, initial_values
 
     def read_file(self, file_path):
         """
@@ -63,6 +79,16 @@ class CARRITranslator:
         """
         domain_pattern = r"Start Domain:\n(.*?)\nEnd Domain"
         match = re.search(domain_pattern, self.domainFile, re.DOTALL)
+        if match:
+            return match.group(1).strip()
+        return ""
+
+    def extract_problem_text(self):
+        """
+        Extracts the text between "Start Problem" and "End Problem".
+        """
+        problem_pattern = r"Start Problem:\n(.*?)\nEnd Problem"
+        match = re.search(problem_pattern, self.problemFile, re.DOTALL)
         if match:
             return match.group(1).strip()
         return ""
@@ -127,22 +153,22 @@ class CARRITranslator:
 
 
 class CARRIEntitiesTranslator:
-    def __init__(self, variables_text):
-        self.variables_text = variables_text
+    def __init__(self, entities_text):
+        self.entities_text = entities_text
         self.entities = {}
 
     def translate(self):
         # Define a regex pattern to capture entities and their optional origins
-        pattern = r'([a-zA-Z\s]+?)(?:\s*\(\s*([a-zA-Z\s]+)\s*\))?(?=,|$)'
+        pattern = r'([a-zA-Z_][a-zA-Z0-9_\s]*)(?:\s*\(\s*([a-zA-Z_][a-zA-Z0-9_\s]*)\s*\))?(?=,|$)'
 
         # Use regex findall to match each entity and optional origin in the text
-        matches = re.findall(pattern, self.variables_text)
+        matches = re.findall(pattern, self.entities_text)
 
         for entity, inherits in matches:
             entityName = entity.strip()
-            if entityName != " ":
+            if entityName != "":
                 inherits = inherits.strip() if inherits else None
-                if inherits == " ":
+                if inherits == "":
                     inherits = None
                 self.entities[entityName] = (len(self.entities), inherits)
 
@@ -182,44 +208,46 @@ class CARRIVariablesTranslator:
             else:
                 variable_type = int
 
-            # Handle items differently to add 'key vars'
+            # Handle items differently to add 'key types' and 'key names'
             if var_type == "items":
-                key_vars_odd, key_vars_even = self.split_key_vars(parts[4:])
+                key_types, key_names = self.split_key_vars(parts[4:])
                 structure_type = List if "var:" in line else Tuple
                 details = {
                     "type": structure_type,
-                    "entities": entities,
-                    "key_vars_odd": key_vars_odd,
-                    "key_vars_even": key_vars_even,
-                    "is_constant": False
+                    "entity": name,
+                    "key types": key_types,
+                    "key names": key_names,
+                    "is_constant": False,
+                    "is_items": True
                 }
             else:
                 details = {
                     "type": variable_type,
-                    "entities": entities,
-                    "is_constant": var_type == "const"
+                    "entity": entities,
+                    "is_constant": var_type == "const",
+                    "is_items": False
                 }
 
-            # Determine if constant or non-constant
+            # Add the variable to the dictionary
             variables[name] = details
 
         return variables
 
     def split_key_vars(self, parts_list):
         """
-        Splits the parts list into two separate lists: one for the items at odd indexes and one for the even indexes.
+        Splits the parts list into two separate lists: one for the key types and one for the key names.
         """
-        key_vars_odd = []
-        key_vars_even = []
+        key_types = []
+        key_names = []
 
         for i in range(0, len(parts_list), 2):
             if parts_list[i].startswith("("):
                 break
-            key_vars_odd.append(parts_list[i])
+            key_types.append(parts_list[i].strip(','))
             if i + 1 < len(parts_list):
-                key_vars_even.append(parts_list[i + 1])
+                key_names.append(parts_list[i + 1].strip(','))
 
-        return tuple(key_vars_odd), tuple(key_vars_even)
+        return tuple(key_types), tuple(key_names)
 
 
 class CARRIActionsTranslator:
@@ -276,6 +304,7 @@ class CARRIEnvStepsTranslator:
             parse_action_segments(lines[1:], envSteps, name)
         return envSteps
 
+
 class CARRIIterStepTranslator:
     def __init__(self, iterStepText):
         self.iterStepText = iterStepText
@@ -292,3 +321,5 @@ class CARRIIterStepTranslator:
             if line:
                 segmentLines.append(line)
         return parse_segment(segmentLines)
+
+

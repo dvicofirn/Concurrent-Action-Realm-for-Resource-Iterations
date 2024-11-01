@@ -2,19 +2,23 @@ from CARRITranslator import CARRITranslator
 from CARRILogicParser import tokenize
 from CARRIContextParser import ContextParser
 from CARRILogic import ValueParameterNode
-FILEPATH = "C:\\Users\\USER\\Documents\\Python Scripts\\PycharmProjects\\Real-Time Multi-Agent Dynamic Delivery System\\Trucks and Drones Domain.CARRI"
+FILEPATH_DOMAIN = "C:\\Users\\USER\\Documents\\Python Scripts\\PycharmProjects\\Real-Time Multi-Agent Dynamic Delivery System\\Trucks and Drones Domain.CARRI"
+FILEPATH_PROBLEM = "C:\\Users\\USER\\Documents\\Python Scripts\\PycharmProjects\\Real-Time Multi-Agent Dynamic Delivery System\\Trucks and Drones Problem.CARRI"
+
 def main():
     translator = CARRITranslator()
-    segments = translator.translate(FILEPATH, FILEPATH)[0]
+    segments = translator.translate(FILEPATH_DOMAIN, FILEPATH_PROBLEM)[0]
+
+    """
     print("---Entities---")
     entities = segments['Entities']
     for entity in entities:
-        print(f"{entity} {entities[entity]}")
+        print(f"{entity}: {entities[entity]}")
 
     print("---Variables---")
     variableSegment = segments["Variables"]
     for variable in variableSegment:
-        print(variable)
+        print(f"{variable}:")
         print(variableSegment[variable])
 
     print("---Actions---")
@@ -30,6 +34,8 @@ def main():
         print(envStepsSegment[envSteps])
     print("---IterStep---")
     print(segments["IterStep"])
+    """
+
 
 
 def tokenz(*vals):
@@ -42,7 +48,7 @@ def tok(val):
 def actiontokenz():
     noToTokenz = {'entity par', 'entity type', 'inherits', 'parameters'}
     translator = CARRITranslator()
-    sections = translator.translate(FILEPATH, FILEPATH)[0]
+    sections = translator.translate(FILEPATH_DOMAIN, FILEPATH_PROBLEM)[0]
     #print(sections[0])
 
     for name in sections["Actions"]:
