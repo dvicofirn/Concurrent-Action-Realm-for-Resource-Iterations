@@ -35,7 +35,7 @@ class ContextParser:
         for effect in effectsList:
             if isinstance(effect, str):
                 update = self.parse_effect_line(effect, parameters, paramExpressions)
-                if len(update) > 0:
+                if update is not None:
                     updates.append(update)
             elif isinstance(effect, dict):
                 block_updates = self.parse_effects_block(effect, parameters.copy(), paramExpressions.copy())
@@ -45,8 +45,7 @@ class ContextParser:
         return updates
 
     def parse_effect_line(self, effect: str, parameters: List[str],
-                          paramExpressions: List[ParameterNode]) -> List[Update]:
-        updates = []
+                          paramExpressions: List[ParameterNode]) -> Update | None:
         effect = effect.strip()
         if effect.startswith('NewVal'):
             # Handle 'NewVal' statements
@@ -77,7 +76,7 @@ class ContextParser:
                 entity_index = self.parsedEntities.get(entity_name)[0]
                 if entity_index is None:
                     raise ValueError(f"Unknown entity: {entity_name}")
-                updates.append(ExpressionRemoveUpdate(entity_index, expr_node))
+                return ExpressionRemoveUpdate(entity_index, expr_node)
             else:
                 raise SyntaxError(f"Invalid remove syntax: {effect}")
         elif ' add' in effect:
@@ -96,7 +95,7 @@ class ContextParser:
                     entity_index = self.parsedEntities.get(entity_name)[0]
                     if entity_index is None:
                         raise ValueError(f"Unknown entity: {entity_name}")
-                    updates.append(ExpressionAddUpdate(entity_index, *expr_nodes))
+                    return ExpressionAddUpdate(entity_index, *expr_nodes)
                 else:
                     raise SyntaxError(f"Invalid add syntax: {effect}")
             else:
@@ -120,15 +119,14 @@ class ContextParser:
                     entity_index = self.parsedEntities.get(entity_name)[0]
                     if entity_index is None:
                         raise ValueError(f"Unknown entity: {entity_name}")
-                    updates.append(ExpressionReplaceUpdate(entity_index, expr_id, *expr_nodes))
+                    return ExpressionReplaceUpdate(entity_index, expr_id, *expr_nodes)
                 else:
                     raise SyntaxError(f"Invalid replace syntax: {effect}")
         else:
             # Simple update
-            update = self.parse_update(effect, parameters, paramExpressions)
-            updates.append(update)
+            return self.parse_update(effect, parameters, paramExpressions)
 
-        return updates
+        return None
 
     def parse_effects_block(self, effect: dict, parameters: List[str],
                             paramExpressions: List[ParameterNode]) -> List[Update]:
