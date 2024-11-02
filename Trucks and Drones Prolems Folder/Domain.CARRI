@@ -1,7 +1,7 @@
 Start Domain:
 Entities:
 #Entities and their related origin. If type of entity has no origin, will not have brackets.
-Location (Location), Drone (Vehicle), Truck (Vehicle), Package (Package), Request (Request),
+Location (Location), Drone (Vehicle), Truck (Vehicle), Package (Package), Request (Request)
 End Entities	
 
 Variables:

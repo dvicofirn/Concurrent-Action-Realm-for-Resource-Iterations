@@ -1,6 +1,9 @@
 from typing import Iterable, List, Dict, Tuple
 from copy import copy
 
+from CARRIAction import ActionProducer, ActionStringRepresentor, Action
+
+
 class CARRIState:
     def __init__(self, variables: Tuple[List], items: Tuple[Dict]):
         self.variables = variables
@@ -63,8 +66,13 @@ class CARRIState:
 
 
 class CARRISimulator:
-    def __init__(self):
-        pass
+    def __init__(self, problem, actionGenerators, evnSteps, iterStep, entities):
+        self.problem = problem
+        self.actionProducer = ActionProducer(actionGenerators)
+        self.actionStringRepresentor = ActionStringRepresentor(actionGenerators)
+        self.evnSteps = evnSteps
+        self.iterSteps = iterStep
+        self.entities = entities
 
     def validate_action(self, problem, state, action):
         """

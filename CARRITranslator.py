@@ -4,7 +4,7 @@ from CARRIActionLinesParser import parse_action_segments, parse_action_header, p
 from CARRIProblemParser import CARRIProblemParser
 from ActionGeneratorParser import ActionGeneratorParser
 from CARRIStepsParser import EnvStepParser, IterParser
-from CARRIRealm import CARRIProblem
+from CARRIRealm import CARRIProblem, CARRISimulator
 
 
 class CARRITranslator:
@@ -47,9 +47,14 @@ class CARRITranslator:
         initial_values, iterations = problem_parser.parse()
 
         problem = CARRIProblem(initial_values, translatedSections["Variables"], translatedSections["Entities"])
-        print(problem.initState)
-        #Todo: Need to create Simulator, return Simulator, problem and Iterations to Manager.
-        #actionGenerators should be given to simulator
+        simulator = CARRISimulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
+        return problem, simulator, iterations
+
+        """print(problem.initState)
+        # problem.set_value(problem.initState, "droneCharge", 3, 5)
+        # print(problem.initState)
+        # Todo: Need to create Simulator, return Simulator, problem and Iterations to Manager.
+        # actionGenerators should be given to simulator
 
         print("-----Entities-----")
         for entity in translatedSections["Entities"]:
@@ -77,7 +82,7 @@ class CARRITranslator:
             for var_name, values in iteration.items():
                 print(f"  {var_name}: {values}")
 
-        return translatedSections, initial_values
+        return translatedSections, initial_values"""
 
     def read_file(self, file_path):
         """
