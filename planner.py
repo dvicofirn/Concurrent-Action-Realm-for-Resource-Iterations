@@ -7,7 +7,8 @@ from typing import List, Any
 from heuristics import *
 from search import *
 
-from CARRIRealm import CARRIProblem, CARRISimulator
+from CARRIRealm import CARRIProblem
+from CARRISimulator import CARRISimulator
 from CARRITranslator import CARRITranslator
 
 class Planner:
@@ -18,7 +19,7 @@ class Planner:
         :param init_time: float, time of initialization
         :param iter_t: float, time allowed for each iteration
         """
-        self.problem = simulator.problem
+        #self.problem = simulator.problem
         self.simulator = simulator
         self.init_time = init_time
         self.iter_t = iter_t
