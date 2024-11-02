@@ -49,7 +49,7 @@ class CARRITranslator:
 
         problem = CARRIProblem(initial_values, translatedSections["Variables"], translatedSections["Entities"])
         simulator = CARRISimulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
-        return problem, simulator, iterations
+        return simulator, iterations
 
         """print(problem.initState)
         # problem.set_value(problem.initState, "droneCharge", 3, 5)
