@@ -1,8 +1,6 @@
 from typing import Iterable, List, Dict, Tuple
 from copy import copy
 
-from CARRIAction import ActionProducer, ActionStringRepresentor, Action
-
 
 class CARRIState:
     def __init__(self, variables: Tuple[List], items: Tuple[Dict]):
@@ -50,6 +48,9 @@ class CARRIState:
     def get_items_ids(self, entityIndex) -> Iterable[int]:
         return self.items[entityIndex].keys()
 
+    def get_len(self, entityIndex) -> int:
+        return len(self.items[entityIndex])
+
     def add_entity(self, entityIndex, maxId, *params):
         # Add new item (tuple) with the max id
         self.items[entityIndex][maxId] = params
@@ -64,61 +65,6 @@ class CARRIState:
     def replace_entity(self, entityIndex, replaceId, *newVals):
         self.items[entityIndex][replaceId] = list(newVals)
 
-
-class CARRISimulator:
-    def __init__(self, problem, actionGenerators, evnSteps, iterStep, entities):
-        self.problem = problem
-        self.actionProducer = ActionProducer(actionGenerators)
-        self.actionStringRepresentor = ActionStringRepresentor(actionGenerators)
-        self.evnSteps = evnSteps
-        self.iterSteps = iterStep
-        self.entities = entities
-
-    def validate_action(self, problem, state, action):
-        """
-        Validate that all preconditions of the action are met in the given state.
-        """
-        for precondition in action['regular preconditions']:
-            if not self.evaluate_condition(precondition, state, problem):
-                return False
-        for precondition in action['conflicting preconditions']:
-            if not self.evaluate_condition(precondition, state, problem):
-                return False
-        return True
-
-    def revalidate_action(self, problem, state, action):
-        """
-        Revalidate action, checking for possibly conflicting actions.
-        """
-        # Placeholder for revalidation logic, which checks for conflicts.
-        # For now, assuming actions are always valid for simplicity.
-        for precondition in action['conflicting preconditions']:
-            if not self.evaluate_condition(precondition, state, problem):
-                return False
-        return True
-
-    def apply_action(self, problem, state, action):
-        """
-        Apply the action's effects to the state.
-        """
-        for effect in action['effects']:
-            self.apply_effect(problem, state, effect)
-
-    def evaluate_condition(self, problem, state, condition):
-        """
-        Evaluate a condition against the state and problem.
-        """
-        # Placeholder for evaluating logical conditions (preconditions).
-        # In a real implementation, you would parse the condition and check against the state.
-        return True
-
-    def apply_effect(self, problem, state, effect):
-        """
-        Apply an effect to the state.
-        """
-        # Placeholder for applying effects to the state.
-        # This would modify the state based on the effect.
-        pass
 
 
 class CARRIProblem:
@@ -140,6 +86,8 @@ class CARRIProblem:
         self.setAbleItemKeysPosition = {}
         self.setAbleEntities = set()
         self.entitiesMaxId = []
+        self.packagesIndexes = []
+        self.requestsIndexes = []
 
         # Save ranges for consts and vars, save entities
         ranges = {}
@@ -164,11 +112,17 @@ class CARRIProblem:
                         self.setAbleItemKeysPosition[itemKeyName] = (itemIndex, keyIndex)
                 if info["type"] == List:
                     self.setAbleEntities.add(itemIndex)
+
                 itemTups.append(variable)
                 self.entitiesMaxId.append(len(variable) - 1)
                 # There is only one "items" per entity
                 self.entities[entities[info["entity"]][0]] = itemIndex
                 ranges[entities[info["entity"]][0]] = None
+
+                if entities[info["entity"]][1] == "Package":
+                    self.packagesIndexes.append(itemIndex)
+                else:
+                    self.requestsIndexes.append(itemIndex)
                 continue
 
             self.varPositions[name] = len(varbleTups)
@@ -181,11 +135,25 @@ class CARRIProblem:
         itemTups = tuple(itemTups)
         self.ranges = tuple([ranges[i] for i in range(len(ranges))])
         self.initState = CARRIState(varbleTups, itemTups)
+        self.packagesIndexes = tuple(self.packagesIndexes)
+        self.requestsIndexes = tuple(self.requestsIndexes)
 
     def get_entity_ids(self, state: CARRIState, entityIndex: int) -> Iterable[int]:
         if self.ranges[entityIndex] is not None:
             return self.ranges[entityIndex]
         return state.get_items_ids(self.entities[entityIndex])
+
+    def get_len_packages(self, state: CARRIState):
+        count = 0
+        for item in self.packagesIndexes:
+            count += state.get_len(self.entities[item])
+        return 0
+
+    def get_len_requests(self, state: CARRIState):
+        count = 0
+        for item in self.requestsIndexes:
+            count += state.get_len(self.entities[item])
+        return 0
 
     def add_entity(self, state: CARRIState, entityIndex: int, *params):
         entity = self.entities[entityIndex]
@@ -229,11 +197,11 @@ class CARRIProblem:
         return copy(state)
 
 
-    #Todo: I argue it should be implemented in simulator instead of here.
+    """#Todo: I argue it should be implemented in simulator instead of here.
     def advance_state(self, simulator: CARRISimulator, state, action):
         advnaceState = state.copy()
         simulator.apply_action(advnaceState, action)
-        return advnaceState
+        return advnaceState"""
 
 
 

@@ -4,7 +4,8 @@ from CARRIActionLinesParser import parse_action_segments, parse_action_header, p
 from CARRIProblemParser import CARRIProblemParser
 from ActionGeneratorParser import ActionGeneratorParser
 from CARRIStepsParser import EnvStepParser, IterParser
-from CARRIRealm import CARRIProblem, CARRISimulator
+from CARRIRealm import CARRIProblem
+from CARRISimulator import CARRISimulator
 
 
 class CARRITranslator:
@@ -48,7 +49,7 @@ class CARRITranslator:
 
         problem = CARRIProblem(initial_values, translatedSections["Variables"], translatedSections["Entities"])
         simulator = CARRISimulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
-        return problem, simulator, iterations
+        return simulator, iterations
 
         """print(problem.initState)
         # problem.set_value(problem.initState, "droneCharge", 3, 5)

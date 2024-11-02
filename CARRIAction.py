@@ -1,7 +1,7 @@
 from copy import copy
 from CARRIRealm import CARRIProblem, CARRIState
 from CARRILogic import ExpressionNode, ValueParameterNode, Update, CostExpression
-from typing import List, Dict, Iterable
+from typing import List, Iterable
 
 
 class Step:
