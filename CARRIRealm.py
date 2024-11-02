@@ -146,14 +146,14 @@ class CARRIProblem:
     def get_len_packages(self, state: CARRIState):
         count = 0
         for item in self.packagesIndexes:
-            count += state.get_len(self.entities[item])
-        return 0
+            count += state.get_len(item)
+        return count
 
     def get_len_requests(self, state: CARRIState):
         count = 0
         for item in self.requestsIndexes:
-            count += state.get_len(self.entities[item])
-        return 0
+            count += state.get_len(item)
+        return count
 
     def add_entity(self, state: CARRIState, entityIndex: int, *params):
         entity = self.entities[entityIndex]
