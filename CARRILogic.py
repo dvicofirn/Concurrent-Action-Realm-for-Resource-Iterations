@@ -233,6 +233,24 @@ class ExpressionRemoveUpdate(Update):
         """
         return ExpressionRemoveUpdate(self.entityIndex, self.expression.copies(params))
 
+class ExpressionAddUpdate(Update):
+    def __init__(self, entityIndex: int, *expressions: ExpressionNode):
+        self.entityIndex = entityIndex
+        self.expressions = expressions
+    def __str__(self):
+        return ("add to: " + str(self.entityIndex) + " <- ("
+                + str([expression for expression in self.expressions]) + ") ")
+
+    def apply(self, problem: CARRIProblem, state: CARRIState):
+        problem.add_entity(state, self.entityIndex,
+                           *[expression.evaluate(problem, state) for expression in self.expressions])
+
+    def copies(self, params: List):
+        """
+        Copies object's expressions
+        """
+        return ExpressionAddUpdate(self.entityIndex,
+                                   *[expression.copies(params) for expression in self.expressions])
 
 class ExpressionAddUpdate(Update):
     def __init__(self, entityIndex: int, *expressions: ExpressionNode):
@@ -399,4 +417,4 @@ class CostExpression(ExpressionNode):
 
     def applicable(self) -> bool:
         return self.costExpression.applicable()
-
+    
