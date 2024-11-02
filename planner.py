@@ -4,19 +4,21 @@ import logging
 
 from typing import List, Any
 
-from  heuristics import *
-from  search import *
+from heuristics import *
+from search import *
 
+from CARRIRealm import CARRIProblem, CARRISimulator
+from CARRITranslator import CARRITranslator
 
 class Planner:
-    def __init__(self, problem, simulator, init_time, iter_t, **kwargs):
+    def __init__(self, simulator, init_time, iter_t, **kwargs):
         """
         :param problem: An instance of CARRIProblem
         :param simulator: An instance of CARRISimulator
         :param init_time: float, time of initialization
         :param iter_t: float, time allowed for each iteration
         """
-        self.problem = problem
+        self.problem = simulator.problem
         self.simulator = simulator
         self.init_time = init_time
         self.iter_t = iter_t
@@ -32,7 +34,7 @@ class Planner:
         # Plan will be initialized within generate_plan()
         self.plan = []
         # Retrieve current state from simulator for more up-to-date information
-        self.current_state = simulator.get_current_state() if hasattr(simulator, 'get_current_state') else self.problem.initial_state
+        self.current_state = simulator.problem.initState.copy()
         self.epsilon = kwargs.get('epsilon', 0.1)
         self.epsilon_decay = kwargs.get('epsilon_decay', 0.99)
 
@@ -71,14 +73,13 @@ class Planner:
     def generate_plan(self) -> List[Any]:
         """
         Generates a plan using the search algorithm and heuristic.
-        The plan is generated for the next 10-15 iterations or as far as possible within the allocated time.
+        The plan is generated for as far as possible within the allocated time or until interrupted.
         :return: List of actions constituting the plan
         """
         # Setting up the time limit
         start_time = time.time()
-        time_limit = self.init_time + self.iter_t
-        # Update remaining time dynamically to avoid inaccuracies
-        remaining_time = time_limit - time.time()
+        time_limit = self.iter_t
+        remaining_time = time_limit - (time.time() - start_time)
 
         heuristic_name = type(self.heuristic).__name__
         success = False
@@ -88,10 +89,10 @@ class Planner:
             # Call the search algorithm with the current state, goal, and heuristic
             result = self.search_algorithm.search(self.current_state, self.problem.goal_state, self.heuristic, remaining_time)
             
-            # If a solution is found, append it to the plan
+            # If a partial solution is found, append it to the plan
             if result:
                 actions, next_state = result
-                self.plan.extend(actions)
+                self.plan.extend(actions[:min(15 - len(self.plan), len(actions))])  # Limit to max 15 steps in total
                 self.current_state = next_state
                 success = True
                 plan_quality = len(actions)  # Assuming shorter plans are better
@@ -103,7 +104,7 @@ class Planner:
 
             # Update the remaining time
             current_time = time.time()
-            remaining_time = time_limit - current_time
+            remaining_time = time_limit - (current_time - start_time)
 
         # Select a new heuristic for the next iteration based on updated scores
         self.heuristic = self.select_heuristic_on_the_fly()
@@ -116,9 +117,9 @@ class Planner:
         """
         for action in self.plan:
             # Check if the current action is valid in the simulator and execute
-            if self.simulator.is_action_valid(self.current_state, action):
+            if self.simulator.validate_action(self.problem, self.current_state, action):
                 print(f"Executing action: {action}")
-                self.current_state = self.simulator.execute_action(self.current_state, action)
+                self.simulator.apply_action(self.problem, self.current_state, action)
             else:
                 print(f"Invalid action: {action}")
                 break
@@ -130,28 +131,15 @@ class Planner:
 
     def plan_iteration(self):
         """
-        Plan and execute in iterations.
-        This function will be called several times to mimic saturated planning where environment changes dynamically.
+        Plan and execute in a single iteration.
+        This function generates a plan and immediately executes it until interrupted.
         """
-        # Add a condition to break out of the loop if necessary
-        while not self.problem.is_solved(self.current_state):
-            # Generate a plan for 10-15 steps or until interrupted
-            self.generate_plan()
-            # Execute the generated plan
-            self.execute_plan()
-            # Pause to simulate time passing between iterations
-            # Consider using a scheduler or timer for better precision
-            time.sleep(self.iter_t)
+        # Generate a plan for as far as possible within the allowed time
+        self.generate_plan()
 
-# Example usage
-# Proper instance creation for problem and simulator
-if __name__ == "__main__":
-    from CARRIRealm import CARRIProblem, CARRISimulator
-    
-    problem = CARRIProblem()  # Replace with proper initialization
-    simulator = CARRISimulator()  # Replace with proper initialization
-    init_time = 5.0
-    iter_t = 1.0
 
-    planner = Planner(problem, simulator, init_time, iter_t)
-    planner.plan_iteration()
+        ###### should be done in manager
+        # Execute the generated plan
+        self.execute_plan()
+        # Apply environment steps after executing the plan
+        self.simulator.apply_environment_steps(self.current_state)
