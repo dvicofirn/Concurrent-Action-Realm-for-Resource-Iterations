@@ -2,13 +2,13 @@ from CARRITranslator import CARRITranslator
 from CARRILogicParser import tokenize
 from CARRIContextParser import ContextParser
 from CARRILogic import ValueParameterNode
-FILEPATH_DOMAIN = "C:\\Users\\USER\\Documents\\Python Scripts\\PycharmProjects\\Real-Time Multi-Agent Dynamic Delivery System\\Trucks and Drones Domain.CARRI"
-FILEPATH_PROBLEM = "C:\\Users\\USER\\Documents\\Python Scripts\\PycharmProjects\\Real-Time Multi-Agent Dynamic Delivery System\\Trucks and Drones Problem.CARRI"
+FILEPATH_DOMAIN = "Trucks and Drones Domain.CARRI"
+FILEPATH_PROBLEM = "Trucks and Drones Problem.CARRI"
 
 def main():
     translator = CARRITranslator()
     segments = translator.translate(FILEPATH_DOMAIN, FILEPATH_PROBLEM)[0]
-
+    
     """
     print("---Entities---")
     entities = segments['Entities']

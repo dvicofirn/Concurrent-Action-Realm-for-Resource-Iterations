@@ -7,3 +7,9 @@ from .hadd import HAddHeuristic
 from .hmax import HMaxHeuristic
 from .pdb import PatternDatabaseHeuristic
 from .operator_counting import OperatorCountingHeuristic
+from .battery_aware import BatteryAwareHeuristic
+from .cea import ContextEnhancedAdditiveHeuristic
+from .goal_count import GoalCountHeuristic
+from .max_pairwise import MaxPairwiseDistanceHeuristic
+from .time_sensitive import TimeSensitiveHeuristic
+from .time_sensitive_goal import TimeSensitiveGoalCountHeuristic
