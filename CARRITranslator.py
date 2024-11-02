@@ -4,6 +4,7 @@ from CARRIActionLinesParser import parse_action_segments, parse_action_header, p
 from CARRIProblemParser import CARRIProblemParser
 from ActionGeneratorParser import ActionGeneratorParser
 from CARRIStepsParser import EnvStepParser, IterParser
+from CARRIRealm import CARRIProblem
 
 
 class CARRITranslator:
@@ -45,20 +46,32 @@ class CARRITranslator:
                                             translatedSections["Variables"])
         initial_values, iterations = problem_parser.parse()
 
-        print("*-*Action Generators*-*")
+        problem = CARRIProblem(initial_values, translatedSections["Variables"], translatedSections["Entities"])
+        print(problem.initState)
+        #Todo: Need to create Simulator, return Simulator, problem and Iterations to Manager.
+        #actionGenerators should be given to simulator
+
+        print("-----Entities-----")
+        for entity in translatedSections["Entities"]:
+            print(f"{entity}: {translatedSections["Entities"][entity]}")
+        print("-----Variables-----")
+        for variable in translatedSections["Variables"]:
+            print(f"{variable}:\n{translatedSections["Variables"][variable]}")
+        print("-----Action Generators-----")
+        print(type(actionGenerators))
         for actionGenerator in actionGenerators:
             print(actionGenerator)
             print("---")
-        print("*-*Env Steps*-*")
+        print("-----Env Steps-----")
         for step in envSteps:
             print(str(step))
-        print("*-*Iter step*-*")
+        print("-----Iter step-----")
         print(str(iterStep))
-        print("*-*Initial Values*-*")
+        print("-----Initial Values-----")
         for var_name, values in initial_values.items():
             print(f"{var_name}: {values}")
 
-        print("*-*Iterations*-*")
+        print("-----Iterations-----")
         for idx, iteration in enumerate(iterations):
             print(f"Iteration {idx + 1}:")
             for var_name, values in iteration.items():
@@ -210,7 +223,7 @@ class CARRIVariablesTranslator:
 
             # Handle items differently to add 'key types' and 'key names'
             if var_type == "items":
-                key_types, key_names = self.split_key_vars(parts[4:])
+                key_names, key_types = self.split_key_vars(parts[3:])
                 structure_type = List if "var:" in line else Tuple
                 details = {
                     "type": structure_type,
@@ -237,17 +250,17 @@ class CARRIVariablesTranslator:
         """
         Splits the parts list into two separate lists: one for the key types and one for the key names.
         """
-        key_types = []
         key_names = []
+        key_types = []
 
         for i in range(0, len(parts_list), 2):
             if parts_list[i].startswith("("):
                 break
-            key_types.append(parts_list[i].strip(','))
+            key_names.append(parts_list[i].strip(','))
             if i + 1 < len(parts_list):
-                key_names.append(parts_list[i + 1].strip(','))
+                key_types.append(parts_list[i + 1].strip(','))
 
-        return tuple(key_types), tuple(key_names)
+        return tuple(key_names), tuple(key_types)
 
 
 class CARRIActionsTranslator:

@@ -191,7 +191,7 @@ class ConstUpdate(Update):
         return "const update: " + str(self.variableName) + " <- " + str(self.const) + " at " + str(self.index) + " "
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
-        problem.set_variable(state, self.variableName, self.index, self.const)
+        problem.set_value(state, self.variableName, self.index, self.const)
 
     def copies(self, params: List):
         """
@@ -209,7 +209,7 @@ class ExpressionIndexUpdate(Update):
                 + str(self.expression) + ") at " + str(self.index) + " ")
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
-        problem.set_variable(state, self.variableName, self.index, self.expression.evaluate(problem, state))
+        problem.set_value(state, self.variableName, self.index, self.expression.evaluate(problem, state))
 
     def copies(self, params: List):
         """
@@ -303,9 +303,9 @@ class ExpressionUpdate(Update):
                 + str(self.expressionValue) + ") ")
 
     def apply(self, problem: CARRIProblem, state: CARRIState):
-        problem.set_variable(state, self.variableName,
-                             self.expressionIndex.evaluate(problem, state),
-                             self.expressionValue.evaluate(problem, state))
+        problem.set_value(state, self.variableName,
+                          self.expressionIndex.evaluate(problem, state),
+                          self.expressionValue.evaluate(problem, state))
 
     def copies(self, params: List):
         """

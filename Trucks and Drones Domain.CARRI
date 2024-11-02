@@ -65,7 +65,7 @@ Precs:
 	droneLoc id = Package loc pack
 	droneCap id < 1
 Confs:
-	packge onEntity pack = 0
+	Package onEntity pack = 0
 Effects:
 	droneCap id : 0
 	droneCharge id  : droneCharge id - 1

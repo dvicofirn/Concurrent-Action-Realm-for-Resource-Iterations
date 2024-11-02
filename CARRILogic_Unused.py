@@ -51,7 +51,7 @@ class ConstUpdate(Update):
         self.const = const
 
     def apply(self, problem: CARRIProblem, state: CARRIState, *params):
-        problem.set_variable(state, self.variableName, params[0], self.const)
+        problem.set_value(state, self.variableName, params[0], self.const)
 
 class ExpressionUpdate(Update):
     def __init__(self, variableName: str, expression: ExpressionNode):
@@ -60,7 +60,7 @@ class ExpressionUpdate(Update):
 
     def apply(self, problem: CARRIProblem, state: CARRIState, *params):
         self.expression.apply(params)
-        problem.set_variable(state, self.variableName, params[0], self.expression.evaluate(problem, state))
+        problem.set_value(state, self.variableName, params[0], self.expression.evaluate(problem, state))
 
 class CaseUpdate(Update):
     def __init__(self, condition: OperatorNode, updates, elseUpdates=None):

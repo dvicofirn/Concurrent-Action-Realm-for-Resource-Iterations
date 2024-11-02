@@ -10,6 +10,7 @@ class CARRIProblemParser:
         self.entity_type_instances = {}  # {entity_name: [indices]}
         self.entity_counts = {}  # {entity_name: count}
         self.entity_max_indices = {}  # To keep track of maximum index used per entity
+        self.last_item_indices = {}  # To keep track of last item index for each 'items' variable
 
     def parse(self):
         """
@@ -41,14 +42,12 @@ class CARRIProblemParser:
 
         # Convert lists to tuples where appropriate
         for var_name, variable in self.variables.items():
-            is_items = variable.get('is_items', False)
-            if var_name in self.initial_values:
-                if not is_items and self.variables[var_name]["is_constant"]:
-                    self.initial_values[var_name] = tuple(self.initial_values[var_name])
-            # Handle items variables in initial_values
-            if is_items and variable['type'] == List:
-                for item in self.initial_values[var_name]:
-                    self.initial_values[var_name][item] = list(self.initial_values[var_name][item])
+            if variable.get('is_items', False):
+                if var_name in self.initial_values:
+                    last_index = max(self.initial_values[var_name].keys(), default=-1)
+                    self.last_item_indices[var_name] = last_index
+                else:
+                    self.last_item_indices[var_name] = -1
 
         return self.initial_values, self.iterations
 
@@ -155,7 +154,7 @@ class CARRIProblemParser:
             index += 1
 
         # Process the value lines
-        last_item_index = max(self.initial_values.get(variable_name, {}).keys(), default=-1)
+        last_item_index = self.last_item_indices.get(variable_name, -1)
         for line in value_lines:
             line = line.strip()
             if not line:
@@ -166,10 +165,8 @@ class CARRIProblemParser:
             last_item_index += 1
             # Add the item to the iteration values
             iteration_values[variable_name][last_item_index] = value
-            # Also add it to the initial_values to keep cumulative track
-            if variable_name not in self.initial_values:
-                self.initial_values[variable_name] = {}
-            self.initial_values[variable_name][last_item_index] = value
+        # Update the last_item_indices
+        self.last_item_indices[variable_name] = last_item_index
 
         return index
 

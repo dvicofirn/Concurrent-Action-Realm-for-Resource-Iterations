@@ -1,6 +1,6 @@
 from copy import copy
 from CARRIRealm import CARRIProblem, CARRIState
-from CARRILogic import ExpressionNode, ParameterNode, Update, CostExpression
+from CARRILogic import ExpressionNode, ValueParameterNode, Update, CostExpression
 from typing import List, Dict, Iterable
 
 
@@ -30,12 +30,11 @@ class EnvStep(Step):
 class Action(EnvStep):
     def __init__(self, name: str, preconditions: List[ExpressionNode],
                  conflictingPreconditions: List[ExpressionNode],
-                 effects: List[Update], cost: CostExpression):
+                 effects: List[Update], cost: CostExpression, params: List[ValueParameterNode]):
         super().__init__(name, effects, cost)
         self.preconditions = preconditions  # List of Condition objects
         self.conflictingPreconditions = conflictingPreconditions
-        # self.entities = entities # Currently not implemented
-        # self.params = params # Currently not implemented
+        self.params = params # Currently not implemented
 
     def validate(self, problem, state):
         return (all(precondition.evaluate(problem, state) for precondition in self.preconditions)
@@ -51,7 +50,7 @@ class Action(EnvStep):
 
 class ActionGenerator:
     def __init__(self, name, entities, params, preconditions,
-                 conflictingPreconditions, effects, cost, paramExpressions: List[ParameterNode]):
+                 conflictingPreconditions, effects, cost, paramExpressions: List[ValueParameterNode]):
         self.name = name
         self.entities = entities
         self.params = params # List of parameter names
@@ -60,8 +59,8 @@ class ActionGenerator:
         self.effects = effects
         self.cost = cost
         self.paramExpressions = paramExpressions # List of fitting expressions
-        self.precsParamApplicableCount = []
-        self.confPrecsParamApplicableCount = []
+        self.applicablePrecsRanges = []
+        self.applicableConfPrecsRanges = []
     def __repr__(self):
         return self.__str__()
     def __str__(self):
@@ -70,8 +69,8 @@ class ActionGenerator:
                 + "\nConflictingPreconditions: " + str(self.conflictingPreconditions)
                 + "\nEffects: " + str(self.effects) + "\nCost: " + str(self.cost)
                 + "\nParamExpressions: " + str(self.paramExpressions)
-                + "\nPrecsParamApplicableCount: " + str(self.precsParamApplicableCount)
-                + "\nConflictingPreconditions: " + str(self.confPrecsParamApplicableCount))
+                + "\nPrecsParamApplicableCount: " + str(self.applicablePrecsRanges)
+                + "\nConflictingPreconditions: " + str(self.applicableConfPrecsRanges))
 
     def generate_action(self):
         # Create an Action instance using the parameter values
@@ -85,7 +84,8 @@ class ActionGenerator:
             preconditions=preconditions,
             conflictingPreconditions=conflictingPreconditions,
             effects=effects,
-            cost=cost
+            cost=cost,
+            params = newParams
         )
         return action
 
@@ -94,8 +94,17 @@ class ActionGenerator:
             param.updateParam(None)
 
     def reArrangePreconditions(self):
-        precsParamApplicableCount = []
-        confPrecsParamApplicableCount = []
+        """
+        Motivation: Action production involves parameter elimination process:
+        Inserting entity parameter at a time and checking all preconditions
+        which are applicable on currently inserted set of parameters.
+        To support this method, and to make it more efficient, the function
+        reorders the preconditions by necessity per index of last parameter
+        inserted. This function also provide predefined ranges of precondition
+        indexes to validate per index of last parameter inserted.
+        """
+        applicablePrecsLens = [0]
+        applicableConfPrecsLens = [0]
         newOrderPrecs = []
         newOrderConfPrecs = []
         for index, expression in enumerate(self.paramExpressions):
@@ -106,7 +115,7 @@ class ActionGenerator:
                     newOrderPrecs.append(precondition)
                 else:
                     notYet.append(precondition)
-            precsParamApplicableCount.append(len(newOrderPrecs))
+            applicablePrecsLens.append(len(newOrderPrecs))
             self.preconditions = notYet
         self.resetParams()
 
@@ -118,15 +127,26 @@ class ActionGenerator:
                     newOrderConfPrecs.append(precondition)
                 else:
                     notYet.append(precondition)
-            confPrecsParamApplicableCount.append(len(newOrderConfPrecs))
+            applicableConfPrecsLens.append(len(newOrderConfPrecs))
             self.conflictingPreconditions = notYet
         self.resetParams()
 
-        self.precsParamApplicableCount = precsParamApplicableCount
-        self.confPrecsParamApplicableCount = confPrecsParamApplicableCount
+        self.applicablePrecsRanges = [range(applicablePrecsLens[i-1], applicablePrecsLens[i])
+                                      for i in range(1, len(applicablePrecsLens))]
+        self.applicableConfPrecsRanges = [range(applicableConfPrecsLens[i-1], applicableConfPrecsLens[i])
+                                          for i in range(1, len(applicableConfPrecsLens))]
         self.preconditions = newOrderPrecs
         self.conflictingPreconditions = newOrderConfPrecs
 
+class ActionStringRepresentor:
+    def __init__(self, actionGenerators: List[ActionGenerator]):
+        self.actionGenerators = {actionGenerator.name: actionGenerator for actionGenerator in actionGenerators}
+
+    def represent(self, action: Action) -> str:
+        name = action.name
+        generator = self.actionGenerators[name]
+        return f"Action {name} {str([parName + ": " + str(param.value) + ", "
+                                     for parName, param in zip(generator.params, action.params)])}"
 
 class ActionProducer:
     def __init__(self, actionGenerators: List[ActionGenerator]):
@@ -199,12 +219,12 @@ class ActionProducer:
         return filtered_values
 
     def evaluate_partial_preconditions(self, actionGenerator, problem, state, paramIndex: int):
-        # Evaluate applicable preconditions.
-        for index in range(actionGenerator.precsParamApplicableCount[paramIndex]):
+        # Evaluate applicable preconditions. Searches in pre determined ranges.
+        for index in actionGenerator.applicablePrecsRanges[paramIndex]:
             if not actionGenerator.preconditions[index].evaluate(problem, state):
                 return False
         # Evaluate applicable conflicting preconditions.
-        for index in range(actionGenerator.confPrecsParamApplicableCount[paramIndex]):
+        for index in actionGenerator.applicableConfPrecsRanges[paramIndex]:
             if not actionGenerator.conflictingPreconditions[index].evaluate(problem, state):
                 return False
         return True
