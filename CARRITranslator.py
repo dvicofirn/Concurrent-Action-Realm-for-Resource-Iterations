@@ -4,7 +4,8 @@ from CARRIActionLinesParser import parse_action_segments, parse_action_header, p
 from CARRIProblemParser import CARRIProblemParser
 from ActionGeneratorParser import ActionGeneratorParser
 from CARRIStepsParser import EnvStepParser, IterParser
-from CARRIRealm import CARRIProblem, CARRISimulator
+from CARRIRealm import CARRIProblem
+from CARRISimulator import CARRISimulator
 
 
 class CARRITranslator:
