@@ -1,7 +1,6 @@
 from typing import Iterable, List, Dict, Tuple
 from copy import copy
 
-
 class CARRIState:
     def __init__(self, variables: Tuple[List], items: Tuple[Dict]):
         self.variables = variables
@@ -48,9 +47,6 @@ class CARRIState:
     def get_items_ids(self, entityIndex) -> Iterable[int]:
         return self.items[entityIndex].keys()
 
-    def get_len(self, entityIndex) -> int:
-        return len(self.items[entityIndex])
-
     def add_entity(self, entityIndex, maxId, *params):
         # Add new item (tuple) with the max id
         self.items[entityIndex][maxId] = params
@@ -64,7 +60,6 @@ class CARRIState:
 
     def replace_entity(self, entityIndex, replaceId, *newVals):
         self.items[entityIndex][replaceId] = list(newVals)
-
 
 
 class CARRIProblem:
@@ -86,8 +81,6 @@ class CARRIProblem:
         self.setAbleItemKeysPosition = {}
         self.setAbleEntities = set()
         self.entitiesMaxId = []
-        self.packagesIndexes = []
-        self.requestsIndexes = []
 
         # Save ranges for consts and vars, save entities
         ranges = {}
@@ -112,17 +105,11 @@ class CARRIProblem:
                         self.setAbleItemKeysPosition[itemKeyName] = (itemIndex, keyIndex)
                 if info["type"] == List:
                     self.setAbleEntities.add(itemIndex)
-
                 itemTups.append(variable)
                 self.entitiesMaxId.append(len(variable) - 1)
                 # There is only one "items" per entity
                 self.entities[entities[info["entity"]][0]] = itemIndex
                 ranges[entities[info["entity"]][0]] = None
-
-                if entities[info["entity"]][1] == "Package":
-                    self.packagesIndexes.append(itemIndex)
-                else:
-                    self.requestsIndexes.append(itemIndex)
                 continue
 
             self.varPositions[name] = len(varbleTups)
@@ -135,25 +122,11 @@ class CARRIProblem:
         itemTups = tuple(itemTups)
         self.ranges = tuple([ranges[i] for i in range(len(ranges))])
         self.initState = CARRIState(varbleTups, itemTups)
-        self.packagesIndexes = tuple(self.packagesIndexes)
-        self.requestsIndexes = tuple(self.requestsIndexes)
 
     def get_entity_ids(self, state: CARRIState, entityIndex: int) -> Iterable[int]:
         if self.ranges[entityIndex] is not None:
             return self.ranges[entityIndex]
         return state.get_items_ids(self.entities[entityIndex])
-
-    def get_len_packages(self, state: CARRIState):
-        count = 0
-        for item in self.packagesIndexes:
-            count += state.get_len(item)
-        return count
-
-    def get_len_requests(self, state: CARRIState):
-        count = 0
-        for item in self.requestsIndexes:
-            count += state.get_len(item)
-        return count
 
     def add_entity(self, state: CARRIState, entityIndex: int, *params):
         entity = self.entities[entityIndex]
@@ -195,19 +168,3 @@ class CARRIProblem:
 
     def copyState(self, state):
         return copy(state)
-
-
-    """#Todo: I argue it should be implemented in simulator instead of here.
-    def advance_state(self, simulator: CARRISimulator, state, action):
-        advnaceState = state.copy()
-        simulator.apply_action(advnaceState, action)
-        return advnaceState"""
-
-
-
-
-
-
-
-
-
