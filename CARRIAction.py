@@ -145,8 +145,7 @@ class ActionStringRepresentor:
     def represent(self, action: Action) -> str:
         name = action.name
         generator = self.actionGenerators[name]
-        return f"Action {name} {str([parName + ": " + str(param.value) + ", "
-                                     for parName, param in zip(generator.params, action.params)])}"
+        return f"Action {name} {str([parName + ': ' + str(param.value) + ', ' for parName, param in zip(generator.params, action.params)])}"
 
 class ActionProducer:
     def __init__(self, actionGenerators: List[ActionGenerator]):

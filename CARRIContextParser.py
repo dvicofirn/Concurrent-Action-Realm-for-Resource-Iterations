@@ -1,5 +1,7 @@
 from CARRILogic import *
 from CARRILogicParser import LogicParser
+from typing import Union
+
 class ContextParser:
     def __init__(self, parameters, paramExpressions, parsedEntities):
         self.parameters = parameters
@@ -44,8 +46,9 @@ class ContextParser:
                 raise ValueError(f"Invalid effect: {effect}")
         return updates
 
+
     def parse_effect_line(self, effect: str, parameters: List[str],
-                          paramExpressions: List[ParameterNode]) -> Update | None:
+                          paramExpressions: List[ParameterNode]) -> Union[Update, None]:
         effect = effect.strip()
         if effect.startswith('NewVal'):
             # Handle 'NewVal' statements

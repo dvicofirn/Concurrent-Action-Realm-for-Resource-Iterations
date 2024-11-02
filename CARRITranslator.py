@@ -59,10 +59,10 @@ class CARRITranslator:
 
         print("-----Entities-----")
         for entity in translatedSections["Entities"]:
-            print(f"{entity}: {translatedSections["Entities"][entity]}")
+            print(f"{entity}: {translatedSections['Entities'][entity]}")
         print("-----Variables-----")
         for variable in translatedSections["Variables"]:
-            print(f"{variable}:\n{translatedSections["Variables"][variable]}")
+            print(f"{variable}:\n{translatedSections['Variables'][variable]}")
         print("-----Action Generators-----")
         print(type(actionGenerators))
         for actionGenerator in actionGenerators:
@@ -340,5 +340,3 @@ class CARRIIterStepTranslator:
             if line:
                 segmentLines.append(line)
         return parse_segment(segmentLines)
-
-
