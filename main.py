@@ -1,7 +1,7 @@
 from CARRITranslator import CARRITranslator
 from manager import Manager
 from manager import Manager
-FOLDER_PATH = "Trucks and Drones Prolems Folder"
+FOLDER_PATH = "Cars Problems Folder"
 def main():
     translator = CARRITranslator()
     simulator, iterations = translator.translate(FOLDER_PATH + "\\" + "Domain.CARRI",

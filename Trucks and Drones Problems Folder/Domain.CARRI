@@ -63,11 +63,11 @@ Precs:
 	droneCharge id > 0
 	droneBoard id = false 
 	droneLoc id = Package loc pack
-	droneCap id < 1
+	droneCap id = 0
 Confs:
 	Package onEntity pack = 0
 Effects:
-	droneCap id : 0
+	droneCap id : 1
 	droneCharge id  : droneCharge id - 1
 	Package loc pack : id
 	Package onEntity pack : 1
@@ -77,6 +77,7 @@ End Action
 
 DroneDeliver: id - Drone, pack - Package, req - Request (Deliver)
 Precs:
+	droneCap id = 1
 	droneCharge id > 0
 	droneBoard id = false
 	droneLoc id = Request loc req
@@ -86,7 +87,7 @@ Precs:
 Confs:
 	Request exists req # Check if request still exists (Did other drone delivered ?)
 Effects:
-	droneCap id : 1
+	droneCap id : 0
 	droneCharge id  : droneCharge id - 1
 	Package remove : pack
 	Request remove : req
