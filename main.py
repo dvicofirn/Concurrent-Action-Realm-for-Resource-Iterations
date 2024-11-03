@@ -1,4 +1,5 @@
 from CARRI.translator import Translator
+from manager import Manager
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
 DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1",),
@@ -7,7 +8,7 @@ def main():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
                                                  FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
-    #manager = Manager(simulator, 3, 3)
+    manager = Manager(simulator, iterations, 3, 3, 10)
 
 if __name__ == '__main__':
     main()

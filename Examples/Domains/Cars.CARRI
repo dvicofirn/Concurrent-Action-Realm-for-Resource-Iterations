@@ -100,7 +100,6 @@ Storage:
 		All (pack - Package):
 			c : c + 10
 		End All
-		All (req - Request)
 		c
 End EnvStep
 End EnvSteps
