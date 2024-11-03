@@ -1,4 +1,5 @@
 from CARRI.translator import Translator
+from planner import Planner
 from manager import Manager
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
@@ -8,10 +9,11 @@ def main():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
                                                  FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
-    manager = Manager(simulator, iterations, 3, 3, 10)
+    manager = Manager(simulator, iterations, 300, 300, 100)
     manager.run()
 
-    """actions = simulator.generate_all_valid_actions_seperatly()
+    """
+    actions = simulator.generate_all_valid_actions_seperatly()
 
     for _ in actions.keys():
         for act in actions[_].values():
@@ -29,7 +31,8 @@ def main():
             print(x)
         i += 1
 
-    '''
+    """
+    """
     i = 0
     succesors = simulator.generate_successor_states(simulator.current_state)
     for next_state, action, cost in succesors:
@@ -41,8 +44,8 @@ def main():
 
 
     planner = Planner(simulator, init_time, iter_t)
-    planner.run_iteration()"""
-
+    planner.run_iteration()
+    """
 
 if __name__ == '__main__':
     main()

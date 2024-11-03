@@ -1,5 +1,5 @@
 import re
-from typing import Dict, List, Set, Tuple
+from typing import Dict, List, Set, Tuple, Any
 
 class CARRIProblemParser:
     def __init__(self, problem_text, entities, variables):
@@ -42,13 +42,17 @@ class CARRIProblemParser:
         # Set default values for variables not initialized
         self.set_default_values()
 
-        # Convert global constants to tuples
+        # Convert constants associated with entities to tuples
         for var_name, variable in self.variables.items():
             is_items = variable.get('is_items', False)
             is_constant = variable.get('is_constant', False)
             entity_name = variable.get('entity', '')
             if var_name in self.initial_values:
-                if is_constant and not is_items and not entity_name:
+                if is_constant and not is_items and entity_name:
+                    # Constants associated with entities
+                    if isinstance(self.initial_values[var_name], list):
+                        self.initial_values[var_name] = tuple(self.initial_values[var_name])
+                elif is_constant and not entity_name:
                     # Global constants
                     if not isinstance(self.initial_values[var_name], tuple):
                         self.initial_values[var_name] = (self.initial_values[var_name],)
@@ -198,37 +202,26 @@ class CARRIProblemParser:
             return start_index
         variable = self.variables[variable_name]
         var_type = variable['type']
-        entity_name = variable['entity']
+        entity_name = variable.get('entity', '')
         is_items = variable.get('is_items', False)
         is_constant = variable.get('is_constant', False)
 
         # Get the list of entity indices this variable applies to
         entity_indices = self.get_entity_indices_by_type(entity_name)
-        if not entity_indices:
+        if not entity_indices and entity_name:
             # No entities of this type instantiated yet
             entity_indices = []
 
         # Parse default_value from default_value_str
         default_value = self.get_default_value(variable)
         if default_value_str:
-            default_value = self.parse_value(default_value_str, variable)
-
-        # Initialize initial_values[variable_name]
-        if variable_name not in self.initial_values:
-            if is_items:
-                self.initial_values[variable_name] = {}
-            else:
-                if is_constant and entity_name:
-                    # Constant associated with an entity
-                    self.initial_values[variable_name] = [default_value] * len(entity_indices)
-                else:
-                    # Global constant or variable associated with entities
-                    self.initial_values[variable_name] = [default_value] * len(entity_indices) if entity_indices else default_value
+            value_lines = [default_value_str]
+        else:
+            value_lines = []
 
         index = start_index
 
         # Collect all lines under this variable until we reach a new variable or entity declaration or '*'
-        value_lines = []
         while index < len(lines):
             line = lines[index]
             if re.match(r"^\w+\s*:", line) or line == '*':
@@ -236,49 +229,69 @@ class CARRIProblemParser:
             value_lines.append(line)
             index += 1
 
-        # Now process the value_lines as specific entity values
-        last_entity_index = -1
-        for line in value_lines:
-            line = line.strip()
-            if not line:
-                continue
-            # Check for indexed value: e.g., "2. 1"
-            m = re.match(r"(\d+)\.\s*(.*)", line)
-            if m:
-                entity_idx = int(m.group(1))
-                value_str = m.group(2).strip()
-                last_entity_index = entity_idx
-            else:
-                # No index specified, use last_entity_index +1
-                if last_entity_index == -1:
-                    entity_idx = 0
-                else:
-                    entity_idx = last_entity_index + 1
-                last_entity_index = entity_idx
-                value_str = line.strip()
+        # Now process the value_lines
+        if is_items:
+            # Items variable
+            if variable_name not in self.initial_values:
+                self.initial_values[variable_name] = {}
+            last_item_index = self.last_item_indices.get(variable_name, -1)
+            for line in value_lines:
+                line = line.strip()
+                if not line:
+                    continue
+                # Parse the value string based on the variable type
+                value = self.parse_value(line, variable)
+                # Increment the item index
+                last_item_index += 1
+                # Add the item to the initial_values
+                self.initial_values[variable_name][last_item_index] = value
+            self.last_item_indices[variable_name] = last_item_index
+        else:
+            # Variable associated with entities
+            if variable_name not in self.initial_values:
+                self.initial_values[variable_name] = []
+            values = self.initial_values[variable_name]
 
-            # Update entity_max_indices if applicable
-            if entity_name:
-                self.entity_max_indices[entity_name] = max(self.entity_max_indices.get(entity_name, -1), entity_idx)
-
-            # Parse the value string based on the variable type
-            value = self.parse_value(value_str, variable)
-            # Assign the value to the variable for the entity
-            if is_items:
-                self.initial_values[variable_name][entity_idx] = value
+            if len(value_lines) == 1 and not re.match(r"^\d+\.\s*(.*)", value_lines[0]):
+                # Single value provided without indices; apply to all entities
+                value_str = value_lines[0].strip()
+                value = self.parse_value(value_str, variable)
+                entity_count = max(len(self.get_entity_indices_by_type(entity_name)), self.entity_counts.get(entity_name, 0))
+                for idx in range(entity_count):
+                    while len(values) <= idx:
+                        values.append(self.get_default_value(variable))
+                    values[idx] = value
             else:
-                # Ensure initial_values[variable_name] is long enough
-                if is_constant and entity_name:
-                    while len(self.initial_values[variable_name]) <= entity_idx:
-                        self.initial_values[variable_name].append(default_value)
-                    self.initial_values[variable_name][entity_idx] = value
-                elif entity_name:
-                    while len(self.initial_values[variable_name]) <= entity_idx:
-                        self.initial_values[variable_name].append(default_value)
-                    self.initial_values[variable_name][entity_idx] = value
-                else:
-                    # Global constant
-                    self.initial_values[variable_name] = value
+                last_entity_index = -1
+                for line in value_lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    # Check for indexed value: e.g., "2. true"
+                    m = re.match(r"(\d+)\.\s*(.*)", line)
+                    if m:
+                        entity_idx = int(m.group(1))
+                        value_str = m.group(2).strip()
+                        last_entity_index = entity_idx
+                    else:
+                        # No index specified, use last_entity_index +1
+                        if last_entity_index == -1:
+                            entity_idx = 0
+                        else:
+                            entity_idx = last_entity_index + 1
+                        last_entity_index = entity_idx
+                        value_str = line.strip()
+                    # Update entity_max_indices if applicable
+                    if entity_name:
+                        self.entity_max_indices[entity_name] = max(self.entity_max_indices.get(entity_name, -1), entity_idx)
+                    # Parse the value string based on the variable type
+                    value = self.parse_value(value_str, variable)
+                    # Assign the value to the variable for the entity
+                    while len(values) <= entity_idx:
+                        values.append(self.get_default_value(variable))
+                    values[entity_idx] = value
+            # Update initial_values
+            self.initial_values[variable_name] = values
 
         return index
 
@@ -289,28 +302,23 @@ class CARRIProblemParser:
         for entity_name in self.entities:
             max_index = self.entity_max_indices.get(entity_name, -1)
             current_count = self.entity_counts.get(entity_name, 0)
-            if max_index >= current_count:
+            new_count = max(max_index + 1, current_count)
+            if new_count > current_count:
                 # Need to adjust the entity count and indices
-                new_count = max_index + 1
                 self.entity_counts[entity_name] = new_count
                 self.entity_type_instances[entity_name] = list(range(new_count))
-                # Also adjust initial_values for variables associated with this entity
-                for var_name, variable in self.variables.items():
-                    if variable['entity'] == entity_name:
-                        if var_name not in self.initial_values:
-                            # Initialize variable with default values
-                            default_value = self.get_default_value(variable)
-                            if variable.get('is_items', False):
-                                self.initial_values[var_name] = {}
-                            else:
-                                self.initial_values[var_name] = [default_value] * new_count
-                        else:
-                            var_values = self.initial_values[var_name]
-                            default_value = self.get_default_value(variable)
-                            if isinstance(var_values, list):
-                                while len(var_values) < new_count:
-                                    var_values.append(default_value)
-                                self.initial_values[var_name] = var_values[:new_count]  # Ensure length matches
+            elif current_count > 0:
+                # Adjust variables to match the entity count
+                self.entity_type_instances[entity_name] = list(range(current_count))
+
+            # Adjust variables associated with this entity
+            for var_name, variable in self.variables.items():
+                if variable.get('entity') == entity_name and not variable.get('is_items', False):
+                    var_values = self.initial_values.get(var_name, [])
+                    default_value = self.get_default_value(variable)
+                    while len(var_values) < new_count:
+                        var_values.append(default_value)
+                    self.initial_values[var_name] = var_values[:new_count]  # Ensure length matches
 
     def get_entity_indices_by_type(self, entity_name):
         return self.entity_type_instances.get(entity_name, [])
@@ -326,7 +334,7 @@ class CARRIProblemParser:
             return False
         elif var_type == Set[int]:
             return set()
-        elif var_type == Dict[int, int]:
+        elif var_type == Dict or var_type == Dict[int, int]:
             return {}
         elif var_type in (List, Tuple):
             return []
@@ -338,11 +346,11 @@ class CARRIProblemParser:
         if var_type == int:
             return int(value_str)
         elif var_type == bool:
-            return value_str.lower() in ('true', '1')
+            return value_str.lower() in ('true', '1', 'yes', 't')
         elif var_type == Set[int]:
             items = [int(x.strip()) for x in value_str.split(',') if x.strip()]
             return set(items)
-        elif var_type == Dict[int, int]:
+        elif var_type == Dict or var_type == Dict[int, int]:
             d = {}
             pairs = value_str.split(',')
             for pair in pairs:
@@ -355,16 +363,24 @@ class CARRIProblemParser:
                     value = int(value_str.strip())
                     d[key] = value
             return d
-        elif var_type in (List, Tuple):
-            # For items variables
+        elif var_type == List:
+            # For items variables (Package)
             key_types = variable.get('key types', [])
             values = [x.strip() for x in value_str.split(',') if x.strip()]
-            # Convert values according to key types
             converted_values = []
             for value, key_type in zip(values, key_types):
                 converted_value = self.convert_value_by_type(value, key_type.strip(','))
                 converted_values.append(converted_value)
-            return tuple(converted_values)
+            return converted_values  # Return list
+        elif var_type == Tuple:
+            # For items variables (Request)
+            key_types = variable.get('key types', [])
+            values = [x.strip() for x in value_str.split(',') if x.strip()]
+            converted_values = []
+            for value, key_type in zip(values, key_types):
+                converted_value = self.convert_value_by_type(value, key_type.strip(','))
+                converted_values.append(converted_value)
+            return tuple(converted_values)  # Return tuple
         else:
             return value_str
 
@@ -372,7 +388,7 @@ class CARRIProblemParser:
         if key_type == 'INT':
             return int(value)
         elif key_type == 'BOOL':
-            return value.lower() in ('true', '1')
+            return value.lower() in ('true', '1', 'yes', 't')
         else:
             # Handle other types as needed
             return value
@@ -384,7 +400,7 @@ class CARRIProblemParser:
         for var_name, variable in self.variables.items():
             if var_name in self.initial_values:
                 continue
-            entity_name = variable['entity']
+            entity_name = variable.get('entity', '')
             is_items = variable.get('is_items', False)
             is_constant = variable.get('is_constant', False)
             if entity_name:
@@ -398,7 +414,7 @@ class CARRIProblemParser:
             else:
                 if is_constant and entity_name:
                     # Constants associated with entities
-                    self.initial_values[var_name] = [default_value] * len(entity_indices)
+                    self.initial_values[var_name] = tuple([default_value] * len(entity_indices))
                 elif is_constant:
                     # Global constants
                     self.initial_values[var_name] = default_value

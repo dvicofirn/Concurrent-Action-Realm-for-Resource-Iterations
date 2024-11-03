@@ -16,6 +16,7 @@ class Step:
         for effect in reversed(self.effects):
             effect.apply(problem, state)
 
+
 class EnvStep(Step):
     def __init__(self, name: str, effects: List[Update], cost: CostExpression):
         super().__init__(effects)
@@ -24,7 +25,7 @@ class EnvStep(Step):
     def __str__(self):
         return self.name + ":\nEffects: " + str(self.effects) + "\n" + str(self.cost)
 
-    def cost(self, problem, state):
+    def get_cost(self, problem, state):
         return self.cost.evaluate(problem, state)
 
 class Action(EnvStep):
@@ -79,7 +80,7 @@ class ActionGenerator:
         preconditions = [pre.copies(newParams) for pre in self.preconditions]
         conflictingPreconditions = [conf.copies(newParams) for conf in self.conflictingPreconditions]
         effects = [eff.copies(newParams) for eff in self.effects]
-        cost = copy(newParams)
+        cost = self.cost.copies(newParams)
         action = Action(
             name=self.name,
             preconditions=preconditions,
@@ -155,7 +156,8 @@ class ActionProducer:
     def produce_actions(self, problem, state, entityId, entityType):
         allActions = []
         for actionGenerator in self.actionGenerators:
-            s=  actionGenerator.entities[0]
+            if actionGenerator.name == 'CarPick':
+                x = 1
             if actionGenerator.entities[0] == entityType:
                 # Generate all valid actions for the given entity_id
                 actions = []
