@@ -62,10 +62,11 @@ class ContextParser:
                 expr_node = self.parse_expression(expr_str, parameters, paramExpressions)
                 # Create a new ParameterNode with the expression's value and the expressionNode
                 param_index = len(paramExpressions)
-                new_param_node = ExpressingParameterNode(param_index, expr_node)
+                new_param_node = NewValParameterNode(param_index)
                 # Extend parameters and paramExpressions
                 parameters.append(variable_name)
                 paramExpressions.append(new_param_node)
+                return ParameterUpdate(new_param_node, expr_node)
             else:
                 raise SyntaxError(f"Invalid New Val syntax: {effect}")
         elif ' remove' in effect:
@@ -177,7 +178,7 @@ class ContextParser:
             return ExpressionUpdate(lhs_node.variableName, lhs_node.expression, rhs_node)
         elif isinstance(lhs_node, ValueIndexNode):
             return ExpressionIndexUpdate(lhs_node.variableName, lhs_node.index, rhs_node)
-        elif isinstance(lhs_node, ExpressingParameterNode):
+        elif isinstance(lhs_node, NewValParameterNode):
             return ParameterUpdate(lhs_node, rhs_node)
         else:
             raise SyntaxError(f"Invalid LHS in update: {lhs_str}")

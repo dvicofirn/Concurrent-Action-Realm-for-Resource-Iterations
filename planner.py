@@ -2,7 +2,7 @@ import time
 import random
 import logging
 from typing import List, Any
-from heuristics import *
+from heuristics import RequestCountHeuristic
 from search import *
 
 class Planner:

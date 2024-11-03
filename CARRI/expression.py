@@ -81,20 +81,22 @@ class ValueParameterNode(ParameterNode):
     def applicable(self) -> bool:
         return self.value is not None
 
-class ExpressingParameterNode(ParameterNode):
-    def __init__(self, index, expression=None):
+class NewValParameterNode(ParameterNode):
+    def __init__(self, index, value=None):
         super().__init__(index)
-        self.expression = expression
+        self.value = value
     def __str__(self):
-        return "par: " + str(self.expression) + " at " + str(self.index) + " "
+        return "par: " + str(self.value) + " at " + str(self.index) + " "
     def __copy__(self):
-        return ExpressingParameterNode(self.index, self.expression)
+        return NewValParameterNode(self.index, self.value)
     def updateParam(self, newParam):
-        self.expression = newParam
+        self.value = newParam
     def evaluate(self, problem, state):
-        return self.expression.evaluate(problem, state)
+        return self.value
     def applicable(self) -> bool:
-        return self.expression is not None
+        return self.value is not None
+    def copies(self, params):
+        return self
 
 class ValueIndexNode(ExpressionNode):
     def __init__(self, variableName: str, index: int):
@@ -297,7 +299,7 @@ class ExpressionUpdate(Update):
                                 self.expressionValue.copies(params))
 
 class ParameterUpdate(Update):
-    def __init__(self, parameter: ExpressingParameterNode, expression: ExpressionNode):
+    def __init__(self, parameter: NewValParameterNode, expression: ExpressionNode):
         self.parameter = parameter
         self.expression = expression
     def __str__(self):

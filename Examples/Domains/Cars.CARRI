@@ -98,7 +98,7 @@ Storage:
 	Cost:
 		NewVal c : 0
 		All (pack - Package):
-			c : c + 10
+			c : c + 5
 		End All
 		c
 End EnvStep

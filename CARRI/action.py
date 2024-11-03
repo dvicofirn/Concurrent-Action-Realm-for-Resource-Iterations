@@ -13,7 +13,7 @@ class Step:
         return "Step effects: " + str(self.effects)
 
     def apply(self, problem, state):
-        for effect in reversed(self.effects):
+        for effect in self.effects:
             effect.apply(problem, state)
 
 
@@ -75,7 +75,6 @@ class ActionGenerator:
 
     def generate_action(self):
         # Create an Action instance using the parameter values
-        newParams = [copy(par) for par in self.paramExpressions]
         newParams = [copy(par) for par in self.paramExpressions]
         preconditions = [pre.copies(newParams) for pre in self.preconditions]
         conflictingPreconditions = [conf.copies(newParams) for conf in self.conflictingPreconditions]

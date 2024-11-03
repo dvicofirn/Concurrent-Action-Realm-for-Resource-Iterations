@@ -18,7 +18,7 @@ class Simulator:
 
     def getState(self):
         return self.problem.copyState(self.current_state)
-    def generate_all_valid_seperate_actions(self):
+    def generate_all_valid_seperate_actions(self, state):
         """
         Generate all valid actions separately for each vehicle given the current state of the problem.
         :return: Dictionary of vehicles with each entity's valid actions.
@@ -28,7 +28,7 @@ class Simulator:
         for vehicleEntityType in self.problem.vehicleEntities:
             entityActions = {}
             for entityId in self.problem.get_entity_ids(self.current_state, vehicleEntityType):
-                actions = self.ActionProducer.produce_actions(self.problem, self.current_state,
+                actions = self.ActionProducer.produce_actions(self.problem, state,
                                                               entityId, vehicleEntityType)
                 entityActions[entityId] = actions
             valid_actions[vehicleEntityType] = entityActions
@@ -74,7 +74,8 @@ class Simulator:
         Wrapper for generating all valid action combinations using the recursive method.
         :return: List of valid combinations of actions for all entities.
         """
-        all_valid_actions = self.generate_all_valid_seperate_actions()
+        ###Change!!!
+        all_valid_actions = self.generate_all_valid_seperate_actions(self.problem.initState)
         vehicle_keys = self.problem.vehicleEntities
         all_combinations = self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
         return all_combinations
@@ -142,7 +143,7 @@ class Simulator:
         return successor_states
     '''
 
-    def generate_partial_successors(self, state, partialValidSeperate_actions:List[List[Action]],
+    def generate_partial_successors(self, state, partialValidSeperate_actions: List[List[Action]],
                                     vehicleTyps: List[int], vehicleIds: List):
         currentQueue = deque()
         currentQueue.append((copy(state), [], 0))
@@ -177,7 +178,7 @@ class Simulator:
     def generate_successors(self, state):
         currentQueue = deque()
         currentQueue.append((state.copy(), [], 0))
-        validSeperates = self.generate_all_valid_seperate_actions()
+        validSeperates = self.generate_all_valid_seperate_actions(state)
 
         for vehicleType, vehicleTypeActions in validSeperates.items():
             for vehicleId, vehicleIdActions in vehicleTypeActions.items():
@@ -186,7 +187,7 @@ class Simulator:
                 while currentQueue:
                     currentState, transition, cost = currentQueue.pop()
                     for action in vehicleIdActions:
-                        if action.reValidate(self.problem, self.current_state):
+                        if action.reValidate(self.problem, currentState):
                             nextState = currentState.copy()
                             action.apply(self.problem, nextState)
                             nextTransition = transition + [action]
