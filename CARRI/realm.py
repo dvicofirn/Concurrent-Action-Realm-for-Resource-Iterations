@@ -1,7 +1,6 @@
 from typing import Iterable, List, Dict, Tuple
 from copy import copy
 
-
 class State:
     def __init__(self, variables: Tuple[List], items: Tuple[Dict]):
         self.variables = variables
@@ -195,19 +194,3 @@ class Problem:
 
     def copyState(self, state):
         return copy(state)
-
-
-    """#Todo: I argue it should be implemented in simulator instead of here.
-    def advance_state(self, simulator: CARRISimulator, state, action):
-        advnaceState = state.copy()
-        simulator.apply_action(advnaceState, action)
-        return advnaceState"""
-
-
-
-
-
-
-
-
-

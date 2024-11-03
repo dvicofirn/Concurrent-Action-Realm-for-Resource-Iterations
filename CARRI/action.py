@@ -13,7 +13,7 @@ class Step:
         return "Step effects: " + str(self.effects)
 
     def apply(self, problem, state):
-        for effect in self.effects:
+        for effect in reversed(self.effects):
             effect.apply(problem, state)
 
 class EnvStep(Step):
@@ -75,10 +75,11 @@ class ActionGenerator:
     def generate_action(self):
         # Create an Action instance using the parameter values
         newParams = [copy(par) for par in self.paramExpressions]
-        preconditions = self.preconditions.copies(newParams)
-        conflictingPreconditions = self.conflictingPreconditions.copies(newParams)
-        effects = self.effects.copies(newParams)
-        cost = self.cost.copies(newParams)
+        newParams = [copy(par) for par in self.paramExpressions]
+        preconditions = [pre.copies(newParams) for pre in self.preconditions]
+        conflictingPreconditions = [conf.copies(newParams) for conf in self.conflictingPreconditions]
+        effects = [eff.copies(newParams) for eff in self.effects]
+        cost = copy(newParams)
         action = Action(
             name=self.name,
             preconditions=preconditions,
@@ -145,8 +146,7 @@ class ActionStringRepresentor:
     def represent(self, action: Action) -> str:
         name = action.name
         generator = self.actionGenerators[name]
-        return f"Action {name} {str([parName + ": " + str(param.value) + ", "
-                                     for parName, param in zip(generator.params, action.params)])}"
+        return f"Action {name} {str([parName + ': ' + str(param.value) + ', ' for parName, param in zip(generator.params, action.params)])}"
 
 class ActionProducer:
     def __init__(self, actionGenerators: List[ActionGenerator]):
@@ -155,6 +155,7 @@ class ActionProducer:
     def produce_actions(self, problem, state, entityId, entityType):
         allActions = []
         for actionGenerator in self.actionGenerators:
+            s=  actionGenerator.entities[0]
             if actionGenerator.entities[0] == entityType:
                 # Generate all valid actions for the given entity_id
                 actions = []
@@ -163,9 +164,10 @@ class ActionProducer:
                 if self.evaluate_partial_preconditions(actionGenerator, problem, state, 0):
                     # Start recursive parameter assignment
                     self.assign_parameters_recursive(actionGenerator, problem, state, 1, actions)
+
                 allActions.extend(actions)
                 #actionGenerator.resetParams()
-        return allActions
+        return [sublist for sublist in allActions if sublist]
 
     def assign_parameters_recursive(self, actionGenerator: ActionGenerator,
                                     problem: Problem, state: State,

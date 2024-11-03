@@ -2,14 +2,14 @@ from CARRITranslator import CARRITranslator
 from CARRILogicParser import tokenize
 from CARRIContextParser import ContextParser
 from CARRILogic import ValueParameterNode
-FILEPATH_DOMAIN = "Trucks and Drones Domain.CARRI"
-FILEPATH_PROBLEM = "Trucks and Drones Problem.CARRI"
+FILEPATH_DOMAIN = "Trucks and Drones Problems Folder\Domain.CARRI"
+FILEPATH_PROBLEM = "Trucks and Drones Problems Folder\Problem.CARRI"
 
 def main():
     translator = CARRITranslator()
     segments = translator.translate(FILEPATH_DOMAIN, FILEPATH_PROBLEM)[0]
+    x = 1
     
-    """
     print("---Entities---")
     entities = segments['Entities']
     for entity in entities:
@@ -34,10 +34,7 @@ def main():
         print(envStepsSegment[envSteps])
     print("---IterStep---")
     print(segments["IterStep"])
-    """
-
-
-
+    
 def tokenz(*vals):
     for val in vals:
         print(tokenize(val))
@@ -55,7 +52,8 @@ def actiontokenz():
         print(name)
         for key in sections["Actions"][name]:
             if key not in noToTokenz:
-                print(f'{key}: {sections["Actions"][name][key]}')
+                print(f"{key}: {sections['Actions'][name][key]}")
+
                 for val in sections["Actions"][name][key]:
                     if isinstance(val, str):
                         print(tokenize(val), end=', ')
@@ -88,7 +86,7 @@ def multiExpresTest():
     'value2 (value1 param1) ? param2',
     'value2 (value1 param1) @ param2',
     'value3 (value1 param1) @ value param2'
-]
+    ]
 
 if __name__ == "__main__":
     #multiExpresTest()
