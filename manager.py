@@ -3,7 +3,7 @@ from planner import Planner
 from business import Business
 
 class Manager:
-    def __init__(self, simulator, iterations, init_time, iter_time, **planner_kwargs):
+    def __init__(self, simulator, iterations, init_time, iter_time, transitions_per_iteration, **planner_kwargs):
         """
         :param problem: An instance of CARRIProblem
         :param simulator: An instance of CARRISimulator
@@ -13,7 +13,8 @@ class Manager:
         self.init_time = init_time
         self.iter_time = iter_time
         self.business = Business(simulator, iterations)
-        self.planner = Planner(init_time, iter_time, **planner_kwargs)
+        self.transitions_per_iteration = transitions_per_iteration
+        self.planner = Planner(init_time, iter_time, transitions_per_iteration, **planner_kwargs)
 
     def run(self):
         """
@@ -36,11 +37,12 @@ class Manager:
         iteration_start = time.time()
 
         # Call generate_plan, respecting iteration time limit
-        if time.time() - iteration_start > self.iter_time:
-            plan = self.planner.generate_plan(self.business.getState())
-            self.business.advanceIteration(plan) # Raises exception
-
-        elapsed_time = time.time() - iteration_start
-        if elapsed_time > self.iter_time:
-            raise Exception('Iteration time limit exceeded')
+        start_time = time.time()
+        plan = self.planner.generate_plan(self.business.getState())
+        end_time = time.time()
+        if end_time - start_time > self.init_time:
+            raise Exception("Iteration time limit exceeded")
+        if len(plan) < self.transitions_per_iteration:
+            raise Exception("Plan is too short")
+        self.business.advanceIteration(plan[:self.transitions_per_iteration]) # Raises exception
 
