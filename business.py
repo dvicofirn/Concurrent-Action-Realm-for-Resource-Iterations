@@ -34,11 +34,13 @@ class Business:
         # Advance state by each transition of actions.
         for i, transition in enumerate(plan):
             if not self.simulator.validateTransition(transition):
-                raise Exception(f"Transition no.{i} is invalid:"
-                                f"\nState:{self.state}"
-                                f"\nTransition:"
-                                f"{[self.simulator.actionStringRepresentor.represent(action) 
-                                    for action in transition]}")
+                raise Exception(
+                    f"Transition no.{i} is invalid:"
+                    f"\nState: {self.state}"
+                    f"\nTransition: {[self.simulator.actionStringRepresentor.represent(action) for action in transition]}"
+                )
+
+
             state, addCost = self.simulator.simulate(state, transition)
             cost += addCost
 

@@ -21,7 +21,7 @@ locAdj:
 carLoc: 0
 2. 5
 carFuel: 40
-*
+#*
 Package:
 0, 0, false
 0, 2, false

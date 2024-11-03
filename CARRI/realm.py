@@ -64,7 +64,10 @@ class State:
     def replace_entity(self, entityIndex, replaceId, *newVals):
         self.items[entityIndex][replaceId] = list(newVals)
 
-
+    def __lt__(self, other):
+        # Define a way to compare `State` instances
+        # For example, based on an attribute like `self.cost`
+        return other #TODO
 
 class Problem:
     def __init__(self, **kwargs):

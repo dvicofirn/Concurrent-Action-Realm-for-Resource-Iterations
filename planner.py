@@ -6,7 +6,7 @@ from heuristics import *
 from search import *
 
 class Planner:
-    def __init__(self, simulator, init_time, iter_t, **kwargs):
+    def __init__(self, simulator, init_time, iter_t, transitions_per_iteration, **kwargs):
         """
         :param simulator: An instance of CARRISimulator
         :param init_time: float, time of initialization
@@ -18,10 +18,14 @@ class Planner:
         # Allow search algorithm and heuristic to be passed for flexibility
 
         self.heuristic = kwargs.get('heuristic', OperatorCountingHeuristic())
-        algo_args = [self.simulator.current_state,self.simulator, self.heuristic,self.iter_t]
-        self.search_algorithm = kwargs.get('search_algorithm', a_star_search(*algo_args))
+        # Store the search algorithm as a reference, not an instance
+        self.search_algorithm_class = kwargs.get('search_algorithm', a_star_search)
         
-        self.max_plan_length = 15
+        self.max_plan_length = transitions_per_iteration
+        self.plan = None
+
+    def init(self):
+        return 
 
     def generate_plan(self):
         """
@@ -32,25 +36,24 @@ class Planner:
         plan = []
 
         try:
-            search = self.search_algorithm(self.simulator, self.heuristic)
-            while time.time() - start_time < self.iter_t and len(plan) < self.max_plan_length:
-                next_step = search.step()
-                if next_step is None:
-                    logging.info("Search could not proceed further.")
-                    break
-                plan.append(next_step)
+            # Initialize the search algorithm here
+            search = self.search_algorithm_class(self.simulator, self.heuristic, self.iter_t)
+            return search
+        
         except Exception as e:
             logging.error(f"Error during planning: {e}")
 
-        logging.info(f"Generated plan with {len(plan)} steps.")
-        return plan[:self.max_plan_length]
-
-    def run_iteration(self):
+    def run_iteration(self, init_state):
         """
         Execute a planning iteration.
         :return: None
         """
-        plan = self.generate_plan()
+        try:
+            self.simulator.current_state = init_state
+            plan = self.generate_plan()
+        except e:
+            print(e)
+            logging.error("An error occurred during planning:", exc_info=True)  # Logs the full stack trace
         if not plan:
             logging.warning("No valid plan was generated.")
         else:
@@ -60,3 +63,5 @@ class Planner:
                 except ValueError as e:
                     logging.warning(f"Failed to apply action {action}: {e}")
                     break
+        
+        return plan

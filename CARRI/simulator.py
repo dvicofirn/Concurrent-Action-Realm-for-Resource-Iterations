@@ -85,7 +85,7 @@ class Simulator:
         """
         try:
             is_valid = action.validate(self.problem, self.current_state)
-            print(f"Validation for action {action}: {is_valid}")
+            #print(f"Validation for action {action}: {is_valid}")
             return is_valid
         except KeyError as e:
             print(f"KeyError during validation of action {action}: {e}")
@@ -94,7 +94,7 @@ class Simulator:
             print(f"Unexpected error during validation of action {action}: {e}")
             return False
 
-    def revalidate_action(self, problem, state, action):
+    def revalidate_action(self, state, action):
         """
         Apply the action's effects to the given state.
         :param action: The action to be applied.
@@ -102,9 +102,9 @@ class Simulator:
         :return: None
         """
         try:
-            print(f"Applying action: {action}")  # Debug statement
+            #print(f"Applying action: {action}")  # Debug statement
             action.apply(self.problem, state)
-            print(f"Action applied successfully: {action}")
+            #print(f"Action applied successfully: {action}")
         except KeyError as e:
             print(f"KeyError while applying action {action}: {e}")
             raise
@@ -148,10 +148,16 @@ class Simulator:
         """
         valid_action_combinations = self.generate_all_valid_actions()
         for actions in valid_action_combinations:
-            new_state = copy.deepcopy(current_state) 
+            cost = 0
+            new_state = current_state.copy()
             for action in actions:
-                action.apply(self.problem, new_state)
-            yield new_state, actions, 1  # Assuming each action has a cost of 1 for now
+                try:
+                    action.apply(self.problem, new_state)
+                except:
+                    continue
+                    # print('-----Error', action)
+                cost += action.get_cost(self.problem, new_state)
+            yield new_state, actions, cost  # TODO: real cost
 
 
 

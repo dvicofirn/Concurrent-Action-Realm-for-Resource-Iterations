@@ -4,14 +4,12 @@ from CARRI.realm import State  # Assuming this manages the problem state
 from CARRI.action import Step  # Assuming steps/actions are defined in this module
 import time
 import logging
-from CARRIRealm import CARRIState  # Manages the problem state, containing relevant attributes of entities and their current status
-from CARRIAction import Step  # Defines the possible actions or steps that can be taken in the problem domain
-from CARRISimulator import CARRISimulator
+from CARRI.action import Step, ActionStringRepresentor  # Defines the possible actions or steps that can be taken in the problem domain
+from CARRI.simulator import Simulator
 
-def a_star_search(initial_state: CARRIState,
-                  simulator: CARRISimulator,
-                  heuristic: Callable[[CARRIState], float],
-                  time_limit: float) -> Tuple[List[Step], CARRIState]:
+def a_star_search(simulator: Simulator,
+                  heuristic: Callable[[State], float],
+                  time_limit: float) -> Tuple[List[Step], State]:
     """
     A* search algorithm with flexible heuristic input.
     
@@ -26,15 +24,24 @@ def a_star_search(initial_state: CARRIState,
     """
     start_time = time.time()
     frontier = PriorityQueue()
+    initial_state = simulator.current_state
     frontier.put((0, initial_state))
     
     g_costs = {initial_state: 0}
-    came_from = {}
+    came_from = {initial_state : (0, 0)}
     best_state = initial_state
     best_path = []
 
+    i = 0 
+
     while not frontier.empty() and (time.time() - start_time) < time_limit:
         _, current_state = frontier.get()
+        pre_state, action = came_from[current_state]
+        if action != 0:
+            print(f'iter {i}:')
+            i+= 1
+            for a in action:
+                print(simulator.actionStringRepresentor.represent(a))
         
         if all_packages_delivered(current_state):  # Goal condition: all packages delivered
             return reconstruct_path(came_from, current_state), current_state
@@ -66,12 +73,13 @@ def reconstruct_path(came_from, end_state):
     path.reverse()
     return path
 
-def all_packages_delivered(state: CARRIState) -> bool:
+def all_packages_delivered(state: State) -> bool:
     """
     Check if all packages have been delivered in the given state.
     :param state: The current state to check.
     :return: True if all packages are delivered, False otherwise.
     """
     # Assuming `state` has a method or attribute to check the status of packages
-    #return state.get_len() == 0
-    return False
+    x = len(state.items[0]) == 0
+    return len(state.items[0]) == 0
+   
