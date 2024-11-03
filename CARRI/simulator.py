@@ -1,6 +1,7 @@
-from CARRI.action import ActionProducer, ActionStringRepresentor
+from CARRI.action import ActionProducer, ActionStringRepresentor, Action
+from CARRI.realm import  Problem
 class Simulator:
-    def __init__(self, problem, actionGenerators, evnSteps, iterStep, entities):
+    def __init__(self, problem: Problem, actionGenerators, evnSteps, iterStep, entities):
         self.problem = problem
         self.ActionProducer = ActionProducer(actionGenerators)
         self.actionStringRepresentor = ActionStringRepresentor(actionGenerators)
@@ -8,8 +9,10 @@ class Simulator:
         self.evnSteps = evnSteps
         self.iterStep = iterStep
         self.entities = entities
-        self.current_state = problem.initState.copy()
+        self.current_state = problem.copyState(problem.initState)
 
+    def getState(self):
+        return self.problem.copyState(self.current_state)
     def generate_all_valid_actions_seperatly(self):
         """
         Generate all valid actions separately for each vehicle given the current state of the problem.

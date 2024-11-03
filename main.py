@@ -9,6 +9,7 @@ def main():
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
                                                  FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
     manager = Manager(simulator, iterations, 3, 3, 10)
+    manager.run()
 
     """actions = simulator.generate_all_valid_actions_seperatly()
 

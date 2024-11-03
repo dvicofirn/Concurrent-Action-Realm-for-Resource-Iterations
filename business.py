@@ -5,7 +5,7 @@ class Business:
     def __init__(self, simulator, iterationsList: List):
         self.simulator = simulator
         self.iterationsList = iterationsList
-        self.state = simulator.getInitState()
+        self.state = simulator.getState()
         self.iteration = 0
         self.cost = 0
 
