@@ -44,14 +44,14 @@ CarPick: id - Car, pack - Package (Pick)
 		carLoc id = Package loc pack
 		carCap id < 2
 	Confs:
-		Package onEntity pack = false
+		Package onCar pack = false
 	Effects:
 		Case (carFuel id > 0):
 			carFuel id : carFuel id - 1
 		End Case
 		carCap id : carCap id + 1
 		Package loc pack: id
-		Package onEntity pack: true
+		Package onCar pack: true
 	Cost:
 		1
 End Action
@@ -60,7 +60,7 @@ CarDeliver: id - Car, req - Request, pack - Package (Deliver)
 	Precs:
 		carCap id > 0
 		carLoc id = Request loc req
-		Package onEntity pack = 1
+		Package onCar pack = 1
 		Package loc pack = id
 		Package type pack = Request type req
 	Confs:

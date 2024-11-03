@@ -24,7 +24,7 @@ class EnvStep(Step):
     def __str__(self):
         return self.name + ":\nEffects: " + str(self.effects) + "\n" + str(self.cost)
 
-    def cost(self, problem, state):
+    def get_cost(self, problem, state):
         return self.cost.evaluate(problem, state)
 
 class Action(EnvStep):
@@ -79,7 +79,7 @@ class ActionGenerator:
         preconditions = [pre.copies(newParams) for pre in self.preconditions]
         conflictingPreconditions = [conf.copies(newParams) for conf in self.conflictingPreconditions]
         effects = [eff.copies(newParams) for eff in self.effects]
-        cost = copy(newParams)
+        cost = self.cost.copies(newParams)
         action = Action(
             name=self.name,
             preconditions=preconditions,

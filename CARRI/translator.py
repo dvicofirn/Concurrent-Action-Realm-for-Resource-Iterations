@@ -47,7 +47,9 @@ class Translator:
                                             translatedSections["Variables"])
         initial_values, iterations = problem_parser.parse()
 
-        problem = Problem(initial_values, translatedSections["Variables"], translatedSections["Entities"])
+        problem = Problem(initialValues=initial_values,
+                          variablesInfo=translatedSections["Variables"],
+                          entities=translatedSections["Entities"])
         simulator = Simulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
         return simulator, iterations
 
@@ -219,9 +221,9 @@ class CARRIVariablesTranslator:
 
             # Determine the data structure type
             if variable_type == "MULTY":
-                variable_type = Set[int]
+                variable_type = Set
             elif variable_type == "MATCH":
-                variable_type = Dict[int, int]
+                variable_type = Dict
             elif variable_type == "BOOL":
                 variable_type = bool
             else:

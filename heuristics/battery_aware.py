@@ -1,4 +1,4 @@
-from worldProblem import Heuristic, State
+from CARRI.realm import Problem, State, Heuristic
 
 class BatteryAwareHeuristic(Heuristic):
     def heurist(self, state: State) -> int:

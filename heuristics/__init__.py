@@ -9,7 +9,7 @@ from .pdb import PatternDatabaseHeuristic
 from .operator_counting import OperatorCountingHeuristic
 from .battery_aware import BatteryAwareHeuristic
 from .cea import ContextEnhancedAdditiveHeuristic
-from .goal_count import GoalCountHeuristic
+from .requestCount import RequestCountHeuristic
 from .max_pairwise import MaxPairwiseDistanceHeuristic
 from .time_sensitive import TimeSensitiveHeuristic
 from .time_sensitive_goal import TimeSensitiveGoalCountHeuristic
