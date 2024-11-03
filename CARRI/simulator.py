@@ -142,39 +142,6 @@ class Simulator:
         return successor_states
     '''
 
-    def generate_successors(self, state):
-        currentQueue = deque()
-        currentQueue.append((copy(state), [], 0))
-        validSeperates = self.generate_all_valid_seperate_actions()
-        while currentQueue:
-            for vehicleType, vehicleTypeActions in validSeperates.items():
-                for vehicleId, vehicleIdActions in vehicleTypeActions.items():
-                    nextQueue, transition, cost = deque()
-                    currentState = currentQueue.pop()
-
-                    for action in vehicleIdActions:
-                        if action.reValidate(self.problem, self.current_state):
-                            nextState = copy(currentState)
-                            action.appy(self.problem, nextState)
-                            nextTransition = transition + [action]
-                            nextCost = cost + action.get_cost(self.problem, nextState)
-                            nextQueue.append((nextState, nextTransition, nextCost))
-
-                    currentQueue = nextQueue
-
-        for envStep in self.evnSteps:
-            # Iterate through each item in the deque by index
-            for i in range(len(currentQueue)):
-                state, transition, cost = currentQueue[i]
-
-                # Apply the envStep function to the state and add to the cost
-                envStep.apply(self.problem, state)
-                cost += envStep.get_cost(self.problem, state)  # Adjust according to envStep logic
-                # Replace the tuple in-place
-                currentQueue[i] = (state, transition, cost)
-
-        return currentQueue
-
     def generate_partial_successors(self, state, partialValidSeperate_actions:List[List[Action]],
                                     vehicleTyps: List[int], vehicleIds: List):
         currentQueue = deque()
@@ -207,25 +174,39 @@ class Simulator:
 
         return currentQueue
 
-    def generate_successor_states(self, current_state):
-        """
-        Generate all possible successor states given the current state by applying valid actions.
-        :param current_state: The current state of the system.
-        :return: A generator yielding tuples of (next_state, action, cost).
-        """
-        valid_action_combinations = self.generate_all_valid_actions()
-        for actions in valid_action_combinations:
-            cost = 0
-            new_state = current_state.copy()
-            for action in actions:
-                try:
-                    action.apply(self.problem, new_state)
-                except:
-                    continue
-                    # print('-----Error', action)
-                cost += action.get_cost(self.problem, new_state)
-            yield new_state, actions, cost  # TODO: real cost
+    def generate_successors(self, state):
+        currentQueue = deque()
+        currentQueue.append((state.copy(), [], 0))
+        validSeperates = self.generate_all_valid_seperate_actions()
 
+        for vehicleType, vehicleTypeActions in validSeperates.items():
+            for vehicleId, vehicleIdActions in vehicleTypeActions.items():
+
+                nextQueue = deque()
+                while currentQueue:
+                    currentState, transition, cost = currentQueue.pop()
+                    for action in vehicleIdActions:
+                        if action.reValidate(self.problem, self.current_state):
+                            nextState = currentState.copy()
+                            action.apply(self.problem, nextState)
+                            nextTransition = transition + [action]
+                            nextCost = cost + action.get_cost(self.problem, nextState)
+                            nextQueue.append((nextState, nextTransition, nextCost))
+
+                currentQueue = nextQueue
+
+        for envStep in self.evnSteps:
+            # Iterate through each item in the deque by index
+            for i in range(len(currentQueue)):
+                state, transition, cost = currentQueue[i]
+
+                # Apply the envStep function to the state and add to the cost
+                envStep.apply(self.problem, state)
+                cost += envStep.get_cost(self.problem, state)  # Adjust according to envStep logic
+                # Replace the tuple in-place
+                currentQueue[i] = (state, transition, cost)
+
+        return currentQueue
 
 
     def advance_state(self, action: Action):
