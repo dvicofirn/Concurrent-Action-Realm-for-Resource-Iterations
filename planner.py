@@ -17,7 +17,7 @@ class Planner:
         self.iter_t = iter_t
         # Allow search algorithm and heuristic to be passed for flexibility
 
-        self.heuristic = kwargs.get('heuristic', OperatorCountingHeuristic())
+        self.heuristic = kwargs.get('heuristic', RequestCountHeuristic(self.simulator.problem))
         # Store the search algorithm as a reference, not an instance
         self.search_algorithm_class = kwargs.get('search_algorithm', a_star_search)
         

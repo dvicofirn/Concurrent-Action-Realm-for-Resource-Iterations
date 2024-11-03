@@ -14,14 +14,15 @@ class Manager:
         self.iter_time = iter_time
         self.business = Business(simulator, iterations)
         self.transitions_per_iteration = transitions_per_iteration
-        self.planner = Planner(init_time, iter_time, transitions_per_iteration, **planner_kwargs)
+        self.planner = Planner(simulator, init_time, iter_time, transitions_per_iteration, **planner_kwargs)
 
     def run(self):
         """
         Init the planner with problem, execute plan for each iteration.
         """
         start_time = time.time()
-        self.planner.init_plan(self.simulator)
+        #self.planner.init_plan(self.simulator)
+        self.planner.generate_plan()
         end_time = time.time()
         if end_time - start_time > self.init_time:
             raise Exception("Init time limit exceeded")
@@ -38,11 +39,11 @@ class Manager:
 
         # Call generate_plan, respecting iteration time limit
         start_time = time.time()
-        plan = self.planner.generate_plan(self.business.getState())
+        #plan = self.planner.generate_plan(self.business.getState())
         end_time = time.time()
         if end_time - start_time > self.init_time:
             raise Exception("Iteration time limit exceeded")
-        if len(plan) < self.transitions_per_iteration:
-            raise Exception("Plan is too short")
-        self.business.advanceIteration(plan[:self.transitions_per_iteration]) # Raises exception
+        #if len(plan) < self.transitions_per_iteration:
+            #raise Exception("Plan is too short")
+        #self.business.advanceIteration(plan[:self.transitions_per_iteration]) # Raises exception
 

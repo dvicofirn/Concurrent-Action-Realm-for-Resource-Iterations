@@ -1,8 +1,11 @@
-from CARRI.action import ActionProducer, ActionStringRepresentor, Action
-from CARRI.realm import  Problem
-import copy
+from CARRI.action import ActionProducer, ActionStringRepresentor, Action, EnvStep
+from CARRI.realm import Problem
+from collections import deque
+from copy import copy
+from typing import List
+
 class Simulator:
-    def __init__(self, problem: Problem, actionGenerators, evnSteps, iterStep, entities):
+    def __init__(self, problem: Problem, actionGenerators, evnSteps: List[EnvStep], iterStep, entities):
         self.problem = problem
         self.ActionProducer = ActionProducer(actionGenerators)
         self.actionStringRepresentor = ActionStringRepresentor(actionGenerators)
@@ -11,25 +14,24 @@ class Simulator:
         self.iterStep = iterStep
         self.entities = entities
         self.current_state = problem.copyState(problem.initState)
+        self.vehicle_keys = self.problem.vehicleEntities
 
     def getState(self):
         return self.problem.copyState(self.current_state)
-    def generate_all_valid_actions_seperatly(self):
+    def generate_all_valid_seperate_actions(self):
         """
         Generate all valid actions separately for each vehicle given the current state of the problem.
         :return: Dictionary of vehicles with each entity's valid actions.
         """
         valid_actions = {}
-        for vehicle_type, entity_info in self.entities.items():
-            entity_type = entity_info[0]
-            if entity_info[1] != 'Vehicle':
-                continue
-            entity_ids = self.problem.get_entity_ids(self.current_state, entity_type)
-            entity_actions = {}
-            for entity_id in entity_ids:
-                actions = self.ActionProducer.produce_actions(self.problem, self.current_state, entity_id, entity_type)
-                entity_actions[entity_id] = actions
-            valid_actions[vehicle_type] = entity_actions
+        # New thing from problem: vehicleEntities
+        for vehicleEntityType in self.problem.vehicleEntities:
+            entityActions = {}
+            for entityId in self.problem.get_entity_ids(self.current_state, vehicleEntityType):
+                actions = self.ActionProducer.produce_actions(self.problem, self.current_state,
+                                                              entityId, vehicleEntityType)
+                entityActions[entityId] = actions
+            valid_actions[vehicleEntityType] = entityActions
         return valid_actions
 
     def generate_all_valid_actions_recursive(self, all_valid_actions, vehicle_keys, partial_assignment=None):
@@ -72,8 +74,8 @@ class Simulator:
         Wrapper for generating all valid action combinations using the recursive method.
         :return: List of valid combinations of actions for all entities.
         """
-        all_valid_actions = self.generate_all_valid_actions_seperatly()
-        vehicle_keys = list(all_valid_actions.keys())
+        all_valid_actions = self.generate_all_valid_seperate_actions()
+        vehicle_keys = self.problem.vehicleEntities
         all_combinations = self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
         return all_combinations
 
@@ -139,6 +141,71 @@ class Simulator:
 
         return successor_states
     '''
+
+    def generate_successors(self, state):
+        currentQueue = deque()
+        currentQueue.append((copy(state), [], 0))
+        validSeperates = self.generate_all_valid_seperate_actions()
+        while currentQueue:
+            for vehicleType, vehicleTypeActions in validSeperates.items():
+                for vehicleId, vehicleIdActions in vehicleTypeActions.items():
+                    nextQueue, transition, cost = deque()
+                    currentState = currentQueue.pop()
+
+                    for action in vehicleIdActions:
+                        if action.reValidate(self.problem, self.current_state):
+                            nextState = copy(currentState)
+                            action.appy(self.problem, nextState)
+                            nextTransition = transition + [action]
+                            nextCost = cost + action.get_cost(self.problem, nextState)
+                            nextQueue.append((nextState, nextTransition, nextCost))
+
+                    currentQueue = nextQueue
+
+        for envStep in self.evnSteps:
+            # Iterate through each item in the deque by index
+            for i in range(len(currentQueue)):
+                state, transition, cost = currentQueue[i]
+
+                # Apply the envStep function to the state and add to the cost
+                envStep.apply(self.problem, state)
+                cost += envStep.get_cost(self.problem, state)  # Adjust according to envStep logic
+                # Replace the tuple in-place
+                currentQueue[i] = (state, transition, cost)
+
+        return currentQueue
+
+    def generate_partial_successors(self, state, partialValidSeperate_actions:List[List[Action]],
+                                    vehicleTyps: List[int], vehicleIds: List):
+        currentQueue = deque()
+        currentQueue.append((copy(state), [], 0))
+        for vehicleType, typeIds, vehicleTypeActions in zip(vehicleTyps, vehicleIds, partialValidSeperate_actions):
+            for vehicleId, vehicleIdActions in zip(typeIds, vehicleTypeActions):
+                for action in vehicleIdActions:
+                    nextQueue = deque()
+                    while currentQueue:
+                        currentState, transition, cost = currentQueue.pop()
+                        if action.reValidate(self.problem, self.current_state):
+                            nextState = copy(currentState)
+                            action.appy(self.problem, nextState)
+                            nextTransition = transition + [action]
+                            nextCost = cost + action.get_cost(self.problem, nextState)
+                            nextQueue.append((nextState, nextTransition, nextCost))
+
+                    currentQueue = nextQueue
+
+        for envStep in self.evnSteps:
+            # Iterate through each item in the deque by index
+            for i in range(len(currentQueue)):
+                state, transition, cost = currentQueue[i]
+
+                # Apply the envStep function to the state and add to the cost
+                envStep.apply(self.problem, state)
+                cost += envStep.get_cost(self.problem, state)  # Adjust according to envStep logic
+                # Replace the tuple in-place
+                currentQueue[i] = (state, transition, cost)
+
+        return currentQueue
 
     def generate_successor_states(self, current_state):
         """

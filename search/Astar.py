@@ -37,6 +37,8 @@ def a_star_search(simulator: Simulator,
     while not frontier.empty() and (time.time() - start_time) < time_limit:
         _, current_state = frontier.get()
         pre_state, action = came_from[current_state]
+        if isinstance(pre_state, State):
+            print(f"pre_state, {heuristic.evaluate(pre_state)}")
         if action != 0:
             print(f'iter {i}:')
             i+= 1

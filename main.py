@@ -8,8 +8,8 @@ DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1",),
                         "Cars": ("Cars 1",),}
 def main():
     translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
-                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][0] + ".CARRI")
+    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
+                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
     manager = Manager(simulator, iterations, 300, 300, 100)
     manager.run()
 

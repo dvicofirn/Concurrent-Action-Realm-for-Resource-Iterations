@@ -113,20 +113,20 @@ Confs:
 truckDroneCap trk < 4
 (truckPackCap trk < 8) or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
 Effects:
-droneLoc id : trk
-droneBoard id : true
-Case (droneCharge id < 8):
-droneCharge id : droneCharge id + 3
-Else:
-droneCharge id : 10
-End Case
-Case (droneCap id = 1):
-All(pack - Package) ((Package onEntity pack = 1) and (Package loc pack = id)):
-Package onEntity pack : 2
-Package loc pack : trk
-End All
-droneCap id : 0 
-End Case
+	droneLoc id : trk
+	droneBoard id : true
+	Case (droneCharge id < 8):
+		droneCharge id : droneCharge id + 3
+	Else:
+		droneCharge id : 10
+	End Case
+	Case (droneCap id = 1):
+		All(pack - Package) ((Package onEntity pack = 1) and (Package loc pack = id)):
+			Package onEntity pack : 2
+			Package loc pack : trk
+		End All
+		droneCap id : 0 
+	End Case
 Cost:
 2
 End Action
@@ -137,8 +137,8 @@ droneBoard id = true
 droneLoc id = trk
 not (locType(truckLoc trk) = 2)
 Effects:
-droneLoc id : truckLoc trk
-droneBoard id : false
+	droneLoc id : truckLoc trk
+	droneBoard id : false
 Cost:
 1
 End Action
