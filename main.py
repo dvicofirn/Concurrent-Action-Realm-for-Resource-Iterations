@@ -30,8 +30,13 @@ def main():
             print(x)
         i += 1
 
-    
-    succesors = simulator.generate_successor_states()
+    '''
+    i = 0
+    succesors = simulator.generate_successor_states(simulator.current_state)
+    for next_state, action, cost in succesors:
+        print(i)
+        print(next_state)
+        i+= 1
     init_time = 5.0
     iter_t = 5.0
 

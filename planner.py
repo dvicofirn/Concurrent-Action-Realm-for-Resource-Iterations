@@ -16,8 +16,11 @@ class Planner:
         self.init_time = init_time
         self.iter_t = iter_t
         # Allow search algorithm and heuristic to be passed for flexibility
-        self.search_algorithm = kwargs.get('search_algorithm', a_star_search())
+
         self.heuristic = kwargs.get('heuristic', OperatorCountingHeuristic())
+        algo_args = [self.simulator.current_state,self.simulator, self.heuristic,self.iter_t]
+        self.search_algorithm = kwargs.get('search_algorithm', a_star_search(*algo_args))
+        
         self.max_plan_length = 15
 
     def generate_plan(self):
