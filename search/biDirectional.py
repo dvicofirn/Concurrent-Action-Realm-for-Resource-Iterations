@@ -1,11 +1,11 @@
 from queue import Queue
 from typing import Callable, List, Tuple
-from CARRIRealm import CARRIState
-from CARRIAction import Step
+from CARRI.realm import State
+from CARRI.action import Step
 
 
-def bidirectional_search(initial_state: CARRIState, goal_state: CARRIState,
-                         successors: Callable[[CARRIState], List[Tuple[CARRIState, Step, int]]]) -> List[Step]:
+def bidirectional_search(initial_state: State, goal_state: State,
+                         successors: Callable[[State], List[Tuple[State, Step, int]]]) -> List[Step]:
     front_queue = Queue()
     back_queue = Queue()
     front_queue.put((initial_state, []))

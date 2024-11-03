@@ -1,10 +1,10 @@
 from typing import Callable, List, Tuple
-from CARRIRealm import CARRIState
-from CARRIAction import Step
+from CARRI.realm import State
+from CARRI.action import Step
 
-def ida_star(initial_state: CARRIState, goal_test: Callable[[CARRIState], bool],
-             successors: Callable[[CARRIState], List[Tuple[CARRIState, Step, int]]],
-             heuristic: Callable[[CARRIState], float]) -> List[Step]:
+def ida_star(initial_state: State, goal_test: Callable[[State], bool],
+             successors: Callable[[State], List[Tuple[State, Step, int]]],
+             heuristic: Callable[[State], float]) -> List[Step]:
     def search(path, g, bound):
         current_state = path[-1][0]
         f = g + heuristic(current_state)

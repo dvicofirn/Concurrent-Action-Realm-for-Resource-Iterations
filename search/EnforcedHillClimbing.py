@@ -1,12 +1,12 @@
 from queue import Queue
 from typing import Callable, List, Tuple
-from CARRIRealm import CARRIState
-from CARRIAction import Step
+from CARRI.realm import State
+from CARRI.action import Step
 
 
-def enforced_hill_climbing(initial_state: CARRIState, goal_test: Callable[[CARRIState], bool],
-                           successors: Callable[[CARRIState], List[Tuple[CARRIState, Step, int]]],
-                           heuristic: Callable[[CARRIState], float]) -> List[Step]:
+def enforced_hill_climbing(initial_state: State, goal_test: Callable[[State], bool],
+                           successors: Callable[[State], List[Tuple[State, Step, int]]],
+                           heuristic: Callable[[State], float]) -> List[Step]:
     def bfs(state):
         queue = Queue()
         queue.put((state, []))

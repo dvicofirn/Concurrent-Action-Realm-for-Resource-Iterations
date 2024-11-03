@@ -1,11 +1,11 @@
 from queue import PriorityQueue
 from typing import Callable, List, Tuple
-from CARRIRealm import CARRIState  # Assuming this manages the problem state
-from CARRIAction import Step  # Assuming steps/actions are defined in this module
+from CARRI.realm import State  # Assuming this manages the problem state
+from CARRI.action import Step  # Assuming steps/actions are defined in this module
 
-def a_star_search(initial_state: CARRIState, goal_test: Callable[[CARRIState], bool],
-                  successors: Callable[[CARRIState], List[Tuple[CARRIState, Step, int]]],
-                  heuristic: Callable[[CARRIState], float]) -> List[Step]:
+def a_star_search(initial_state: State, goal_test: Callable[[State], bool],
+                  successors: Callable[[State], List[Tuple[State, Step, int]]],
+                  heuristic: Callable[[State], float]) -> List[Step]:
     """
     A* search algorithm with flexible heuristic input.
     

@@ -1,12 +1,12 @@
 from queue import PriorityQueue
 from typing import Callable, List, Tuple
-from CARRIRealm import CARRIState
-from CARRIAction import Step
+from CARRI.realm import State
+from CARRI.action import Step
 
 
-def adaptive_a_star(initial_state: CARRIState, goal_test: Callable[[CARRIState], bool],
-                    successors: Callable[[CARRIState], List[Tuple[CARRIState, Step, int]]],
-                    heuristic: Callable[[CARRIState], float]) -> List[Step]:
+def adaptive_a_star(initial_state: State, goal_test: Callable[[State], bool],
+                    successors: Callable[[State], List[Tuple[State, Step, int]]],
+                    heuristic: Callable[[State], float]) -> List[Step]:
     frontier = PriorityQueue()
     frontier.put((heuristic(initial_state), 0, initial_state, []))
     g_costs = {initial_state: 0}

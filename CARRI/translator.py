@@ -49,9 +49,9 @@ class Translator:
 
         problem = Problem(initial_values, translatedSections["Variables"], translatedSections["Entities"])
         simulator = Simulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
-        #return simulator, iterations
+        return simulator, iterations
 
-        print(problem.initState)
+        """print(problem.initState)
         # problem.set_value(problem.initState, "droneCharge", 3, 5)
         # print(problem.initState)
         # Todo: Need to create Simulator, return Simulator, problem and Iterations to Manager.
@@ -83,7 +83,7 @@ class Translator:
             for var_name, values in iteration.items():
                 print(f"  {var_name}: {values}")
 
-        return translatedSections, initial_values
+        return translatedSections, initial_values"""
 
     def read_file(self, file_path):
         """

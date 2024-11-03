@@ -8,14 +8,14 @@ sys.path.insert(0, project_root)
 
 from heuristics.hmax import HMaxHeuristic  # Example heuristic
 from search.Astar import a_star_search
-from CARRIRealm import CARRIState
+from CARRIRealm import State
 from CARRITranslator import CARRITranslator
 
 # Load the domain and problem files
 DOMAIN_FILE = "Trucks and Drones Domain.CARRI"
 PROBLEM_FILE = "Trucks and Drones Problem.CARRI"
 
-from CARRIRealm import CARRIState
+from CARRIRealm import State
 
 def initialize_state():
     # Define initial state components
@@ -40,8 +40,8 @@ def initialize_state():
         "request_2": {"location": "loc_1", "urgency": 1}
     }
     
-    # Initialize CARRIState with the specified components
-    initial_state = CARRIState(
+    # Initialize State with the specified components
+    initial_state = State(
         locations=locations,
         vehicles=vehicles,
         packages=packages,
@@ -59,7 +59,7 @@ class TestAStarCARRIDomain(unittest.TestCase):
         cls.domain, cls.problem = cls.translator.translate(DOMAIN_FILE, PROBLEM_FILE)
         
         # Initialize the initial state
-        cls.initial_state = CARRIState(cls.problem["initial_state"])
+        cls.initial_state = State(cls.problem["initial_state"])
 
     def goal_test(self, state):
         # Define a goal test based on the problem
