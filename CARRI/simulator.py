@@ -1,5 +1,6 @@
 from CARRI.action import ActionProducer, ActionStringRepresentor, Action
 from CARRI.realm import  Problem
+import copy
 class Simulator:
     def __init__(self, problem: Problem, actionGenerators, evnSteps, iterStep, entities):
         self.problem = problem
@@ -95,31 +96,77 @@ class Simulator:
 
     def revalidate_action(self, problem, state, action):
         """
-        Revalidate action, checking for possibly conflicting actions.
+        Apply the action's effects to the given state.
+        :param action: The action to be applied.
+        :param state: The state on which the action is applied.
+        :return: None
         """
-        # Placeholder for revalidation logic, which checks for conflicts.
-        # For now, assuming actions are always valid for simplicity.
-        for precondition in action['conflicting preconditions']:
-            if not self.evaluate_condition(precondition, state, problem):
-                return False
-        return True
+        try:
+            print(f"Applying action: {action}")  # Debug statement
+            action.apply(self.problem, state)
+            print(f"Action applied successfully: {action}")
+        except KeyError as e:
+            print(f"KeyError while applying action {action}: {e}")
+            raise
+        except Exception as e:
+            print(f"Unexpected error while applying action {action}: {e}")
+            raise
 
-    def apply_action(self, problem, state, action):
-        """
-        Apply the action's effects to the state.
-        """
-        for effect in action['effects']:
-            self.apply_effect(problem, state, effect)
 
-    def evaluate_condition(self, problem, state, condition):
+    '''
+    def generate_successor_states(self):
         """
-        Evaluate a condition against the state and problem.
+        Generate all possible successor states given the current state by applying valid actions.
+        :return: List of successor states.
         """
-        # Placeholder for evaluating logical conditions (preconditions).
-        # In a real implementation, you would parse the condition and check against the state.
-        return True
+        successor_states = []
+        valid_action_combinations = self.generate_all_valid_actions()
 
-    def apply_effect(self, problem, state, effect):
+        for actions in valid_action_combinations:
+            new_state = copy.deepcopy(self.current_state)  # Use deepcopy to ensure state isolation
+            try:
+                for action in actions:
+                    self.apply_action(action, new_state)
+                successor_states.append(new_state)
+            except KeyError as e:
+                print(f"KeyError encountered while applying actions: {e}")
+                print(f"Problem with action: {action}")
+                continue
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+                print(f"Problem with action: {action}")
+                continue
+
+        return successor_states
+    '''
+
+    def generate_successor_states(self, current_state):
+        """
+        Generate all possible successor states given the current state by applying valid actions.
+        :param current_state: The current state of the system.
+        :return: A generator yielding tuples of (next_state, action, cost).
+        """
+        valid_action_combinations = self.generate_all_valid_actions()
+        for actions in valid_action_combinations:
+            new_state = copy.deepcopy(current_state) 
+            for action in actions:
+                action.apply(self.problem, new_state)
+            yield new_state, actions, 1  # Assuming each action has a cost of 1 for now
+
+
+
+    def advance_state(self, action: Action):
+        """
+        Advance the state by applying the given action, updating the current state.
+        :param action: The action to be applied to advance the state.
+        :return: None
+        """
+        if self.validate_action(action):
+            self.apply_action(action, self.current_state)
+        else:
+            raise ValueError("Invalid action attempted to be applied to the current state.")
+
+    def apply_environment_steps(self):
         """
         Apply an effect to the state.
         """
