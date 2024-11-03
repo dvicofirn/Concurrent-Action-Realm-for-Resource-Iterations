@@ -1,5 +1,5 @@
-from CARRIRealm import CARRIProblem, CARRIState
 from typing import List
+from CARRI.realm import Problem, State
 import operator
 
 operatorStringMap = {
@@ -103,7 +103,7 @@ class ValueIndexNode(ExpressionNode):
     def __str__(self):
         return "var: "+ str(self.variableName) + " at " +str(self.index) + " "
 
-    def evaluate(self, problem: CARRIProblem, state: CARRIState):
+    def evaluate(self, problem: Problem, state: State):
         return problem.get_value(state, self.variableName, self.index)
 
     def copies(self, params: List):
@@ -122,7 +122,7 @@ class ValueNode(ExpressionNode):
     def __str__(self):
         return "var: "+ str(self.variableName) + " at (" +str(self.expression) + ") "
 
-    def evaluate(self, problem: CARRIProblem, state: CARRIState):
+    def evaluate(self, problem: Problem, state: State):
         return problem.get_value(state, self.variableName, self.expression.evaluate(problem, state))
 
     def copies(self, params: List):
@@ -140,7 +140,7 @@ class ExistingExpressionNode(ExpressionNode):
         self.expression = expression
     def __str__(self):
         return "exists: "+ str(self.entityIndex) + " at (" +str(self.expression) + ") "
-    def evaluate(self, problem: CARRIProblem, state: CARRIState):
+    def evaluate(self, problem: Problem, state: State):
         return self.expression.evaluate(problem, state) in problem.get_entity_ids(state, self.entityIndex)
 
     def copies(self, params: List):
@@ -173,7 +173,7 @@ class OperatorNode(ExpressionNode):
         return all(expression.applicable() for expression in self.operands)
 
 class Update(Copies):
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         raise NotImplementedError("Must be implemented by subclasses")
 
     def copies(self, params: List):
@@ -190,7 +190,7 @@ class ConstUpdate(Update):
     def __str__(self):
         return "const update: " + str(self.variableName) + " <- " + str(self.const) + " at " + str(self.index) + " "
 
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         problem.set_value(state, self.variableName, self.index, self.const)
 
     def copies(self, params: List):
@@ -208,7 +208,7 @@ class ExpressionIndexUpdate(Update):
         return ("exp idx update: " + str(self.variableName) + " <- ("
                 + str(self.expression) + ") at " + str(self.index) + " ")
 
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         problem.set_value(state, self.variableName, self.index, self.expression.evaluate(problem, state))
 
     def copies(self, params: List):
@@ -224,7 +224,7 @@ class ExpressionRemoveUpdate(Update):
     def __str__(self):
         return "remove from: " + str(self.entityIndex) + " <- (" + str(self.expression) + ") "
 
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         problem.remove_entity(state, self.entityIndex, self.expression.evaluate(problem, state))
 
     def copies(self, params: List):
@@ -241,7 +241,7 @@ class ExpressionAddUpdate(Update):
         return ("add to: " + str(self.entityIndex) + " <- ("
                 + str([expression for expression in self.expressions]) + ") ")
 
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         problem.add_entity(state, self.entityIndex,
                            *[expression.evaluate(problem, state) for expression in self.expressions])
 
@@ -261,7 +261,7 @@ class ExpressionReplaceUpdate(Update):
         return ("replace in: " + str(self.entityIndex) + " instead (" + str(self.expressionId) + ") <- ("
                 + str([expression for expression in self.expressions]) + ") ")
 
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         problem.replace_entity(state, self.entityIndex,
                                self.expressionId.evaluate(problem, state),
                                *[expr.evaluate(problem, state) for expr in self.expressions])
@@ -283,7 +283,7 @@ class ExpressionUpdate(Update):
         return ("exp update: " + str(self.variableName) + " at (" + str(self.expressionIndex) + ") <- ("
                 + str(self.expressionValue) + ") ")
 
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         problem.set_value(state, self.variableName,
                           self.expressionIndex.evaluate(problem, state),
                           self.expressionValue.evaluate(problem, state))
@@ -303,7 +303,7 @@ class ParameterUpdate(Update):
     def __str__(self):
         return "par update: " + str(self.parameter) + ") <- (" + str(self.expression) + ") "
 
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         self.parameter.updateParam(self.expression.evaluate(problem, state))
 
     def copies(self, params: List):
@@ -322,7 +322,7 @@ class CaseUpdate(Update):
         return ("case by (" + str(self.condition) + ") updates (" + str([exp for exp in self.updates])+ ") otherwise ("
                 + str([exp for exp in self.elseUpdates]) + ") ")
 
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         if self.condition.evaluate(problem, state):
             for update in self.updates:
                 update.apply(problem, state)
@@ -350,7 +350,7 @@ class AllUpdate(Update):
         return ("all " + str(self.entityIndex) + " by (" + str(self.condition)
                 + ") updates (" + str([exp for exp in self.updates]) + ") ")
 
-    def apply(self, problem: CARRIProblem, state: CARRIState):
+    def apply(self, problem: Problem, state: State):
         if self.condition is None:
             for entity in problem.get_entity_ids(state, self.entityIndex):
                 self.parameter.updateParam(entity)

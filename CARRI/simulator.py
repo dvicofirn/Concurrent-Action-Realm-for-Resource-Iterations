@@ -1,5 +1,5 @@
-from CARRIAction import ActionProducer, ActionStringRepresentor
-class CARRISimulator:
+from CARRI.action import ActionProducer, ActionStringRepresentor
+class Simulator:
     def __init__(self, problem, actionGenerators, evnSteps, iterStep, entities):
         self.problem = problem
         self.actionProducer = ActionProducer(actionGenerators)
@@ -7,6 +7,9 @@ class CARRISimulator:
         self.evnSteps = evnSteps
         self.iterSteps = iterStep
         self.entities = entities
+
+    def getState(self):
+        return self.problem.copyState()
 
     def validate_action(self, problem, state, action):
         """

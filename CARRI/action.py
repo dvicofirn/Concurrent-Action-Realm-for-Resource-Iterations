@@ -1,7 +1,7 @@
-from copy import copy
-from CARRIRealm import CARRIProblem, CARRIState
-from CARRILogic import ExpressionNode, ValueParameterNode, Update, CostExpression
 from typing import List, Iterable
+from copy import copy
+from CARRI.realm import Problem, State
+from CARRI.expression import ExpressionNode, ValueParameterNode, Update, CostExpression
 
 
 class Step:
@@ -168,7 +168,7 @@ class ActionProducer:
         return allActions
 
     def assign_parameters_recursive(self, actionGenerator: ActionGenerator,
-                                    problem: CARRIProblem, state: CARRIState,
+                                    problem: Problem, state: State,
                                     paramIndex: int, actions: List[Action]):
         if paramIndex >= len(actionGenerator.params):
             # All parameters are assigned, create and validate action
@@ -203,7 +203,7 @@ class ActionProducer:
         parameterNode.updateParam(None)
 
     def filter_parameter_values(self, actionGenerator: ActionGenerator,
-                                problem: CARRIProblem, state: CARRIState,
+                                problem: Problem, state: State,
                                 paramIndex: int, possibleValues: Iterable):
         filtered_values = []
         parameterNode = actionGenerator.paramExpressions[paramIndex]

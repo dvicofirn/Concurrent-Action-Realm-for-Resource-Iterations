@@ -1,4 +1,4 @@
-from CARRIRealm import CARRIProblem, CARRIState, CARRISimulator
+from CARRI.realm import Problem, State, CARRISimulator
 
 class ExpressionNode:
     def apply(self, params):
@@ -18,7 +18,7 @@ class ValueNode(ExpressionNode):
         self.variableName = variableName
     def apply(self, params):
         self.index = params
-    def evaluate(self, problem: CARRIProblem, state: CARRIState):
+    def evaluate(self, problem: Problem, state: State):
         # Retrieve variable value from problem or state if it's a variable name
         return problem.get_value(state, self.variableName, self.index)
 
@@ -42,7 +42,7 @@ class OperatorNodeUnUsed(ExpressionNode):
         return self.operator(*evaluated_operands)
 
 class Update:
-    def apply(self, problem: CARRIProblem, state: CARRIState, *params):
+    def apply(self, problem: Problem, state: State, *params):
         raise NotImplementedError("Must be implemented by subclasses")
 
 class ConstUpdate(Update):
@@ -50,7 +50,7 @@ class ConstUpdate(Update):
         self.variableName = variableName
         self.const = const
 
-    def apply(self, problem: CARRIProblem, state: CARRIState, *params):
+    def apply(self, problem: Problem, state: State, *params):
         problem.set_value(state, self.variableName, params[0], self.const)
 
 class ExpressionUpdate(Update):
@@ -58,7 +58,7 @@ class ExpressionUpdate(Update):
         self.variableName = variableName
         self.expression = expression
 
-    def apply(self, problem: CARRIProblem, state: CARRIState, *params):
+    def apply(self, problem: Problem, state: State, *params):
         self.expression.apply(params)
         problem.set_value(state, self.variableName, params[0], self.expression.evaluate(problem, state))
 
@@ -68,7 +68,7 @@ class CaseUpdate(Update):
         self.updates = updates
         self.elseUpdates = elseUpdates if elseUpdates else []
 
-    def apply(self, problem: CARRIProblem, state: CARRIState, *params):
+    def apply(self, problem: Problem, state: State, *params):
         self.condition.apply(params)
         if self.condition.evaluate(problem, state):
             for update in self.updates:
@@ -83,7 +83,7 @@ class AllUpdate(Update):
         self.updates = updates
         self.condition = condition if condition else None
 
-    def apply(self, problem: CARRIProblem, state: CARRIState, *params):
+    def apply(self, problem: Problem, state: State, *params):
         for parameter in problem.get_variable(state, self.variableName):
             params = (parameter,) + params
             if self.condition is not None:

@@ -146,10 +146,11 @@ class Planner:
 # Example usage
 # Proper instance creation for problem and simulator
 if __name__ == "__main__":
-    from CARRIRealm import CARRIProblem, CARRISimulator
+    from CARRI.realm import Problem
+    from CARRI.simulator import Simulator
     
-    problem = CARRIProblem()  # Replace with proper initialization
-    simulator = CARRISimulator()  # Replace with proper initialization
+    problem = Problem()  # Replace with proper initialization
+    simulator = Simulator()  # Replace with proper initialization
     init_time = 5.0
     iter_t = 1.0
 

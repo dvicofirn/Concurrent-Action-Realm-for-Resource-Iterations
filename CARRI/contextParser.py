@@ -1,5 +1,5 @@
-from CARRILogic import *
-from CARRILogicParser import LogicParser
+from CARRI.expression import *
+from CARRI.expressionParser import ExpressionParser
 class ContextParser:
     def __init__(self, parameters, paramExpressions, parsedEntities):
         self.parameters = parameters
@@ -17,7 +17,7 @@ class ContextParser:
 
     def parse_expression(self, expression: str, parameters: List[str],
                          paramExpressions: List[ParameterNode]) -> ExpressionNode:
-        parser = LogicParser(expression, parameters, paramExpressions, self.parsedEntities)
+        parser = ExpressionParser(expression, parameters, paramExpressions, self.parsedEntities)
         expr_node = parser.parse_expression()
         return expr_node
 
@@ -165,7 +165,7 @@ class ContextParser:
             raise SyntaxError(f"Invalid update syntax: {update_str}")
         lhs_str, rhs_str = map(str.strip, update_str.split(':', 1))
         # Parse LHS (should result in ValueNode or ValueIndexNode)
-        lhs_parser = LogicParser(lhs_str, parameters, paramExpressions, self.parsedEntities)
+        lhs_parser = ExpressionParser(lhs_str, parameters, paramExpressions, self.parsedEntities)
         lhs_node = lhs_parser.parse_primary()
         # Parse RHS as an expression
         rhs_node = self.parse_expression(rhs_str, parameters, paramExpressions)

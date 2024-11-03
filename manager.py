@@ -1,30 +1,33 @@
 import time
 from planner import Planner
+from business import Business
 
 class Manager:
-    def __init__(self, simulator, init_time, iter_t, **planner_kwargs):
+    def __init__(self, simulator, iterations, init_time, iter_time, **planner_kwargs):
         """
         :param problem: An instance of CARRIProblem
         :param simulator: An instance of CARRISimulator
         :param init_time: float, maximum time for planner initiation
         :param iter_t: float, time limit per iteration for planning
         """
-        self.simulator = simulator
         self.init_time = init_time
-        self.iter_t = iter_t
-        self.planner = Planner(simulator.problem, simulator, init_time, iter_t, **planner_kwargs)
-        self.execution_start_time = None
+        self.iter_time = iter_time
+        self.business = Business(simulator, iterations)
+        self.planner = Planner(init_time, iter_time, **planner_kwargs)
 
-    def start_planning(self):
+    def run(self):
         """
-        Start the planning process with an initiation time limit.
+        Init the planner with problem, execute plan for each iteration.
         """
         start_time = time.time()
-        self.execution_start_time = start_time + self.init_time
-
+        self.planner.init_plan(self.simulator)
+        end_time = time.time()
+        if end_time - start_time > self.init_time:
+            raise Exception("Init time limit exceeded")
         # Initiate plan iteration within the init time limit
-        while time.time() < self.execution_start_time and not self.problem.is_solved(self.planner.current_state):
+        while self.business.canAdvance():
             self.execute_iteration()
+        print("Executed plan with total cost of " + self.business.cost)
 
     def execute_iteration(self):
         """
@@ -33,20 +36,11 @@ class Manager:
         iteration_start = time.time()
 
         # Call generate_plan, respecting iteration time limit
-        if time.time() - iteration_start < self.iter_t:
-            self.planner.generate_plan()
-            self.planner.execute_plan()
+        if time.time() - iteration_start > self.iter_time:
+            plan = self.planner.generate_plan(self.business.getState())
+            self.business.advanceIteration(plan) # Raises exception
 
-        # Delay to ensure we’re within the iteration time limit
         elapsed_time = time.time() - iteration_start
-        if elapsed_time < self.iter_t:
-            time.sleep(self.iter_t - elapsed_time)
-
-    def run(self):
-        """
-        Runs the manager’s planning and execution in controlled iterations.
-        """
-        self.start_planning()
-        while not self.problem.is_solved(self.planner.current_state):
-            self.execute_iteration()
+        if elapsed_time > self.iter_time:
+            raise Exception('Iteration time limit exceeded')
 

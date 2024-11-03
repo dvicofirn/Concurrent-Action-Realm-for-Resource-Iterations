@@ -96,9 +96,10 @@ EnvSteps:
 Storage: 
 	Cost:
 		NewVal c : 0
-		All (pack - Package): #Fancy way to say "for req in Request"
-			c : c + 2
+		All (pack - Package):
+			c : c + 10
 		End All
+		All (req - Request)
 		c
 End EnvStep
 End EnvSteps

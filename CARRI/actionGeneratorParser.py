@@ -1,7 +1,7 @@
 from typing import Dict
-from CARRIAction import ActionGenerator
-from CARRILogic import *
-from CARRIContextParser import ContextParser
+from CARRI.action import ActionGenerator
+from CARRI.expression import *
+from CARRI.contextParser import ContextParser
 
 class ActionGeneratorParser:
     def __init__(self, parsedActions: Dict, parsedEntities: Dict,

@@ -1,5 +1,5 @@
 import re
-from CARRILogic import *
+from CARRI.expression import *
 
 def tokenize(expression_str):
     token_specification = [
@@ -61,7 +61,7 @@ operator_map = {
     '@': operator.getitem
 }
 
-class LogicParser:
+class ExpressionParser:
     def __init__(self, expression: str, parameters: List[str], paramExpressions: List[ParameterNode], parsedEntities):
         self.tokens = tokenize(expression)
         self.position = 0

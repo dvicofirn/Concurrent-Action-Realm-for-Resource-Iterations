@@ -1,14 +1,14 @@
 import re
 from typing import List, Tuple, Dict, Set
-from CARRIActionLinesParser import parse_action_segments, parse_action_header, parse_segment
-from CARRIProblemParser import CARRIProblemParser
-from ActionGeneratorParser import ActionGeneratorParser
-from CARRIStepsParser import EnvStepParser, IterParser
-from CARRIRealm import CARRIProblem
-from CARRISimulator import CARRISimulator
+from CARRI.actionLinesParser import parse_action_segments, parse_action_header, parse_segment
+from CARRI.problemParser import CARRIProblemParser
+from CARRI.actionGeneratorParser import ActionGeneratorParser
+from CARRI.stepsParser import EnvStepParser, IterParser
+from CARRI.realm import Problem
+from CARRI.simulator import Simulator
 
 
-class CARRITranslator:
+class Translator:
     def translate(self, carriDomainPath, carriProblemPath) -> tuple:
         self.domainFile = self.read_file(carriDomainPath)
         self.problemFile = self.read_file(carriProblemPath)
@@ -47,11 +47,11 @@ class CARRITranslator:
                                             translatedSections["Variables"])
         initial_values, iterations = problem_parser.parse()
 
-        problem = CARRIProblem(initial_values, translatedSections["Variables"], translatedSections["Entities"])
-        simulator = CARRISimulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
-        return simulator, iterations
+        problem = Problem(initial_values, translatedSections["Variables"], translatedSections["Entities"])
+        simulator = Simulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
+        #return simulator, iterations
 
-        """print(problem.initState)
+        print(problem.initState)
         # problem.set_value(problem.initState, "droneCharge", 3, 5)
         # print(problem.initState)
         # Todo: Need to create Simulator, return Simulator, problem and Iterations to Manager.
@@ -83,7 +83,7 @@ class CARRITranslator:
             for var_name, values in iteration.items():
                 print(f"  {var_name}: {values}")
 
-        return translatedSections, initial_values"""
+        return translatedSections, initial_values
 
     def read_file(self, file_path):
         """

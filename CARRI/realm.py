@@ -2,7 +2,7 @@ from typing import Iterable, List, Dict, Tuple
 from copy import copy
 
 
-class CARRIState:
+class State:
     def __init__(self, variables: Tuple[List], items: Tuple[Dict]):
         self.variables = variables
         self.items = items
@@ -28,8 +28,8 @@ class CARRIState:
         It works.
         Manual copy instead of deepcopy - hopefully it's faster.
         """
-        return CARRIState(tuple(var.copy() for var in self.variables),
-                          tuple({id: copy(item) for id, item in entity.items()} for entity in self.items))
+        return State(tuple(var.copy() for var in self.variables),
+                     tuple({id: copy(item) for id, item in entity.items()} for entity in self.items))
 
     def get_variable_value(self, varIndex, index):
         return self.variables[varIndex][index]
@@ -67,7 +67,7 @@ class CARRIState:
 
 
 
-class CARRIProblem:
+class Problem:
     def __init__(self, variables: Dict,variablesInfo: Dict, entities: Dict):
         """
         This doesn't look fancy at all, and it might not be so easy
@@ -134,28 +134,28 @@ class CARRIProblem:
         varbleTups = tuple(varbleTups)
         itemTups = tuple(itemTups)
         self.ranges = tuple([ranges[i] for i in range(len(ranges))])
-        self.initState = CARRIState(varbleTups, itemTups)
+        self.initState = State(varbleTups, itemTups)
         self.packagesIndexes = tuple(self.packagesIndexes)
         self.requestsIndexes = tuple(self.requestsIndexes)
 
-    def get_entity_ids(self, state: CARRIState, entityIndex: int) -> Iterable[int]:
+    def get_entity_ids(self, state: State, entityIndex: int) -> Iterable[int]:
         if self.ranges[entityIndex] is not None:
             return self.ranges[entityIndex]
         return state.get_items_ids(self.entities[entityIndex])
 
-    def get_len_packages(self, state: CARRIState):
+    def get_len_packages(self, state: State):
         count = 0
         for item in self.packagesIndexes:
             count += state.get_len(item)
         return count
 
-    def get_len_requests(self, state: CARRIState):
+    def get_len_requests(self, state: State):
         count = 0
         for item in self.requestsIndexes:
             count += state.get_len(item)
         return count
 
-    def add_entity(self, state: CARRIState, entityIndex: int, *params):
+    def add_entity(self, state: State, entityIndex: int, *params):
         entity = self.entities[entityIndex]
         maxId = self.entitiesMaxId[entity] + 1
         self.entitiesMaxId = maxId
@@ -164,14 +164,14 @@ class CARRIProblem:
         else:
             state.add_list_entity(entity, maxId, *params)
 
-    def remove_entity(self, state: CARRIState, entityIndex: int, entityId):
+    def remove_entity(self, state: State, entityIndex: int, entityId):
         state.remove_entity(self.entities[entityIndex], entityId)
 
-    def replace_entity(self, state: CARRIState, entityIndex: int,
+    def replace_entity(self, state: State, entityIndex: int,
                        entityId: int, *newVals):
         state.replace_entity(self.entities[entityIndex], entityId, *newVals)
 
-    def get_value(self, state: CARRIState, variableName: str, index: int):
+    def get_value(self, state: State, variableName: str, index: int):
         if variableName in self.constants:
             return self.constants[variableName][index]
         else:
@@ -182,7 +182,7 @@ class CARRIProblem:
                                              self.itemKeysPositions[variableName][1],
                                              index)
 
-    def set_value(self, state: CARRIState, variableName, index, value):
+    def set_value(self, state: State, variableName, index, value):
         """
         Set the value of a variable by name.
         """
