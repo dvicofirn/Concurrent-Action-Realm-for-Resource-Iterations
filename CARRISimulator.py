@@ -1,6 +1,8 @@
-from CARRIAction import ActionProducer, ActionStringRepresentor, ActionGenerator, Action
+from CARRIAction import ActionProducer, ActionStringRepresentor, ActionGenerator, Action, ValueParameterNode
 from CARRIRealm import CARRIProblem
 from typing import List, Dict
+from collections import defaultdict
+import copy
 
 class CARRISimulator:
     def __init__(self, problem: CARRIProblem, actionGenerators: List[ActionGenerator], evnSteps, iterStep, entities):
@@ -50,7 +52,6 @@ class CARRISimulator:
         if partial_assignment is None:
             partial_assignment = []
 
-        # Base case: if we have assigned actions to all vehicles and entities, return the current assignment
         if not vehicle_keys:
             return [partial_assignment]
 
@@ -61,7 +62,6 @@ class CARRISimulator:
 
         def recurse_entity_actions(entity_index, current_partial_assignment):
             if entity_index >= len(entity_ids):
-                # If all entities of the current vehicle type have been assigned actions, move to the next vehicle type
                 valid_combinations.extend(self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys[1:], current_partial_assignment))
                 return
 
@@ -70,7 +70,6 @@ class CARRISimulator:
 
             for action in actions_list:
                 if self.validate_action(action):
-                    # Recurse to assign the next entity
                     recurse_entity_actions(entity_index + 1, current_partial_assignment + [action])
 
         recurse_entity_actions(0, partial_assignment)
@@ -83,7 +82,8 @@ class CARRISimulator:
         """
         all_valid_actions = self.generate_all_valid_actions_seperatly()
         vehicle_keys = list(all_valid_actions.keys())
-        return self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
+        all_combinations = self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
+        return all_combinations
 
     def validate_action(self, action: Action):
         """
@@ -91,15 +91,34 @@ class CARRISimulator:
         :param action: The action to be validated.
         :return: True if the action is valid, False otherwise.
         """
-        return action.validate(self.problem, self.current_state)
+        try:
+            is_valid = action.validate(self.problem, self.current_state)
+            print(f"Validation for action {action}: {is_valid}")
+            return is_valid
+        except KeyError as e:
+            print(f"KeyError during validation of action {action}: {e}")
+            return False
+        except Exception as e:
+            print(f"Unexpected error during validation of action {action}: {e}")
+            return False
 
-    def apply_action(self, action: Action):
+    def apply_action(self, action: Action, state):
         """
-        Apply the action's effects to the current state.
+        Apply the action's effects to the given state.
         :param action: The action to be applied.
+        :param state: The state on which the action is applied.
         :return: None
         """
-        action.apply(self.problem, self.current_state)
+        try:
+            print(f"Applying action: {action}")  # Debug statement
+            action.apply(self.problem, state)
+            print(f"Action applied successfully: {action}")
+        except KeyError as e:
+            print(f"KeyError while applying action {action}: {e}")
+            raise
+        except Exception as e:
+            print(f"Unexpected error while applying action {action}: {e}")
+            raise
 
     def generate_successor_states(self):
         """
@@ -108,11 +127,22 @@ class CARRISimulator:
         """
         successor_states = []
         valid_action_combinations = self.generate_all_valid_actions()
+
         for actions in valid_action_combinations:
-            new_state = self.current_state.copy()
-            for action in actions:
-                action.apply(self.problem, new_state)
-            successor_states.append(new_state)
+            new_state = copy.deepcopy(self.current_state)  # Use deepcopy to ensure state isolation
+            try:
+                for action in actions:
+                    self.apply_action(action, new_state)
+                successor_states.append(new_state)
+            except KeyError as e:
+                print(f"KeyError encountered while applying actions: {e}")
+                print(f"Problem with action: {action}")
+                continue
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+                print(f"Problem with action: {action}")
+                continue
+
         return successor_states
 
     def advance_state(self, action: Action):
@@ -122,7 +152,7 @@ class CARRISimulator:
         :return: None
         """
         if self.validate_action(action):
-            self.apply_action(action)
+            self.apply_action(action, self.current_state)
         else:
             raise ValueError("Invalid action attempted to be applied to the current state.")
 
@@ -132,4 +162,8 @@ class CARRISimulator:
         :return: None
         """
         for step in self.evnSteps:
-            step.apply(self.problem, self.current_state)
+            try:
+                step.apply(self.problem, self.current_state)
+            except Exception as e:
+                print(f"Error while applying environment step: {e}")
+                continue

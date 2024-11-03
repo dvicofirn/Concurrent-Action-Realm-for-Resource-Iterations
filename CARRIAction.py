@@ -13,7 +13,7 @@ class Step:
         return "Step effects: " + str(self.effects)
 
     def apply(self, problem, state):
-        for effect in self.effects:
+        for effect in reversed(self.effects):
             effect.apply(problem, state)
 
 class EnvStep(Step):
