@@ -16,6 +16,7 @@ class Step:
         for effect in reversed(self.effects):
             effect.apply(problem, state)
 
+
 class EnvStep(Step):
     def __init__(self, name: str, effects: List[Update], cost: CostExpression):
         super().__init__(effects)
@@ -155,7 +156,8 @@ class ActionProducer:
     def produce_actions(self, problem, state, entityId, entityType):
         allActions = []
         for actionGenerator in self.actionGenerators:
-            s=  actionGenerator.entities[0]
+            if actionGenerator.name == 'CarPick':
+                x = 1
             if actionGenerator.entities[0] == entityType:
                 # Generate all valid actions for the given entity_id
                 actions = []
