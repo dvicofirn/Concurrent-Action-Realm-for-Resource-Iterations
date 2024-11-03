@@ -4,7 +4,7 @@ Entities:
 Location (Location), Car (Vehicle), Package (Package), Request (Request)
 Variables:
 const locAdj MATCH (Location)
-var locStation BOOL (Location)
+const locStation BOOL (Location)
 
 var carLoc INT (Car)
 var carCap INT (Car)
@@ -23,10 +23,11 @@ CarTravel: id - Car, to - Location (Travel)
 		locAdj (carLoc id) ? to
 		carFuel id > locAdj (carLoc id) @ to
 	Effects:
+		carDebt id : locAdj (carLoc id) @ to
+		carFuel id : carFuel id - carDebt id
 		carLoc id : to
-		carFuel id : carFuel id - (locAdj (carLoc id) @ to)
 Cost:
-	locAdj (carLoc id) @ to
+	carDebt id
 End Action
 
 CarWait: id - Car (Wait)
