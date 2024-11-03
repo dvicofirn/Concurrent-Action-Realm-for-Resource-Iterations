@@ -2,14 +2,14 @@ from CARRITranslator import CARRITranslator
 from CARRILogicParser import tokenize
 from CARRIContextParser import ContextParser
 from CARRILogic import ValueParameterNode
-FILEPATH_DOMAIN = "Trucks and Drones Domain.CARRI"
-FILEPATH_PROBLEM = "Trucks and Drones Problem.CARRI"
+FILEPATH_DOMAIN = "Trucks and Drones Problems Folder\Domain.CARRI"
+FILEPATH_PROBLEM = "Trucks and Drones Problems Folder\Problem.CARRI"
 
 def main():
     translator = CARRITranslator()
     segments = translator.translate(FILEPATH_DOMAIN, FILEPATH_PROBLEM)[0]
     x = 1
-    """
+    
     print("---Entities---")
     entities = segments['Entities']
     for entity in entities:
@@ -34,7 +34,7 @@ def main():
         print(envStepsSegment[envSteps])
     print("---IterStep---")
     print(segments["IterStep"])
-    """
+    
 def tokenz(*vals):
     for val in vals:
         print(tokenize(val))

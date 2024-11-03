@@ -49,11 +49,13 @@ class CARRITranslator:
 
         problem = CARRIProblem(initial_values, translatedSections["Variables"], translatedSections["Entities"])
         simulator = CARRISimulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
+        self.printer(translatedSections, actionGenerators, envSteps, initial_values, iterStep, iterations)
         return simulator, iterations
-
-        """print(problem.initState)
-        # problem.set_value(problem.initState, "droneCharge", 3, 5)
-        # print(problem.initState)
+    
+    def printer(self,translatedSections, actionGenerators, envSteps, initial_values, iterStep, iterations):
+        #print(problem.initState)
+        #problem.set_value(problem.initState, "droneCharge", 3, 5)
+        #print(problem.initState)
         # Todo: Need to create Simulator, return Simulator, problem and Iterations to Manager.
         # actionGenerators should be given to simulator
 
@@ -83,7 +85,6 @@ class CARRITranslator:
             for var_name, values in iteration.items():
                 print(f"  {var_name}: {values}")
 
-        return translatedSections, initial_values"""
 
     def read_file(self, file_path):
         """

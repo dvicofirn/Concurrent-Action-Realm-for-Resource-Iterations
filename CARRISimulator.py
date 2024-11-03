@@ -1,150 +1,135 @@
-from CARRIAction import ActionProducer, ActionStringRepresentor, Action
+from CARRIAction import ActionProducer, ActionStringRepresentor, ActionGenerator, Action
+from CARRIRealm import CARRIProblem
+from typing import List, Dict
 
 class CARRISimulator:
-    def __init__(self, problem, actionGenerators, evnSteps, iterStep, entities):
+    def __init__(self, problem: CARRIProblem, actionGenerators: List[ActionGenerator], evnSteps, iterStep, entities):
+        """
+        :param problem: The problem instance containing initial state and data.
+        :param actionGenerators: List of action generators that define how actions are produced.
+        :param evnSteps: Environment steps that need to be applied each iteration.
+        :param iterStep: Iteration step count for simulation advancement.
+        :param entities: List of entities present in the simulation.
+        """
         self.problem = problem
-        self.actionProducer = ActionProducer(actionGenerators)
+        self.ActionProducer = ActionProducer(actionGenerators)
         self.actionStringRepresentor = ActionStringRepresentor(actionGenerators)
+        self.action_generators = actionGenerators
         self.evnSteps = evnSteps
-        self.iterSteps = iterStep
+        self.iterStep = iterStep
         self.entities = entities
+        self.current_state = problem.initState.copy()
 
-    def validate_action(self, problem, state, action):
+    def generate_all_valid_actions_seperatly(self):
         """
-        Validate that all preconditions of the action are met in the given state.
+        Generate all valid actions separately for each vehicle given the current state of the problem.
+        :return: Dictionary of vehicles with each entity's valid actions.
         """
-        for precondition in action['regular preconditions']:
-            if not self.evaluate_condition(problem, state, precondition):
-                return False
-        for precondition in action['conflicting preconditions']:
-            if not self.evaluate_condition(problem, state, precondition):
-                return False
-        return True
+        valid_actions = {}
+        for vehicle_type, entity_info in self.entities.items():
+            entity_type = entity_info[0]
+            if entity_info[1] != 'Vehicle':
+                continue
+            entity_ids = self.problem.get_entity_ids(self.current_state, entity_type)
+            entity_actions = {}
+            for entity_id in entity_ids:
+                actions = self.ActionProducer.produce_actions(self.problem, self.current_state, entity_id, entity_type)
+                entity_actions[entity_id] = actions
+            valid_actions[vehicle_type] = entity_actions
+        return valid_actions
 
-    def revalidate_action(self, problem, state, action):
+    def generate_all_valid_actions_recursive(self, all_valid_actions, vehicle_keys, partial_assignment=None):
         """
-        Revalidate action, checking for possibly conflicting actions.
+        Generate a complete assignment of actions recursively, choosing one valid action for each vehicle instance.
+        Ensure that all chosen actions are compatible with each other.
+        :param all_valid_actions: Dictionary of valid actions for each vehicle type and entity.
+        :param vehicle_keys: List of vehicle types to be processed.
+        :param partial_assignment: The partial assignment of actions validated so far.
+        :return: List of valid combinations of actions for all entities.
         """
-        for precondition in action['conflicting preconditions']:
-            if not self.evaluate_condition(problem, state, precondition):
-                return False
-        return True
+        if partial_assignment is None:
+            partial_assignment = []
 
-    def apply_action(self, problem, state, action):
-        """
-        Apply the action's effects to the state.
-        """
-        for effect in action['effects']:
-            self.apply_effect(problem, state, effect)
+        # Base case: if we have assigned actions to all vehicles and entities, return the current assignment
+        if not vehicle_keys:
+            return [partial_assignment]
 
-    def evaluate_condition(self, problem, state, condition):
-        """
-        Evaluate a condition against the state and problem.
-        """
-        # Implement logic to evaluate different types of conditions
-        condition_type = condition['type']
-        if condition_type == 'comparison':
-            return self.evaluate_comparison(problem, state, condition)
-        elif condition_type == 'existence':
-            return self.evaluate_existence(problem, state, condition)
-        # Add additional condition types as needed
-        return False
+        valid_combinations = []
+        current_vehicle_type = vehicle_keys[0]
+        entity_actions = all_valid_actions[current_vehicle_type]
+        entity_ids = list(entity_actions.keys())
 
-    def evaluate_comparison(self, problem, state, condition):
-        """
-        Evaluate a comparison condition (e.g., >, <, ==) between variables or constants.
-        """
-        left = self.resolve_expression(problem, state, condition['left'])
-        right = self.resolve_expression(problem, state, condition['right'])
-        operator = condition['operator']
+        def recurse_entity_actions(entity_index, current_partial_assignment):
+            if entity_index >= len(entity_ids):
+                # If all entities of the current vehicle type have been assigned actions, move to the next vehicle type
+                valid_combinations.extend(self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys[1:], current_partial_assignment))
+                return
 
-        if operator == '==':
-            return left == right
-        elif operator == '!=':
-            return left != right
-        elif operator == '>':
-            return left > right
-        elif operator == '<':
-            return left < right
-        elif operator == '>=':
-            return left >= right
-        elif operator == '<=':
-            return left <= right
-        return False
+            current_entity_id = entity_ids[entity_index]
+            actions_list = entity_actions[current_entity_id]
 
-    def evaluate_existence(self, problem, state, condition):
-        """
-        Evaluate whether a specific entity exists in the state or problem context.
-        """
-        entity = condition['entity']
-        if entity in state['entities']:
-            return True
-        return False
+            for action in actions_list:
+                if self.validate_action(action):
+                    # Recurse to assign the next entity
+                    recurse_entity_actions(entity_index + 1, current_partial_assignment + [action])
 
-    def resolve_expression(self, problem, state, expression):
-        """
-        Resolve an expression, which could be a variable, constant, or computed value.
-        """
-        if isinstance(expression, str):
-            # Resolve variable names to values in the state
-            return state.get(expression, 0)
-        elif isinstance(expression, (int, float)):
-            return expression
-        # Add logic for more complex expressions if needed
-        return 0
+        recurse_entity_actions(0, partial_assignment)
+        return valid_combinations
 
-    def apply_effect(self, problem, state, effect):
+    def generate_all_valid_actions(self):
         """
-        Apply an effect to the state.
+        Wrapper for generating all valid action combinations using the recursive method.
+        :return: List of valid combinations of actions for all entities.
         """
-        effect_type = effect['type']
-        if effect_type == 'assignment':
-            self.apply_assignment(problem, state, effect)
-        elif effect_type == 'increment':
-            self.apply_increment(problem, state, effect)
-        # Add additional effect types as needed
+        all_valid_actions = self.generate_all_valid_actions_seperatly()
+        vehicle_keys = list(all_valid_actions.keys())
+        return self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
 
-    def apply_assignment(self, problem, state, effect):
+    def validate_action(self, action: Action):
         """
-        Apply an assignment effect, setting a variable to a value.
+        Validate an action by checking its preconditions against the current state.
+        :param action: The action to be validated.
+        :return: True if the action is valid, False otherwise.
         """
-        target = effect['target']
-        value = self.resolve_expression(problem, state, effect['value'])
-        state[target] = value
+        return action.validate(self.problem, self.current_state)
 
-    def apply_increment(self, problem, state, effect):
+    def apply_action(self, action: Action):
         """
-        Apply an increment effect, increasing or decreasing a variable's value.
+        Apply the action's effects to the current state.
+        :param action: The action to be applied.
+        :return: None
         """
-        target = effect['target']
-        increment_value = self.resolve_expression(problem, state, effect['value'])
-        if target in state:
-            state[target] += increment_value
+        action.apply(self.problem, self.current_state)
+
+    def generate_successor_states(self):
+        """
+        Generate all possible successor states given the current state by applying valid actions.
+        :return: List of successor states.
+        """
+        successor_states = []
+        valid_action_combinations = self.generate_all_valid_actions()
+        for actions in valid_action_combinations:
+            new_state = self.current_state.copy()
+            for action in actions:
+                action.apply(self.problem, new_state)
+            successor_states.append(new_state)
+        return successor_states
+
+    def advance_state(self, action: Action):
+        """
+        Advance the state by applying the given action, updating the current state.
+        :param action: The action to be applied to advance the state.
+        :return: None
+        """
+        if self.validate_action(action):
+            self.apply_action(action)
         else:
-            state[target] = increment_value
+            raise ValueError("Invalid action attempted to be applied to the current state.")
 
-    def simulate(self, iterations):
+    def apply_environment_steps(self):
         """
-        Simulate the environment over a series of iterations, applying actions and updating the state.
+        Apply environment steps to the current state of the problem.
+        :return: None
         """
-        current_state = self.problem.initState.copy()
-        for i in range(iterations):
-            print(f"Iteration {i + 1}:")
-            for action in self.action_generators:
-                if self.validate_action(self.problem, current_state, action):
-                    self.apply_action(self.problem, current_state, action)
-            self.apply_environment_steps(current_state)
-            print(f"State after iteration {i + 1}: {current_state}")
-
-    def apply_environment_steps(self, state):
-        """
-        Apply environment steps to the current state, which may include dynamic changes.
-        """
-        for step in self.env_steps:
-            self.apply_effect(self.problem, state, step)
-
-        # Apply iteration step changes if necessary
-        for effect in self.iter_step:
-            self.apply_effect(self.problem, state, effect)
-
-
+        for step in self.evnSteps:
+            step.apply(self.problem, self.current_state)
