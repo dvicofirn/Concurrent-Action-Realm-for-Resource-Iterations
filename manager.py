@@ -15,7 +15,6 @@ class Manager:
         self.business = Business(simulator, iterations)
         self.transitions_per_iteration = transitions_per_iteration
         self.planner = Planner(simulator, init_time, iter_time, transitions_per_iteration, **planner_kwargs)
-        self.planner = Planner(simulator, init_time, iter_time, transitions_per_iteration, **planner_kwargs)
 
     def run(self):
 

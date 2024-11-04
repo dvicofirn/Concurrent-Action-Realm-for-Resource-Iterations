@@ -209,6 +209,7 @@ class Simulator:
 
         return currentQueue
          
+         
 
     def advance_state(self, action: Action):
         """

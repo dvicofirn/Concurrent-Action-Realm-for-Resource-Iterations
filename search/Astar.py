@@ -46,6 +46,7 @@ def a_star_search(simulator: Simulator,
     - A tuple of (List of Steps, final state). Returns the best partial solution found within the time limit.
     """
     start_time = time.time()
+<<<<<<< HEAD
 
     # The open set containing discovered nodes that may need to be (re-)expanded
     open_set = PriorityQueue()
@@ -72,6 +73,27 @@ def a_star_search(simulator: Simulator,
         if all_packages_delivered(current_state):
             return reconstruct_path(simulator, came_from, current_state), current_state
 
+=======
+
+    # The open set containing discovered nodes that may need to be (re-)expanded
+    open_set = PriorityQueue()
+    open_set.put((heuristic(simulator.current_state), simulator.current_state))
+
+    # Dictionary to reconstruct the path
+    came_from: Dict[State, Tuple[State, Step]] = {}
+
+    # Cost from start to a given node
+    g_score = {simulator.current_state: 0}
+
+    while not open_set.empty() and (time.time() - start_time) < time_limit:
+        # Get the node from open set with the lowest f_score value
+        _, current_state = open_set.get()
+
+        # Check if we reached the goal state
+        if all_packages_delivered(current_state):
+            return reconstruct_path(simulator, came_from, current_state), current_state
+
+>>>>>>> 0fef094b5a9254ac355cfd8fb1ba03f0c675d357
         # Generate successors of the current state
         #x = simulator.generate_successors(current_state.copy())
         for next_state, action, cost in simulator.generate_successors(current_state):

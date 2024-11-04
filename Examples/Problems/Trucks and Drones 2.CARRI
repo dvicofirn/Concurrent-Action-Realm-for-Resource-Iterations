@@ -3,6 +3,7 @@ as well as items before or after Start *something*... End *something*
 Start Problem:
 Location: 6
 Drone : 3
+Drone : 3
 Truck: 1
 locType:
 2. 1
@@ -18,6 +19,7 @@ locAdj:
 2, 4
 droneLoc:
 0
+
 
 droneCap: 0
 droneCharge: 10
