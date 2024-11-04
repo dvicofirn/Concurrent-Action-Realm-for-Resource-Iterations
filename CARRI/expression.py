@@ -306,7 +306,7 @@ class ParameterUpdate(Update):
         return "par update: " + str(self.parameter) + ") <- (" + str(self.expression) + ") "
 
     def apply(self, problem: Problem, state: State):
-        self.parameter.updateParam(self.expression.evaluate(problem, state))
+        self.parameter.updateParam(ConstNode(self.expression.evaluate(problem, state)))
 
     def copies(self, params: List):
         """

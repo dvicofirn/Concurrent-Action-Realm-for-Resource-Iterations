@@ -208,7 +208,7 @@ class Simulator:
                 currentQueue[i] = (state, transition, cost)
 
         return currentQueue
-
+         
 
     def advance_state(self, action: Action):
         """

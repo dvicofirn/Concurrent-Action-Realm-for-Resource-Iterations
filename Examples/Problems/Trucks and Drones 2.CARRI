@@ -2,7 +2,7 @@
 as well as items before or after Start *something*... End *something*
 Start Problem:
 Location: 6
-Drone : 14
+Drone : 3
 Truck: 1
 locType:
 2. 1
@@ -18,11 +18,7 @@ locAdj:
 2, 4
 droneLoc:
 0
-3. 0
-2
-3
-8. 1
-10. 1
+
 droneCap: 0
 droneCharge: 10
 #droneBoard: False - this is a comment, droneBoard is "missing" meaning

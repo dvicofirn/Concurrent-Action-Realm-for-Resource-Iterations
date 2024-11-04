@@ -17,7 +17,7 @@ class Planner:
         self.iter_t = iter_t
         # Allow search algorithm and heuristic to be passed for flexibility
 
-        self.heuristic = kwargs.get('heuristic', RequestCountHeuristic(self.simulator.problem))
+        self.heuristic = kwargs.get('heuristic', action_based_delivery_heuristic())
         # Store the search algorithm as a reference, not an instance
         self.search_algorithm_class = kwargs.get('search_algorithm', a_star_search)
         
@@ -38,10 +38,11 @@ class Planner:
         try:
             # Initialize the search algorithm here
             search = self.search_algorithm_class(self.simulator, self.heuristic, self.iter_t)
+            print(search)
             return search
         
         except Exception as e:
-            logging.error(f"Error during planning: {e}")
+            logging.error(f"Error during planning: {e}", exc_info=True)
 
     def run_iteration(self, init_state):
         """
