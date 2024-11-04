@@ -1,11 +1,10 @@
 from queue import PriorityQueue
 from typing import Callable, List, Tuple, Dict
-from CARRI.realm import State, Heuristic  # Assuming this manages the problem state
+from CARRI.realm import State  # Assuming this manages the problem state
 from CARRI.action import Step  # Assuming steps/actions are defined in this module
 import time
 import logging
 from CARRI.simulator import Simulator
-
 
 def reconstruct_path(simulator, came_from: Dict[State, State], current: State) -> List[Step]:
     """
@@ -32,7 +31,6 @@ def reconstruct_path(simulator, came_from: Dict[State, State], current: State) -
         i += 1
     return total_path
 
-
 def a_star_search(simulator: Simulator,
                   heuristic: Heuristic,
                   time_limit: float) -> Tuple[List[Step], State]:
@@ -51,7 +49,7 @@ def a_star_search(simulator: Simulator,
 
     # The open set containing discovered nodes that may need to be (re-)expanded
     open_set = PriorityQueue()
-    open_set.put((heuristic.evaluate(simulator.current_state), simulator.current_state))
+    open_set.put((heuristic(simulator.current_state), simulator.current_state))
 
     # Dictionary to reconstruct the path
     came_from: Dict[State, Tuple[State, Step]] = {}
@@ -66,10 +64,17 @@ def a_star_search(simulator: Simulator,
         # Check if we reached the goal state
         if all_packages_delivered(current_state):
             return reconstruct_path(simulator, came_from, current_state), current_state
+    while not open_set.empty() and (time.time() - start_time) < time_limit:
+        # Get the node from open set with the lowest f_score value
+        _, current_state = open_set.get()
+
+        # Check if we reached the goal state
+        if all_packages_delivered(current_state):
+            return reconstruct_path(simulator, came_from, current_state), current_state
 
         # Generate successors of the current state
-        triple = simulator.generate_successors(current_state)
-        for next_state, action, cost in triple:
+        #x = simulator.generate_successors(current_state.copy())
+        for next_state, action, cost in simulator.generate_successors(current_state):
             tentative_g_score = g_score[current_state] + cost
 
             # If we found a better path to the next_state
@@ -78,13 +83,12 @@ def a_star_search(simulator: Simulator,
                 g_score[next_state] = tentative_g_score
                 f_score = tentative_g_score + heuristic.evaluate(next_state)
                 open_set.put((f_score, next_state))
-
-        print(f"\n\nso far : {tentative_g_score}, {f_score}")
+        
+        print("\n\nso far :")
         reconstruct_path(simulator, came_from, current_state)
 
     # If open set is empty or time limit is exceeded, return the best path found so far
     return reconstruct_path(simulator, came_from, current_state), current_state
-
 
 def all_packages_delivered(state: State) -> bool:
     """
