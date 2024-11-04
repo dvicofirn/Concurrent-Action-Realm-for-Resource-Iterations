@@ -2,6 +2,7 @@ from CARRI.action import ActionProducer, ActionStringRepresentor, Action
 from CARRI.realm import  Problem
 import copy
 from collections import deque
+from itertools import product
 class Simulator:
     def __init__(self, problem: Problem, actionGenerators, evnSteps, iterStep, entities):
         self.problem = problem
@@ -141,6 +142,7 @@ class Simulator:
     '''
 
     def generate_successors(self, state):
+        self.currentState = state.copy()
         currentQueue = deque()
         currentQueue.append((state.copy(), [], 0))
         validSeperates = self.generate_all_valid_seperate_actions()
@@ -154,13 +156,17 @@ class Simulator:
                     for action in vehicleIdActions:
                         if action.reValidate(self.problem, self.current_state):
                             nextState = currentState.copy()
-                            action.apply(self.problem, nextState)
+                            try:
+                                action.apply(self.problem, nextState)
+                            except:
+                                action.apply(self.problem, nextState)
                             nextTransition = transition + [action]
                             nextCost = cost + action.get_cost(self.problem, nextState)
                             nextQueue.append((nextState, nextTransition, nextCost))
 
                 currentQueue = nextQueue
 
+        
         for envStep in self.evnSteps:
             # Iterate through each item in the deque by index
             for i in range(len(currentQueue)):
@@ -171,9 +177,10 @@ class Simulator:
                 cost += envStep.get_cost(self.problem, state)  # Adjust according to envStep logic
                 # Replace the tuple in-place
                 currentQueue[i] = (state, transition, cost)
-
+        
+        #x = list(product(validSeperates[1], validSeperates[2]))
         return currentQueue
-
+         
 
     def advance_state(self, action: Action):
         """
