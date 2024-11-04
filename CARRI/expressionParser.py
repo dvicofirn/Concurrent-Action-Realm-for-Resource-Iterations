@@ -70,10 +70,10 @@ class ExpressionParser:
         self.operator_map = operator_map  # Ensure operator_map is accessible
         self.parsedEntities = parsedEntities
 
-    def parse_expression(self):
+    def parse_expression(self) -> ExpressionNode:
         return self.parse_or_expression()
 
-    def parse_or_expression(self):
+    def parse_or_expression(self) -> ExpressionNode:
         node = self.parse_and_expression()
         while self.match('KEYWORD', 'or'):
             self.consume('KEYWORD', 'or')
@@ -81,7 +81,7 @@ class ExpressionParser:
             node = OperatorNode(self.operator_map['or'], node, right)
         return node
 
-    def parse_and_expression(self):
+    def parse_and_expression(self) -> ExpressionNode:
         node = self.parse_not_expression()
         while self.match('KEYWORD', 'and'):
             self.consume('KEYWORD', 'and')
@@ -89,7 +89,7 @@ class ExpressionParser:
             node = OperatorNode(self.operator_map['and'], node, right)
         return node
 
-    def parse_not_expression(self):
+    def parse_not_expression(self) -> ExpressionNode:
         if self.match('KEYWORD', 'not'):
             self.consume('KEYWORD', 'not')
             operand = self.parse_not_expression()
@@ -98,7 +98,7 @@ class ExpressionParser:
         else:
             return self.parse_comparison()
 
-    def parse_comparison(self):
+    def parse_comparison(self) -> ExpressionNode:
         node = self.parse_add_expr()
         while self.match('OP', ('=', '!=', '>', '<', '>=', '<=', '?')):
             op_token = self.consume('OP')
@@ -107,7 +107,7 @@ class ExpressionParser:
             node = OperatorNode(operator_fn, node, right)
         return node
 
-    def parse_add_expr(self):
+    def parse_add_expr(self) -> ExpressionNode:
         node = self.parse_mul_expr()
         while self.match('OP', ('+', '-')):
             op_token = self.consume('OP')
@@ -116,7 +116,7 @@ class ExpressionParser:
             node = OperatorNode(operator_fn, node, right)
         return node
 
-    def parse_mul_expr(self):
+    def parse_mul_expr(self) -> ExpressionNode:
         node = self.parse_unary_expr()
         while self.match('OP', ('*', '/')):
             op_token = self.consume('OP')
@@ -125,7 +125,7 @@ class ExpressionParser:
             node = OperatorNode(operator_fn, node, right)
         return node
 
-    def parse_unary_expr(self):
+    def parse_unary_expr(self) -> ExpressionNode:
         if self.match('OP', ('+', '-')):
             op_token = self.consume('OP')
             operator_fn = self.operator_map[op_token[1]]
@@ -135,7 +135,7 @@ class ExpressionParser:
         else:
             return self.parse_postfix_expr()
 
-    def parse_postfix_expr(self):
+    def parse_postfix_expr(self) -> ExpressionNode:
         node = self.parse_primary()
         while True:
             if self.match('OP', '@'):
@@ -147,7 +147,7 @@ class ExpressionParser:
                 break
         return node
 
-    def parse_primary(self):
+    def parse_primary(self) -> ExpressionNode:
         if self.match('NUMBER'):
             value = self.consume('NUMBER')[1]
             return ConstNode(value)
@@ -165,7 +165,7 @@ class ExpressionParser:
         else:
             raise SyntaxError('Expected expression at token position {}'.format(self.position))
 
-    def parse_variable_or_parameter_or_exists(self):
+    def parse_variable_or_parameter_or_exists(self) -> ExpressionNode:
         id_token = self.consume('ID')
         name = id_token[1]
 
@@ -191,7 +191,7 @@ class ExpressionParser:
             # Not an 'exists' condition, proceed as before
             return self.parse_variable_or_parameter_continued(name)
 
-    def parse_variable_or_parameter_continued(self, name):
+    def parse_variable_or_parameter_continued(self, name) -> ExpressionNode:
         if name in self.parameters:
             # It's a parameter
             index = self.parameters.index(name)
@@ -233,14 +233,14 @@ class ExpressionParser:
         else:
             return ValueNode(variable_name, index_expr)
 
-    def is_operator_ahead(self):
+    def is_operator_ahead(self) -> bool:
         # Check if an operator is ahead
         if self.position < len(self.tokens):
             token_kind, token_value = self.tokens[self.position]
             return token_kind == 'OP' or (token_kind == 'KEYWORD' and token_value in self.operator_map)
         return False
 
-    def is_end_of_expression(self):
+    def is_end_of_expression(self) -> bool:
         # Check if end of tokens
         return self.position >= len(self.tokens)
 

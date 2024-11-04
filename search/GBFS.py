@@ -10,7 +10,7 @@ def greedy_best_first_search(simulator: Simulator,
                              time_limit: float) -> Tuple[List[Step], State]:
     """
     Greedy Best-First Search algorithm using a heuristic.
-    
+
     Args:
     - simulator: An instance of CARRISimulator to generate successors lazily.
     - heuristic: A heuristic function that estimates the cost to reach the goal from a given state.

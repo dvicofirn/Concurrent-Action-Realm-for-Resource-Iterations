@@ -31,9 +31,7 @@ def reconstruct_path(simulator, came_from: Dict[State, State], current: State) -
         i += 1
     return total_path
 
-def a_star_search(simulator: Simulator,
-                  heuristic: Heuristic,
-                  time_limit: float) -> Tuple[List[Step], State]:
+def a_star_search(simulator: Simulator, heuristic, time_limit: float) -> Tuple[List[Step], State]:
     """
     A* search algorithm with flexible heuristic input.
 
@@ -46,11 +44,10 @@ def a_star_search(simulator: Simulator,
     - A tuple of (List of Steps, final state). Returns the best partial solution found within the time limit.
     """
     start_time = time.time()
-<<<<<<< HEAD
 
     # The open set containing discovered nodes that may need to be (re-)expanded
     open_set = PriorityQueue()
-    open_set.put((heuristic(simulator.current_state), simulator.current_state))
+    open_set.put((heuristic.evaluate(simulator.current_state), simulator.current_state))
 
     # Dictionary to reconstruct the path
     came_from: Dict[State, Tuple[State, Step]] = {}
@@ -73,11 +70,10 @@ def a_star_search(simulator: Simulator,
         if all_packages_delivered(current_state):
             return reconstruct_path(simulator, came_from, current_state), current_state
 
-=======
 
     # The open set containing discovered nodes that may need to be (re-)expanded
     open_set = PriorityQueue()
-    open_set.put((heuristic(simulator.current_state), simulator.current_state))
+    open_set.put((heuristic.evaluate(simulator.current_state), simulator.current_state))
 
     # Dictionary to reconstruct the path
     came_from: Dict[State, Tuple[State, Step]] = {}
@@ -93,7 +89,6 @@ def a_star_search(simulator: Simulator,
         if all_packages_delivered(current_state):
             return reconstruct_path(simulator, came_from, current_state), current_state
 
->>>>>>> 0fef094b5a9254ac355cfd8fb1ba03f0c675d357
         # Generate successors of the current state
         #x = simulator.generate_successors(current_state.copy())
         for next_state, action, cost in simulator.generate_successors(current_state):
@@ -105,7 +100,7 @@ def a_star_search(simulator: Simulator,
                 g_score[next_state] = tentative_g_score
                 f_score = tentative_g_score + heuristic.evaluate(next_state)
                 open_set.put((f_score, next_state))
-        
+
         print("\n\nso far :")
         reconstruct_path(simulator, came_from, current_state)
 

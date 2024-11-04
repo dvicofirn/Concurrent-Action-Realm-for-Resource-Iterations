@@ -12,6 +12,10 @@ class OperatorCountingHeuristic(Heuristic):
           #  total_cost += self.operator_weights.get(operator, 1)
         
         return total_cost
+
+    def __call__(self, state):
+    # Make the instance callable by delegating to the `evaluate` method
+        return self.evaluate(state)
     
     def __call__(self, state):
     # Make the instance callable by delegating to the `evaluate` method

@@ -48,7 +48,7 @@ class ContextParser:
 
 
     def parse_effect_line(self, effect: str, parameters: List[str],
-                          paramExpressions: List[ParameterNode]) -> Union[Update, None]:
+                          paramExpressions: List[ParameterNode]) -> Update:
         effect = effect.strip()
         if effect.startswith('NewVal'):
             # Handle 'NewVal' statements
@@ -129,8 +129,6 @@ class ContextParser:
         else:
             # Simple update
             return self.parse_update(effect, parameters, paramExpressions)
-
-        return None
 
     def parse_effects_block(self, effect: dict, parameters: List[str],
                             paramExpressions: List[ParameterNode]) -> List[Update]:

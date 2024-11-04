@@ -1,4 +1,5 @@
-class action_based_delivery_heuristic:
+from CARRI.realm import Heuristic
+class action_based_delivery_heuristic(Heuristic):
     def evaluate(self, state) -> float:
         """
         Heuristic estimating the minimum number of actions required to deliver all undelivered packages
