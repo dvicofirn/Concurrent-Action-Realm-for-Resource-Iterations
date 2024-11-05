@@ -12,11 +12,18 @@ def main():
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
                                                  FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
     manager = Manager(simulator, iterations, 10000000000, 10000000000, 10)
-    manager.run()
+    #manager.run()
+
+    state = manager.planner.simulator.current_state
+    print(state)
+
+    problem = manager.planner.simulator.problem
+    x= 'locAdj'
+    print(problem)
 
     """
     actions = simulator.generate_all_valid_actions_seperatly()
-    """
+    
     actions = simulator.generate_all_valid_actions_seperatly()
 
     for _ in actions.keys():
@@ -35,16 +42,13 @@ def main():
             print(x)
         i += 1
 
-    """
-    """
     i = 0
     succesors = simulator.generate_successor_states(simulator.current_state)
     for next_state, action, cost in succesors:
         print(i)
         print(next_state)
         i+= 1
-    """
-    """
+    
     i = 0
     succesors = simulator.generate_successor_states(simulator.current_state)
     for next_state, action, cost in succesors:
@@ -57,7 +61,7 @@ def main():
 
     planner = Planner(simulator, init_time, iter_t)
     planner.run_iteration()
-    """
+    
     planner.run_iteration()
     """
 
