@@ -195,15 +195,21 @@ class Problem:
         self.requestsIndexes = kwargs.get("requestsIndexes", tuple())
         self.locAdjStatus = kwargs.get("requestsIndexes", None)
         self.locationRanges = kwargs.get("requestsIndexes", tuple())
-        self.vehicleEntities = kwargs.get("vehicleItemsEntities", tuple())
+        self.vehicleEntities = kwargs.get("vehicleEntities", tuple())
 
         # Initialize initState if provided, otherwise default to empty State
         varbleTups = kwargs.get("variableTups", tuple())
         itemTups = kwargs.get("itemTups", tuple())
         self.initState = kwargs.get("initState", State(varbleTups, itemTups))
 
-    def getVehicleIndexes(self):
-        return self.vehicleVariableEntities
+    def copy(self):
+        """
+        Returns a copy of the instance with all attributes.
+        """
+        # Collect all instance attributes
+        attributes = vars(self).copy()
+        # Create a new Problem instance using the copied attributes as kwargs
+        return Problem(**attributes)
     def get_locations(self):
         return self.locationRanges
     def get_adjacents(self, locId):

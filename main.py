@@ -3,15 +3,17 @@ from planner import Planner
 from planner import Planner
 from manager import Manager
 from CARRI.realm import Problem
+import time
+from search import PartialAssigner
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
-DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1",),
+DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1", "Trucks and Drones 2"),
                         "Cars": ("Cars 1",),}
 def main():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
-                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
-    manager = Manager(simulator, iterations, 10000000000, 10000000000, 10)
+            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
+    manager = Manager(simulator, iterations, 10000000000, 10)
     manager.run()
 
     """
@@ -61,5 +63,16 @@ def main():
     planner.run_iteration()
     """
 
+def runMain():
+    translator = Translator()
+    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
+            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][1] + ".CARRI")
+    manager = Manager(simulator, iterations, 30, 10, {"search_algorithm": PartialAssigner})
+
+    manager.run()
+
+
+
+
 if __name__ == '__main__':
-    main()
+    runMain()

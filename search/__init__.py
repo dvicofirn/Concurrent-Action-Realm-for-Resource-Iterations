@@ -8,3 +8,4 @@ from .LazyAstar import lazy_a_star_search
 from .LazyGreedy import lazy_greedy
 from .RationalLazyAstar import rational_lazy_a_star
 from .weightedAstar import weighted_a_star
+from .partialAssigner import PartialAssigner
