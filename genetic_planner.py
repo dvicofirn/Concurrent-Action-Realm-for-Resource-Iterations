@@ -1,5 +1,6 @@
 # GeneticPlanner class for solving the vehicle routing problem using a genetic algorithm.
 import collections
+import time
 from typing import Tuple
 from CARRI.simulator import Simulator
 from CARRI.realm import Problem
@@ -11,12 +12,13 @@ import random
 
 
 class CARRIPlannerGA:
-    def __init__(self, simulation, population_size=20, planning_horizon=7, generations=20):
-        self.simulation = simulation
+    def __init__(self, simulator, population_size=20, planning_horizon=3, generations=15):
+        self.simulator = simulator
         self.population_size = population_size
         self.planning_horizon = planning_horizon
         self.generations = generations
-        self.prev_state_chrom = self.simulation.current_state
+        self.prev_state_chrom = self.simulator.current_state
+        self.plan_sequence = []
 
     def initialize_population(self, initial_state):
         """Initializes a population of chromosomes with valid action sequences from generate_successors."""
@@ -25,46 +27,53 @@ class CARRIPlannerGA:
         for _ in range(self.population_size):
             chromosome = []
             state = initial_state.copy()
+
             for _ in range(self.planning_horizon):
-                successors = list(self.simulation.generate_successors(state))
+                successors = list(self.simulator.generate_successors(state))
                 if not successors:
                     break  # No further actions available
                 # Choose a random valid joint action and update the state
-                next_state, joint_action, cost = random.choice(successors)
+                #next_state, joint_action, cost = random.choice(successors)
 
                 '''
                 for i, a in enumerate(joint_action):
-                    print(f"{_}/{i} . {self.simulation.actionStringRepresentor.represent(a)}")
+                    print(f"{_}/{i} . {self.simulator.actionStringRepresentor.represent(a)}")
                 print("\n")
                 '''
-                chromosome.append((joint_action, cost, next_state))  # Store action and its cost
-                state = next_state  # Update state for next time step
 
-            #if self.simulation.valid_sequence(chromosome, state):
+                # Filter to prioritize pick or deliver actions if available
+                task_successors = [
+                    (next_state, joint_action, cost) for next_state, joint_action, cost in successors
+                    if any('Pick' in action.name or 'Deliver' in action.name for action in joint_action)
+                ]
+                
+                # Choose a task-oriented action if available, otherwise fallback to random choice
+                if task_successors:
+                    next_state, joint_action, cost = random.choice(task_successors)
+                else:
+                    next_state, joint_action, cost = random.choice(successors)
+                
+                chromosome.append((joint_action, cost, next_state))  # Store action and its cost
+                state = next_state.copy()  # Update state for next time step
+
+            #if self.simulator.valid_sequence(chromosome, state):
                # population.append(chromosome)
             population.append(chromosome)
         return population
 
-    def action_type(self, transition):
-        return 'Pick' in transition.name or 'Deliver' in transition.name
 
     def fitness_function(self, chromosome):
         """Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting."""
         total_cost = sum(cost for _, cost, _ in chromosome)
         
-        # Count completed deliveries in the chromosome
-        task_completion_score = sum(
-            1 for actions, _, _ in chromosome if any(self.action_type(action) for action in actions)
-        )
-        
-        # Apply collision penalties
-        collision_penalty = self.check_for_collisions(chromosome)
-
-
-        # Apply waiting penalty if waiting is unnecessary
+        collision_penalty = 0
+        pick_reward = 0
+        deliver_reward = 0
         waiting_penalty = 0
         fuel_penalty = 0
+
         for actions, _, state in chromosome:
+            package_picks = set()
             for i, action in enumerate(actions):
                 if 'Wait' in action.name:
                     # Check if there are packages to pick up or if the vehicle is carrying something
@@ -73,10 +82,22 @@ class CARRIPlannerGA:
 
                 if 'Fuel' in action.name:
                     if self.fuel_level(state, i):
-                        waiting_penalty += 30
+                        fuel_penalty += 30
+                    else:
+                        fuel_penalty -= 100
+
+                if 'Pick' in action.name:
+                    if tuple(action.params) not in package_picks:
+                        pick_reward += 300
+                        package_picks.add(tuple(action.params))
+                    else:
+                        collision_penalty += 100
+
+                if'Deliver' in action.name:
+                    deliver_reward += 200
 
         # Fitness formula: reward task completion, penalize cost, collisions, and unnecessary waiting
-        score = task_completion_score * 300 - total_cost - collision_penalty*10- waiting_penalty*10 - fuel_penalty
+        score = pick_reward + deliver_reward - total_cost - collision_penalty- waiting_penalty - fuel_penalty
         return score
     
     def has_pending_packages(self, state):
@@ -113,7 +134,7 @@ class CARRIPlannerGA:
         else:
             prev_state = child[replace_index - 1][2]
 
-        succ = self.simulation.generate_successors(prev_state)
+        succ = self.simulator.generate_successors(prev_state)
         succ = list(collections.deque(succ))
         new_state, joint_action, cost = random.choice(succ)
         #apply -> get new state 
@@ -130,14 +151,34 @@ class CARRIPlannerGA:
         #child[replace_index] = (joint_action, cost, new_state)
         return (joint_action, cost, new_state)
 
+
+    def valid_child(self, child):
+        valid = True
+        inner_state = self.simulator.current_state.copy()
+        for index, chrom in enumerate(child):
+            action, _, _ = chrom
+            state = self.prev_state_chrom.copy() if index == 0 else child[index - 1][2]
+            self.simulator.current_state = state.copy()
+            if not self.simulator.validate_Transition(action):
+                valid = False
+                break
+        self.simulator.current_state = inner_state
+        return valid
+    
+    def valid_parent_split(self, crossover_point, parent1, parent2):
+        child1 = parent1[:crossover_point] + parent2[crossover_point:]
+        child2 = parent2[:crossover_point] + parent1[crossover_point:]
+
+        return self.valid_child(child1) and self.valid_child(child2)
+
     def run_ga(self, initial_state):
         """Runs the GA to optimize action sequences over the planning horizon."""
         population = self.initialize_population(initial_state)
-        
+
         for generation in range(self.generations):
             # Periodically reintroduce diversity
             if generation % 5 == 0:
-                new_random_chromosomes = self.initialize_population(self.simulation.current_state)
+                new_random_chromosomes = self.initialize_population(self.simulator.current_state)
                 population.extend(new_random_chromosomes[:self.population_size // 2])
 
             fitness_scores = [self.fitness_function(chromosome) for chromosome in population]
@@ -162,24 +203,37 @@ class CARRIPlannerGA:
                 #TODO: check validity
                 crossover_point = random.randint(1, self.planning_horizon - 1)
 
-                while parent1[crossover_point][2] != parent1[crossover_point][2]: #state comprassion
+                while not self.valid_parent_split(crossover_point, parent1, parent2): #state comprassion
                     parent1, parent2 = random.sample(selected_population, 2)
 
                 
+                #print('valid parent 1 : ', self.valid_child(parent1))
+                #print('valid parent 2 : ', self.valid_child(parent2))
+
                 child1 = parent1[:crossover_point] + parent2[crossover_point:]
                 child2 = parent2[:crossover_point] + parent1[crossover_point:]
+
+                #print('valid child 1 : ', self.valid_child(child1))
+                #print('valid child 2 : ', self.valid_child(child2))
+
 
                 # Mutation: Modify a random gene (action sequence) in each child
                 if random.random() < 0.3:  # 10% mutation rate
                     replace_index = random.randint(0, len(child1) - 1)
                     child1[replace_index] = self.mutation_helper(child1, replace_index)
 
+                    #print('valid child 1 mutation: ', self.valid_child(child1))
+
                 if random.random() < 0.3:
                     replace_index = random.randint(0, len(child2) - 1)
                     child2[replace_index] = self.mutation_helper(child2, replace_index)
 
+                    #print('valid child 2 mutation: ', self.valid_child(child2))
 
-                new_population.extend([child1, child2])
+                if self.valid_child(child1):
+                    new_population.extend([child1])
+                if self.valid_child(child2):
+                    new_population.extend([child2])
 
             population = new_population
 
@@ -191,35 +245,43 @@ class CARRIPlannerGA:
         for _, val in enumerate(best_chromosome):
             act, cost, state = val
             for i, a in enumerate(act):
-                print(f"{_}/{i} . {self.simulation.actionStringRepresentor.represent(a)}")
+                print(f"{_}/{i} . {self.simulator.actionStringRepresentor.represent(a)}")
 
             print("\n")
         """
 
         joint_action, _, state = best_chromosome[0]
-        #self.simulation.advance_state(joint_action, state)
-        self.simulation.current_state = state.copy()
+        #self.simulator.advance_state(joint_action, state)
+        self.simulator.current_state = state.copy()
+
+        self.plan_sequence.append(joint_action)
 
         action_str = []
         for i, a in enumerate(joint_action):
-            action_str.append(self.simulation.actionStringRepresentor.represent(a))
+            action_str.append(self.simulator.actionStringRepresentor.represent(a))
 
-        print('selected action: ', action_str)
-        print('new_state simulation:', self.simulation.current_state)
-        print('\n')
+        #print('selected action: ', action_str)
+        #print('new_state simulator:', self.simulator.current_state)
+        #print('\n')
         x = 1
 
-    def plan(self, max_iterations=100, initial_state=None):
+
+    def plan(self, initial_state, iter_time,start_time, max_iterations=100,):
         """Main planning loop with the GA integrated."""
-        for iteration in range(max_iterations):
-            print(f"Iteration {iteration}: Planning Step")
-            self.run_ga(self.simulation.current_state)
-            # Check for new tasks and update environment
-            #new_packages, new_requests = self.simulation.update_state_dynamic()
-            #if new_packages or new_requests:
-               # print("New tasks appeared! Re-evaluating actions.")
 
+        self.plan_sequence = []
+        self.simulator.current_state = initial_state.copy()
+        iteration = 0
+        
+        while time.time() - start_time < iter_time:
+        #for iteration in range(max_iterations):
+            #print(f"Iteration {iteration}: Planning Step")
+            self.run_ga(self.simulator.current_state)
+            iteration+= 1
 
+        return self.plan_sequence
+
+'''
 # Example usage
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
@@ -230,4 +292,6 @@ translator = Translator()
 simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
 planner = CARRIPlannerGA(simulator)
-planner.plan(max_iterations=25)
+start_time = time.time()
+planner.plan(planner.simulator.current_state, 3, start_time)
+'''

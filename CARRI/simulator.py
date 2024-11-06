@@ -79,6 +79,12 @@ class Simulator:
         vehicle_keys = self.problem.vehicleEntities
         all_combinations = self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
         return all_combinations
+    
+    def validate_Transition(self, transition):
+        for action in transition:
+            if not self.validate_action(action):
+                return False
+        return True
 
     def validate_action(self, action: Action):
         """
@@ -91,10 +97,10 @@ class Simulator:
             #print(f"Validation for action {action}: {is_valid}")
             return is_valid
         except KeyError as e:
-            print(f"KeyError during validation of action {action}: {e}")
+            #print(f"KeyError during validation of action {action}: {e}")
             return False
         except Exception as e:
-            print(f"Unexpected error during validation of action {action}: {e}")
+            #print(f"Unexpected error during validation of action {action}: {e}")
             return False
 
     def revalidate_action(self, state, action):
@@ -114,34 +120,6 @@ class Simulator:
         except Exception as e:
             print(f"Unexpected error while applying action {action}: {e}")
             raise
-
-
-    '''
-    def generate_successor_states(self):
-        """
-        Generate all possible successor states given the current state by applying valid actions.
-        :return: List of successor states.
-        """
-        successor_states = []
-        valid_action_combinations = self.generate_all_valid_actions()
-
-        for actions in valid_action_combinations:
-            new_state = copy.deepcopy(self.current_state)  # Use deepcopy to ensure state isolation
-            try:
-                for action in actions:
-                    self.apply_action(action, new_state)
-                successor_states.append(new_state)
-            except KeyError as e:
-                print(f"KeyError encountered while applying actions: {e}")
-                print(f"Problem with action: {action}")
-                continue
-            except Exception as e:
-                print(f"Unexpected error: {e}")
-                print(f"Problem with action: {action}")
-                continue
-
-        return successor_states
-    '''
 
     def generate_partial_successors(self, state, partialValidSeperate_actions: List[List[Action]],
                                     vehicleTyps: List[int], vehicleIds: List):
@@ -217,8 +195,11 @@ class Simulator:
         :param action: The action to be applied to advance the state.
         :return: None
         """
+        cost = 0
         if self.validate_action(action):
-            self.apply_action(action, self.current_state)
+            action.apply(self.problem, self.current_state)
+            return action.get_cost(self.problem, self.current_state)
+
         else:
             raise ValueError("Invalid action attempted to be applied to the current state.")
 
@@ -229,3 +210,9 @@ class Simulator:
         # Placeholder for applying effects to the state.
         # This would modify the state based on the effect.
         pass
+    
+    def addItems(self, entityName, entityList):
+        entity_index = self.problem.entities[entityName][0]
+        for itemImdex, param in entityList.items():
+            self.problem.add_entity(self.current_state, entity_index, itemImdex, param)
+        return self.current_state
