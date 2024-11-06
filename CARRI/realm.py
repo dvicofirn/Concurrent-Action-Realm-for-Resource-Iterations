@@ -50,13 +50,13 @@ class State:
     def get_len(self, entityIndex) -> int:
         return len(self.items[entityIndex])
 
-    def add_entity(self, entityIndex, maxId, *params):
+    def add_entity(self, entityIndex, itemIndex, *params):
         # Add new item (tuple) with the max id
-        self.items[entityIndex][maxId] = params
+        self.items[entityIndex][itemIndex] = params[0]
 
     def add_list_entity(self, entityIndex, maxId, *params):
         # Add new item (list) with the max id
-        self.items[entityIndex][maxId] = list(params)
+        self.items[entityIndex][maxId] = params[0]
 
     def remove_entity(self, entityIndex, removeId):
         self.items[entityIndex].pop(removeId)
@@ -82,6 +82,8 @@ class Problem:
         else:
             # Initialize using the second method with directly provided attributes
             self._init_with_attributes(**kwargs)
+
+            
     def _init_with_data_dicts(self, initialValues: Dict, variablesInfo: Dict, entities: Dict):
         """
         Initialize with `variables`, `variablesInfo`, and `entities` dictionaries.
@@ -175,6 +177,7 @@ class Problem:
         self.packagesIndexes = tuple(self.packagesIndexes)
         self.requestsIndexes = tuple(self.requestsIndexes)
         self.vehicleEntities = tuple(self.vehicleEntities)
+        self.entities = entities 
 
     def _init_with_attributes(self, **kwargs):
         """
@@ -233,14 +236,12 @@ class Problem:
             count += state.get_len(item)
         return count
 
-    def add_entity(self, state: State, entityIndex: int, *params):
+    def add_entity(self, state: State, entityIndex: int, itemsINdex: int,  *params):
         entity = self.entityIdToItemId[entityIndex]
-        maxId = self.itemsMaxId[entity] + 1
-        self.itemsMaxId = maxId
         if entity in self.setAbleEntities:
-            state.add_entity(entity, maxId, *params)
+            state.add_entity(entity, itemsINdex, *params)
         else:
-            state.add_list_entity(entity, maxId, *params)
+            state.add_list_entity(entity, itemsINdex, *params)
 
     def remove_entity(self, state: State, entityIndex: int, entityId):
         state.remove_entity(self.entityIdToItemId[entityIndex], entityId)

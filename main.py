@@ -14,6 +14,8 @@ def main():
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
     manager = Manager(simulator, iterations, 10000000000, 10)
+                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
+    manager = Manager(simulator, iterations, 1, 10, 10)
     manager.run()
 
     """

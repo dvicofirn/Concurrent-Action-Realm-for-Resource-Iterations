@@ -93,6 +93,12 @@ class Simulator:
         all_combinations = self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
         return all_combinations
 
+    def validate_Transition(self, transition):
+        for action in transition:
+            if not self.validate_action(action):
+                return False
+        return True
+
     def validate_action(self, action: Action):
         """
         Validate an action by checking its preconditions against the current state.
@@ -104,10 +110,10 @@ class Simulator:
             #print(f"Validation for action {action}: {is_valid}")
             return is_valid
         except KeyError as e:
-            print(f"KeyError during validation of action {action}: {e}")
+            #print(f"KeyError during validation of action {action}: {e}")
             return False
         except Exception as e:
-            print(f"Unexpected error during validation of action {action}: {e}")
+            #print(f"Unexpected error during validation of action {action}: {e}")
             return False
 
     def revalidate_action(self, state, action):
@@ -176,12 +182,12 @@ class Simulator:
                 while currentQueue:
                     currentState, transition, cost = currentQueue.pop()
                     for action in vehicleIdActions:
-                            if action.reValidate(self.problem, currentState):
-                                nextState = currentState.copy()
-                                action.apply(self.problem, nextState)
-                                nextTransition = transition + [action]
-                                nextCost = cost + action.get_cost(self.problem, nextState)
-                                nextQueue.append((nextState, nextTransition, nextCost))
+                        if action.reValidate(self.problem, currentState):
+                            nextState = currentState.copy()
+                            action.apply(self.problem, nextState)
+                            nextTransition = transition + [action]
+                            nextCost = cost + action.get_cost(self.problem, nextState)
+                            nextQueue.append((nextState, nextTransition, nextCost))
 
                 currentQueue = nextQueue
 
@@ -197,3 +203,31 @@ class Simulator:
                 currentQueue[i] = (state, transition, cost)
 
         return currentQueue
+
+    def advance_state(self, action: Action):
+        """
+        Advance the state by applying the given action, updating the current state.
+        :param action: The action to be applied to advance the state.
+        :return: None
+        """
+        cost = 0
+        if self.validate_action(action):
+            action.apply(self.problem, self.current_state)
+            return action.get_cost(self.problem, self.current_state)
+
+        else:
+            raise ValueError("Invalid action attempted to be applied to the current state.")
+
+    def apply_environment_steps(self):
+        """
+        Apply an effect to the state.
+        """
+        # Placeholder for applying effects to the state.
+        # This would modify the state based on the effect.
+        pass
+
+    def addItems(self, entityName, entityList):
+        entity_index = self.problem.entities[entityName][0]
+        for itemImdex, param in entityList.items():
+            self.problem.add_entity(self.current_state, entity_index, itemImdex, param)
+        return self.current_state
