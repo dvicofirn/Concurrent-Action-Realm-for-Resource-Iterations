@@ -45,7 +45,6 @@ def a_star_search(simulator: Simulator, heuristic, time_limit: float) -> Tuple[L
     """
     start_time = time.time()
 
-=======
     # The open set containing discovered nodes that may need to be (re-)expanded
     open_set = PriorityQueue()
     open_set.put((heuristic(simulator.current_state), simulator.current_state))
@@ -64,7 +63,6 @@ def a_star_search(simulator: Simulator, heuristic, time_limit: float) -> Tuple[L
         if all_packages_delivered(current_state):
             return reconstruct_path(simulator, came_from, current_state), current_state
 
->>>>>>> 0fef094b5a9254ac355cfd8fb1ba03f0c675d357
         # Generate successors of the current state
         #x = simulator.generate_successors(current_state.copy())
         for next_state, action, cost in simulator.generate_successors(current_state):
