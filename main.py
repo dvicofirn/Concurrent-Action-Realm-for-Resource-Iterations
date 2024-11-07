@@ -12,7 +12,7 @@ def main():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + instance + ".CARRI",
                                                  FOLDER_PROBLEMS + "\\" + DomainsProblemsDict[instance][0] + ".CARRI")
-    manager = Manager(simulator, iterations, 1,7, 10)
+    manager = Manager(simulator, iterations, 1,30, 10)
     manager.run() 
 
 

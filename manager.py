@@ -30,9 +30,13 @@ class Manager:
         while self.business.canAdvance():
             self.execute_iteration()
 
+        pick_count, deliver_count = self.count_pick_deliver()
+
         print('\nTotal Planning and Execution time : ', time.time() - total_time)
         print("Executed plan with total cost of " + str(self.business.cost))
         print('Total Plan Length:', len(self.total_plan))
+        print("Total 'Pick' count:", pick_count)
+        print("Total 'Deliver' count:", deliver_count)
         print('Plan :')
 
         self.print_plan()
@@ -67,3 +71,27 @@ class Manager:
             print(f'ERROR - Issue with plan execution: {e}')
             traceback.print_exc()
             exit()
+
+    def plan_fitness(self, plan):
+        """
+        Compute the fitness of a plan by aggregating the fitness scores of each chromosome in the plan.
+        """
+        return sum(self.genetic_planner.fitness_function(chromosome) for chromosome in plan)
+
+    def create_and_run_genetic_planner(self, state, iter_time, start_time):
+        """
+        Creates an isolated instance of the genetic planner and runs it with the provided state.
+        """
+        planner_instance = CARRIPlannerGA(self.business.simulator)
+        return planner_instance.plan(state, iter_time, start_time)
+    
+
+    def count_pick_deliver(self):
+        pick_count, deliver_count = 0, 0
+        for joint_action in self.total_plan:
+            actions = [self.business.simulator.actionStringRepresentor.represent(a) for a in joint_action]
+            for sublist in actions:
+                pick_count += 1 if 'Pick' in sublist else 0 
+                deliver_count += 1 if 'Deliver' in sublist else 0 
+
+        return pick_count, deliver_count

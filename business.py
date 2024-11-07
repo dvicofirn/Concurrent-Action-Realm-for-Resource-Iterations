@@ -64,6 +64,6 @@ class Business:
         self.cost = cost
 
         #if self.iteration % 10 == 0:
-         #   print(f'Iteration {self.iteration} ...')
+        print(f'Iteration {self.iteration} ...')
 
         self.iteration += 1
