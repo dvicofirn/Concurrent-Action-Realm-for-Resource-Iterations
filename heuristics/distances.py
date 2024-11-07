@@ -1,6 +1,6 @@
 from typing import Dict, Set
 from queue import PriorityQueue
-from CARRI.realm import State, Problem, Heuristic
+from CARRI.problem import State, Problem, Heuristic
 
 #Assumes problem has locAdj constant
 def location_map(problem: Problem, startingLocation: int) -> Dict[int, int]:

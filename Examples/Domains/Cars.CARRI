@@ -11,7 +11,7 @@ var carCap INT (Car)
 var carFuel INT (Car)
 var carDebt INT (Car)
 
-items Package var: type INT, loc INT, onCar BOOL
+items Package var: type INT, loc INT, onEntity INT
 items Request const: type INT, loc INT
 
 End Variables
@@ -44,14 +44,14 @@ CarPick: id - Car, pack - Package (Pick)
 		carLoc id = Package loc pack
 		carCap id < 2
 	Confs:
-		Package onCar pack = false
+		Package onEntity pack = entity Location
 	Effects:
 		Case (carFuel id > 0):
 			carFuel id : carFuel id - 1
 		End Case
 		carCap id : carCap id + 1
 		Package loc pack: id
-		Package onCar pack: true
+		Package onEntity pack: entity Car
 	Cost:
 		1
 End Action
@@ -60,7 +60,7 @@ CarDeliver: id - Car, req - Request, pack - Package (Deliver)
 	Precs:
 		carCap id > 0
 		carLoc id = Request loc req
-		Package onCar pack = 1
+		Package onEntity pack = entity Car
 		Package loc pack = id
 		Package type pack = Request type req
 	Confs:

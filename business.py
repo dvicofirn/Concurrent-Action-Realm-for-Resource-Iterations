@@ -1,6 +1,6 @@
 from typing import List
 from CARRI.simulator import Simulator
-from CARRI.realm import Problem, State
+from CARRI.problem import Problem, State
 class Business:
     def __init__(self, simulator, iterationsList: List):
         self.simulator = simulator

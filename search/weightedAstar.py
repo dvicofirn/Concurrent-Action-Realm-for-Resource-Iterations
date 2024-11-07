@@ -1,6 +1,6 @@
 from queue import PriorityQueue
 from typing import Callable, List, Tuple
-from CARRI.realm import State
+from CARRI.problem import State
 from CARRI.action import Step
 
 def weighted_a_star(initial_state: State, goal_test: Callable[[State], bool],

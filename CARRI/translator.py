@@ -4,7 +4,7 @@ from CARRI.actionLinesParser import parse_action_segments, parse_action_header, 
 from CARRI.problemParser import CARRIProblemParser
 from CARRI.actionGeneratorParser import ActionGeneratorParser
 from CARRI.stepsParser import EnvStepParser, IterParser
-from CARRI.realm import Problem
+from CARRI.problem import Problem
 from CARRI.simulator import Simulator
 
 

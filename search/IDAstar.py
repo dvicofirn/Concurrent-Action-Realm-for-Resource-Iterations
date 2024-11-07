@@ -1,5 +1,5 @@
 from typing import Callable, List, Tuple
-from CARRI.realm import State
+from CARRI.problem import State
 from CARRI.action import Step
 
 def ida_star(initial_state: State, goal_test: Callable[[State], bool],

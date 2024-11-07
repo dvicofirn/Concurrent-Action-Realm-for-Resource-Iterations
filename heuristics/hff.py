@@ -1,4 +1,4 @@
-from CARRI.realm import State, Heuristic
+from CARRI.problem import State, Heuristic
 
 class HFFHeuristic(Heuristic):
     def heurist(self, state: State) -> int:

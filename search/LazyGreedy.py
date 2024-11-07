@@ -1,7 +1,7 @@
 from queue import PriorityQueue
 from queue import PriorityQueue
 from typing import Callable, List, Tuple
-from CARRI.realm import State
+from CARRI.problem import State
 from CARRI.action import Step
 
 def lazy_greedy(initial_state: State, goal_test: Callable[[State], bool],

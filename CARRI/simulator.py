@@ -1,5 +1,5 @@
 from CARRI.action import ActionProducer, ActionStringRepresentor, Action, EnvStep
-from CARRI.realm import Problem
+from CARRI.problem import Problem
 from collections import deque
 from copy import copy
 from typing import List

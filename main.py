@@ -2,7 +2,7 @@ from CARRI.translator import Translator
 from planner import Planner
 from planner import Planner
 from manager import Manager
-from CARRI.realm import Problem
+from CARRI.problem import Problem
 import time
 from search import PartialAssigner
 FOLDER_DOMAINS = "Examples\\Domains"
@@ -13,9 +13,7 @@ def main():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
-    manager = Manager(simulator, iterations, 10000000000, 10)
-                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
-    manager = Manager(simulator, iterations, 1, 10, 10)
+    manager = Manager(simulator, iterations, 30, 10, )
     manager.run()
 
     """
@@ -69,11 +67,24 @@ def runMain():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][1] + ".CARRI")
-    manager = Manager(simulator, iterations, 30, 10, {"search_algorithm": PartialAssigner})
+    partial = PartialAssigner(simulator)
+    results = partial.search(simulator.current_state, 5, 5)
+    for item in results:
+        print(item[1])
+        print()
+        print(item[2])
+        print()
+        for transition in item[2]:
+            for action in transition:
+                print(simulator.actionStringRepresentor.represent(action), end=', ')
+            print("--")
+        print(item[3])
+        print()
+        print(item[4])
+        print()
+    #manager = Manager(simulator, iterations, 30, 10, {"search_algorithm": PartialAssigner})
 
-    manager.run()
-
-
+    #manager.run()
 
 
 if __name__ == '__main__':

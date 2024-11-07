@@ -65,12 +65,12 @@ Precs:
 	droneLoc id = Package loc pack
 	droneCap id = 0
 Confs:
-	Package onEntity pack = 0
+	Package onEntity pack = entity Location
 Effects:
 	droneCap id : 1
 	droneCharge id  : droneCharge id - 1
 	Package loc pack : id
-	Package onEntity pack : 1
+	Package onEntity pack : entity Drone
 Cost:
 1
 End Action
@@ -81,7 +81,7 @@ Precs:
 	droneCharge id > 0
 	droneBoard id = false
 	droneLoc id = Request loc req
-	Package onEntity pack = 1
+	Package onEntity pack = entity Drone
 	Package loc pack = id
 	Package type pack = Request type req
 Confs:
@@ -121,8 +121,8 @@ Effects:
 		droneCharge id : 10
 	End Case
 	Case (droneCap id = 1):
-		All(pack - Package) ((Package onEntity pack = 1) and (Package loc pack = id)):
-			Package onEntity pack : 2
+		All(pack - Package) ((Package onEntity pack = entity Drone) and (Package loc pack = id)):
+			Package onEntity pack : entity Truck
 			Package loc pack : trk
 		End All
 		droneCap id : 0 
@@ -147,9 +147,9 @@ DroneExitBoardWithPack: id - Drone, trk - Truck, pack - Package (DroneExitBoard)
 Precs Add:
 	Package loc pack: trk
 Confs: #Could also implement as Confs Add
-	Package onEntity pack = 2 #Other drone might want to take it. It's fine to not re check package location
+	Package onEntity pack = entity Truck #Other drone might want to take it. It's fine to not re check package location
 Effects Add:
-	Package onEntity pack : 1
+	Package onEntity pack : entity Drone
 	Package loc pack : id
 End Action
 

@@ -1,7 +1,7 @@
 # Run the GeneticPlanner
 
 from CARRI.simulator import Simulator
-from CARRI.realm import Problem
+from CARRI.problem import Problem
 from CARRI.translator import Translator
 from genetic_planner import GeneticPlanner
 

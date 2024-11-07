@@ -1,4 +1,4 @@
-from CARRI.realm import State, Heuristic
+from CARRI.problem import State, Heuristic
 
 class RequestCountHeuristic(Heuristic):
     def evaluate(self, state: State) -> int:
