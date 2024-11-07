@@ -1,4 +1,4 @@
-from CARRI.realm import Heuristic
+from CARRI.problem import Heuristic
 class action_based_delivery_heuristic(Heuristic):
     def evaluate(self, state) -> float:
         """

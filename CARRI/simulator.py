@@ -1,5 +1,5 @@
 from CARRI.action import ActionProducer, ActionStringRepresentor, Action, EnvStep
-from CARRI.realm import Problem
+from CARRI.problem import Problem
 from collections import deque
 from copy import copy
 from typing import List
@@ -18,6 +18,7 @@ class Simulator:
 
     def getState(self):
         return self.problem.copyState(self.current_state)
+
     def generate_all_valid_seperate_actions(self, state):
         """
         Generate all valid actions separately for each vehicle given the current state of the problem.
@@ -28,6 +29,18 @@ class Simulator:
         for vehicleEntityType in self.problem.vehicleEntities:
             entityActions = {}
             for entityId in self.problem.get_entity_ids(self.current_state, vehicleEntityType):
+                actions = self.ActionProducer.produce_actions(self.problem, state,
+                                                              entityId, vehicleEntityType)
+                entityActions[entityId] = actions
+            valid_actions[vehicleEntityType] = entityActions
+        return valid_actions
+
+    def generate_all_valid_partial_seperate_actions(self, state, partialVehciles):
+        valid_actions = {}
+        # New thing from problem: vehicleEntities
+        for vehicleEntityType, vehicleEntityIds in zip(self.problem.vehicleEntities, partialVehciles):
+            entityActions = {}
+            for entityId in vehicleEntityIds:
                 actions = self.ActionProducer.produce_actions(self.problem, state,
                                                               entityId, vehicleEntityType)
                 entityActions[entityId] = actions
@@ -79,7 +92,7 @@ class Simulator:
         vehicle_keys = self.problem.vehicleEntities
         all_combinations = self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
         return all_combinations
-    
+
     def validate_Transition(self, transition):
         for action in transition:
             if not self.validate_action(action):
@@ -121,37 +134,41 @@ class Simulator:
             print(f"Unexpected error while applying action {action}: {e}")
             raise
 
-    def generate_partial_successors(self, state, partialValidSeperate_actions: List[List[Action]],
-                                    vehicleTyps: List[int], vehicleIds: List):
+    def generate_partial_successors(self, state, vehicleIds: List):
         currentQueue = deque()
-        currentQueue.append((copy(state), [], 0))
-        for vehicleType, typeIds, vehicleTypeActions in zip(vehicleTyps, vehicleIds, partialValidSeperate_actions):
-            for vehicleId, vehicleIdActions in zip(typeIds, vehicleTypeActions):
-                for action in vehicleIdActions:
-                    nextQueue = deque()
-                    while currentQueue:
-                        currentState, transition, cost = currentQueue.pop()
-                        if action.reValidate(self.problem, self.current_state):
-                            nextState = copy(currentState)
-                            action.appy(self.problem, nextState)
+        currentQueue.append((copy(state.copy()), [], 0))
+        validSeperates = self.generate_all_valid_partial_seperate_actions(state, vehicleIds)
+
+        for vehicleType, vehicleTypeActions in validSeperates.items():
+            for vehicleId, vehicleIdActions in vehicleTypeActions.items():
+
+                nextQueue = deque()
+                while currentQueue:
+                    currentState, transition, cost = currentQueue.pop()
+                    for action in vehicleIdActions:
+                        if action.reValidate(self.problem, currentState):
+                            nextState = currentState.copy()
+                            action.apply(self.problem, nextState)
                             nextTransition = transition + [action]
                             nextCost = cost + action.get_cost(self.problem, nextState)
                             nextQueue.append((nextState, nextTransition, nextCost))
 
-                    currentQueue = nextQueue
+                currentQueue = nextQueue
+        return currentQueue
 
+    def applyEnvSteps(self, queue):
         for envStep in self.evnSteps:
             # Iterate through each item in the deque by index
-            for i in range(len(currentQueue)):
-                state, transition, cost = currentQueue[i]
+            for i in range(len(queue)):
+                state, transition, cost = queue[i]
+                afterEnvState = state.copy()
 
                 # Apply the envStep function to the state and add to the cost
-                envStep.apply(self.problem, state)
-                cost += envStep.get_cost(self.problem, state)  # Adjust according to envStep logic
+                envStep.apply(self.problem, afterEnvState)
+                evnCost =envStep.get_cost(self.problem, afterEnvState)  # Adjust according to envStep logic
                 # Replace the tuple in-place
-                currentQueue[i] = (state, transition, cost)
-
-        return currentQueue
+                queue[i] = (state, afterEnvState, transition, cost, evnCost)
+        return queue
 
     def generate_successors(self, state):
         currentQueue = deque()
@@ -186,8 +203,6 @@ class Simulator:
                 currentQueue[i] = (state, transition, cost)
 
         return currentQueue
-         
-         
 
     def advance_state(self, action: Action):
         """
@@ -210,7 +225,7 @@ class Simulator:
         # Placeholder for applying effects to the state.
         # This would modify the state based on the effect.
         pass
-    
+
     def addItems(self, entityName, entityList):
         entity_index = self.problem.entities[entityName][0]
         for itemImdex, param in entityList.items():

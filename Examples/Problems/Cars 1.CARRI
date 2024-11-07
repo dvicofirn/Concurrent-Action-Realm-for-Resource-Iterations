@@ -23,10 +23,10 @@ carLoc: 0
 carFuel: 40
 #*
 Package:
-0, 0, false
-0, 2, false
-1, 1, false
-3, 6, false
+0, 0, Location
+0, 2, Location
+1, 1, Location
+3, 6, Location
 Request:
 0, 2
 0, 2
@@ -35,9 +35,9 @@ Request:
 2, 9
 *
 Package:
-1, 1, false
-2, 4, false
-3, 8, false
+1, 1, Location
+2, 4, Location
+3, 8, Location
 Request:
 0, 6
 1, 8
@@ -45,9 +45,9 @@ Request:
 4, 1
 *
 Package:
-0, 1, false
-1, 1, false
-4, 9, false
+0, 1, Location
+1, 1, Location
+4, 9, Location
 Request:
 1, 6
 2, 5
@@ -55,17 +55,17 @@ Request:
 4, 1
 *
 Package:
-2, 0, false
-3, 5, false
-3, 6, false
+2, 0, Location
+3, 5, Location
+3, 6, Location
 Request:
 0, 8
 *
 Package:
-0, 1, false
-1, 1, false
-4, 9, false
-4, 8, false
+0, 1, Location
+1, 1, Location
+4, 9, Location
+4, 8, Location
 Request:
 3, 2
 4, 2

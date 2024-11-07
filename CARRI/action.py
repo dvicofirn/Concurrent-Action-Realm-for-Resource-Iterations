@@ -1,6 +1,7 @@
 from typing import List, Iterable
 from copy import copy
-from CARRI.realm import Problem, State
+from CARRI.problem import Problem
+from CARRI.state import State
 from CARRI.expression import ExpressionNode, ValueParameterNode, Update, CostExpression
 
 

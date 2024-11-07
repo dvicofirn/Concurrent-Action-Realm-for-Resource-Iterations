@@ -1,5 +1,6 @@
 from typing import List
-from CARRI.realm import Problem, State
+from CARRI.problem import Problem
+from CARRI.state import State
 import operator
 
 operatorStringMap = {
@@ -141,7 +142,7 @@ class ExistingExpressionNode(ExpressionNode):
         self.entityIndex = entityIndex
         self.expression = expression
     def __str__(self):
-        return "exists: "+ str(self.entityIndex) + " at (" +str(self.expression) + ") "
+        return "exists: " + str(self.entityIndex) + " at (" + str(self.expression) + ") "
     def evaluate(self, problem: Problem, state: State):
         return self.expression.evaluate(problem, state) in problem.get_entity_ids(state, self.entityIndex)
 

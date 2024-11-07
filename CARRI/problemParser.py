@@ -1,5 +1,5 @@
 import re
-from typing import Dict, List, Set, Tuple, Any
+from typing import Dict, List, Set, Tuple
 
 class CARRIProblemParser:
     def __init__(self, problem_text, entities, variables):
@@ -12,6 +12,9 @@ class CARRIProblemParser:
         self.entity_counts = {}  # {entity_name: count}
         self.entity_max_indices = {}  # To keep track of maximum index used per entity
         self.last_item_indices = {}  # To keep track of last item index for each 'items' variable
+
+        # Create a mapping of entity names (case-insensitive) to indices
+        self.entity_name_to_index = {name.lower(): index for name, (index, _) in self.entities.items()}
 
     def parse(self):
         """
@@ -92,7 +95,7 @@ class CARRIProblemParser:
         while index < len(lines):
             line = lines[index]
             # Check for entity quantities
-            m = re.match(r"^([A-Z][a-zA-Z0-9_]*)\s*:\s*(\d+)", line)
+            m = re.match(r"^([A-Z][a-zA-Z0-9_ ]*)\s*:\s*(\d+)", line)
             if m:
                 entity_name = m.group(1)
                 quantity = int(m.group(2))
@@ -172,6 +175,7 @@ class CARRIProblemParser:
         return index
 
     def process_entity_quantity(self, entity_name, quantity):
+        entity_name = entity_name.strip()
         if entity_name not in self.entities:
             return
         indices = list(range(quantity))
@@ -302,11 +306,11 @@ class CARRIProblemParser:
     def parse_value(self, value_str, variable):
         var_type = variable['type']
         if var_type == int:
-            return int(value_str)
+            return self.convert_value_by_type(value_str, 'INT')
         elif var_type == bool:
             return value_str.lower() in ('true', '1', 'yes', 't')
         elif var_type == Set:
-            items = [int(x.strip()) for x in value_str.split(',') if x.strip()]
+            items = [self.convert_value_by_type(x.strip(), 'INT') for x in value_str.split(',') if x.strip()]
             return set(items)
         elif var_type == Dict:
             d = {}
@@ -317,8 +321,8 @@ class CARRIProblemParser:
                     continue
                 if '-' in pair:
                     key_str, value_str = pair.split('-', 1)
-                    key = int(key_str.strip())
-                    value = int(value_str.strip())
+                    key = self.convert_value_by_type(key_str.strip(), 'INT')
+                    value = self.convert_value_by_type(value_str.strip(), 'INT')
                     d[key] = value
             return d
         elif var_type == List:
@@ -336,11 +340,28 @@ class CARRIProblemParser:
 
     def convert_value_by_type(self, value, key_type):
         if key_type == 'INT':
-            return int(value)
+            try:
+                return int(value)
+            except ValueError:
+                # Attempt to interpret value as an entity name
+                entity_index = self.get_entity_index_by_name(value)
+                if entity_index is not None:
+                    return entity_index
+                else:
+                    raise ValueError(f"Cannot convert value '{value}' to int or known entity name")
         elif key_type == 'BOOL':
             return value.lower() in ('true', '1', 'yes', 't')
         else:
+            # Handle other types as needed
             return value
+
+    def get_entity_index_by_name(self, name):
+        name = name.strip().lower()
+        entity_index = self.entity_name_to_index.get(name)
+        if entity_index is not None:
+            return entity_index
+        else:
+            return None
 
     def set_default_values(self):
         """

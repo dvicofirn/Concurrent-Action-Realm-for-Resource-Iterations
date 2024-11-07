@@ -12,7 +12,7 @@ def tokenize(expression_str):
         ('SKIP', r'[ \t]+'),
         ('MISMATCH', r'.'),
     ]
-    keywords = {'and', 'or', 'not', 'true', 'false', 'exists'}
+    keywords = {'and', 'or', 'not', 'true', 'false', 'exists', 'entity'}
     token_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
     get_token = re.compile(token_regex, re.IGNORECASE).match  # Case-insensitive matching
     line = expression_str
@@ -154,6 +154,8 @@ class ExpressionParser:
         elif self.match('KEYWORD', ('true', 'false')):
             value = self.consume('KEYWORD')[1].lower() == 'true'
             return ConstNode(value)
+        elif self.match('KEYWORD', 'entity'):
+            return self.parse_entity_reference()
         elif self.match('ID'):
             # Check if this is an 'exists' condition
             return self.parse_variable_or_parameter_or_exists()
@@ -164,6 +166,22 @@ class ExpressionParser:
             return node
         else:
             raise SyntaxError('Expected expression at token position {}'.format(self.position))
+
+    def parse_entity_reference(self) -> ExpressionNode:
+        self.consume('KEYWORD', 'entity')
+        # Collect the entity name, which may consist of multiple IDs
+        entity_name_parts = []
+        while self.match('ID'):
+            entity_name_parts.append(self.consume('ID')[1])
+        if not entity_name_parts:
+            raise SyntaxError('Expected entity name after "entity"')
+        entity_name = ' '.join(entity_name_parts)
+        # Get entity index from parsedEntities
+        entity_entry = self.parsedEntities.get(entity_name)
+        if entity_entry is None:
+            raise ValueError(f"Unknown entity: {entity_name}")
+        entity_index = entity_entry[0]
+        return ConstNode(entity_index)
 
     def parse_variable_or_parameter_or_exists(self) -> ExpressionNode:
         id_token = self.consume('ID')

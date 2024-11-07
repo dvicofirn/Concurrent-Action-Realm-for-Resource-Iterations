@@ -1,6 +1,6 @@
 from queue import Queue
 from typing import Callable, List, Tuple
-from CARRI.realm import State
+from CARRI.problem import State
 from CARRI.action import Step
 
 

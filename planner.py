@@ -6,14 +6,13 @@ from heuristics import *
 from search import *
 
 class Planner:
-    def __init__(self, simulator, init_time, iter_t, transitions_per_iteration, **kwargs):
+    def __init__(self, simulator, iter_t, transitions_per_iteration, **kwargs):
         """
         :param simulator: An instance of CARRISimulator
         :param init_time: float, time of initialization
         :param iter_t: float, time allowed for each iteration
         """
         self.simulator = simulator
-        self.init_time = init_time
         self.iter_t = iter_t
         # Allow search algorithm and heuristic to be passed for flexibility
 

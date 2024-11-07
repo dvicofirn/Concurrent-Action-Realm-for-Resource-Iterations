@@ -1,6 +1,6 @@
 from queue import PriorityQueue
 from typing import Callable, List, Tuple, Dict
-from CARRI.realm import State
+from CARRI.problem import State
 from CARRI.action import Step
 import time
 from CARRI.simulator import Simulator
