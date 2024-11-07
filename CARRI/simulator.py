@@ -16,7 +16,7 @@ class Simulator:
         self.current_state = problem.copyState(problem.initState)
         self.vehicle_keys = self.problem.vehicleEntities
 
-    def getState(self):
+    def get_state(self):
         return self.problem.copyState(self.current_state)
 
     def generate_all_valid_seperate_actions(self, state):
@@ -93,6 +93,12 @@ class Simulator:
         all_combinations = self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
         return all_combinations
 
+    def validate_Transition_state(self, state, transition):
+        for action in transition:
+            if not action.validate(self.problem, state):
+                return False
+        return True
+
     def validate_Transition(self, transition):
         for action in transition:
             if not self.validate_action(action):
@@ -155,11 +161,10 @@ class Simulator:
 
                 currentQueue = nextQueue
         return currentQueue
-
     def applyEnvSteps(self, queue):
         # No envStep case
         if not self.envSteps:
-            return ((item[0], item[0], item[1], item[2], 0) for item in queue)
+            return ((item[0], item[1], item[2], 0) for item in queue)
 
         # Process each item in the deque by index
         for i in range(len(queue)):
@@ -173,7 +178,7 @@ class Simulator:
                 envCost += envStep.get_cost(self.problem, afterEnvState)
 
             # Replace the tuple in-place with the updated values
-            queue[i] = (state, afterEnvState, transition, cost, envCost)
+            queue[i] = (afterEnvState, transition, cost, envCost)
 
         return queue
     def generate_successors(self, state):
@@ -224,13 +229,21 @@ class Simulator:
         else:
             raise ValueError("Invalid action attempted to be applied to the current state.")
 
-    def apply_environment_steps(self):
-        """
-        Apply an effect to the state.
-        """
-        # Placeholder for applying effects to the state.
-        # This would modify the state based on the effect.
-        pass
+    def apply_environment_steps(self, state):
+        cost = 0
+        state = state.copy()
+        for envStep in self.envSteps:
+            envStep.apply(self.problem, state)
+            cost += envStep.get_cost(self.problem, state)
+        return state, cost
+
+    def apply_transition(self, state, transition):
+        cost = 0
+        state = state.copy()
+        for action in transition:
+            action.apply(self.problem, state)
+            cost += action.get_cost(self.problem, state)
+        return state, cost
 
     def addItems(self, entityName, entityList):
         entity_index = self.problem.entities[entityName][0]
