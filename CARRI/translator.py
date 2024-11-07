@@ -36,8 +36,7 @@ class Translator:
             translatedSections["IterStep"] = self.translate_iter_step(sections["IterStep"])
 
         actionGenerators = ActionGeneratorParser(translatedSections["Actions"],
-                                                 translatedSections["Entities"],
-                                                 {}).parse()
+                                                 translatedSections["Entities"]).parse()
         envSteps = EnvStepParser(translatedSections["EnvSteps"], translatedSections["Entities"]).parse()
         iterStep = IterParser(translatedSections["IterStep"], translatedSections["Entities"]).parse()
 
@@ -51,6 +50,7 @@ class Translator:
                           variablesInfo=translatedSections["Variables"],
                           entities=translatedSections["Entities"])
         simulator = Simulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
+
         return simulator, iterations
 
         """print(problem.initState)

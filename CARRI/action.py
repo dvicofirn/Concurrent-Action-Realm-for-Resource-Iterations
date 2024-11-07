@@ -32,11 +32,12 @@ class EnvStep(Step):
 class Action(EnvStep):
     def __init__(self, name: str, preconditions: List[ExpressionNode],
                  conflictingPreconditions: List[ExpressionNode],
-                 effects: List[Update], cost: CostExpression, params: List[ValueParameterNode]):
+                 effects: List[Update], cost: CostExpression, params: List[ValueParameterNode], baseAction):
         super().__init__(name, effects, cost)
         self.preconditions = preconditions  # List of Condition objects
         self.conflictingPreconditions = conflictingPreconditions
         self.params = params # Currently not implemented
+        self.baseAction = baseAction
 
     def validate(self, problem, state):
         return (all(precondition.evaluate(problem, state) for precondition in self.preconditions)
@@ -52,7 +53,8 @@ class Action(EnvStep):
 
 class ActionGenerator:
     def __init__(self, name, entities, params, preconditions,
-                 conflictingPreconditions, effects, cost, paramExpressions: List[ValueParameterNode]):
+                 conflictingPreconditions, effects, cost, paramExpressions: List[ValueParameterNode],
+                 baseActionName):
         self.name = name
         self.entities = entities
         self.params = params # List of parameter names
@@ -63,6 +65,7 @@ class ActionGenerator:
         self.paramExpressions = paramExpressions # List of fitting expressions
         self.applicablePrecsRanges = []
         self.applicableConfPrecsRanges = []
+        self.baseActionName = baseActionName
     def __repr__(self):
         return self.__str__()
     def __str__(self):
@@ -87,7 +90,8 @@ class ActionGenerator:
             conflictingPreconditions=conflictingPreconditions,
             effects=effects,
             cost=cost,
-            params = newParams
+            params=newParams,
+            baseAction=self.baseActionName
         )
         return action
 

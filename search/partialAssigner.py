@@ -95,13 +95,14 @@ class PartialAssigner:
                     for state, afterEnv, transition, cost, nCost in topSearchResult:
                         nextTransitionStep = currentTransitions[step].copy()
                         nextTransitionStep.extend(transition)
+                        nextNCost = nCost + currentNCosts[step - 1] if step > 0 else nCost
+                        lastNCost = currentNCosts[step]
                         nextSearches.append((
                             currentStates[:step] + [state] + currentStates[step + 1:],
                             currentAfterEnv[:step] + [afterEnv] + currentAfterEnv[step + 1:],
                             currentTransitions[:step] + [nextTransitionStep] + currentTransitions[step + 1:],
                             currentCosts[:step] + [cost + lastCost for lastCost in currentCosts[step:]],
-                            currentNCosts[:step] + [nCost - currentNCosts[step] + lastCost for lastCost in currentNCosts[step:]]
-
+                            currentNCosts[:step] + [nextNCost] +[nextNCost - lastNCost + cost for cost in currentNCosts[step + 1:]]
                         ))
                 searchQueue.extend(sorted(nextSearches, key=lambda x: x[3][-1] + x[4][-1])[:maxStates])
 

@@ -5,12 +5,12 @@ from copy import copy
 from typing import List
 
 class Simulator:
-    def __init__(self, problem: Problem, actionGenerators, evnSteps: List[EnvStep], iterStep, entities):
+    def __init__(self, problem: Problem, actionGenerators, envSteps: List[EnvStep], iterStep, entities):
         self.problem = problem
         self.ActionProducer = ActionProducer(actionGenerators)
         self.actionStringRepresentor = ActionStringRepresentor(actionGenerators)
         self.action_generators = actionGenerators
-        self.evnSteps = evnSteps
+        self.envSteps = envSteps
         self.iterStep = iterStep
         self.entities = entities
         self.current_state = problem.copyState(problem.initState)
@@ -136,7 +136,7 @@ class Simulator:
 
     def generate_partial_successors(self, state, vehicleIds: List):
         currentQueue = deque()
-        currentQueue.append((copy(state.copy()), [], 0))
+        currentQueue.append((state, [], 0))
         validSeperates = self.generate_all_valid_partial_seperate_actions(state, vehicleIds)
 
         for vehicleType, vehicleTypeActions in validSeperates.items():
@@ -157,22 +157,28 @@ class Simulator:
         return currentQueue
 
     def applyEnvSteps(self, queue):
-        for envStep in self.evnSteps:
-            # Iterate through each item in the deque by index
-            for i in range(len(queue)):
-                state, transition, cost = queue[i]
-                afterEnvState = state.copy()
+        # No envStep case
+        if not self.envSteps:
+            return ((item[0], item[0], item[1], item[2], 0) for item in queue)
 
-                # Apply the envStep function to the state and add to the cost
+        # Process each item in the deque by index
+        for i in range(len(queue)):
+            # Initialize the tuple elements
+            state, transition, cost = queue[i]
+            afterEnvState = state.copy()
+            envCost = 0
+            # Apply each envStep to afterEnvState and accumulate envCost
+            for envStep in self.envSteps:
                 envStep.apply(self.problem, afterEnvState)
-                evnCost =envStep.get_cost(self.problem, afterEnvState)  # Adjust according to envStep logic
-                # Replace the tuple in-place
-                queue[i] = (state, afterEnvState, transition, cost, evnCost)
-        return queue
+                envCost += envStep.get_cost(self.problem, afterEnvState)
 
+            # Replace the tuple in-place with the updated values
+            queue[i] = (state, afterEnvState, transition, cost, envCost)
+
+        return queue
     def generate_successors(self, state):
         currentQueue = deque()
-        currentQueue.append((state.copy(), [], 0))
+        currentQueue.append((state, [], 0))
         validSeperates = self.generate_all_valid_seperate_actions(state)
 
         for vehicleType, vehicleTypeActions in validSeperates.items():
@@ -191,7 +197,7 @@ class Simulator:
 
                 currentQueue = nextQueue
 
-        for envStep in self.evnSteps:
+        for envStep in self.envSteps:
             # Iterate through each item in the deque by index
             for i in range(len(currentQueue)):
                 state, transition, cost = currentQueue[i]
