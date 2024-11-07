@@ -3,36 +3,46 @@ from CARRI.action import ActionGenerator
 from CARRI.expression import *
 from CARRI.contextParser import ContextParser
 
+baseActionNames = ("Wait", "Travel", "Pick", "Deliver")
 class ActionGeneratorParser:
-    def __init__(self, parsedActions: Dict, parsedEntities: Dict,
-                 implementedActions: Dict[str, ActionGenerator]) -> None:
+    def __init__(self, parsedActions: Dict, parsedEntities: Dict) -> None:
         self.parsed_actions = parsedActions
         self.parsedEntities = parsedEntities
-        self.implementedActions = implementedActions
+        self.implementedActions = {} # Dict[str, ActionGenerator]
+        self.baseActionsDict = {} # baseActionsDict: Dict[str, str]
 
 
     def parse(self) -> List[ActionGenerator]:
         actionGenerators = []
         for actionName, actionData in self.parsed_actions.items():
+            baseActionName = None
             inherits = actionData.get('inherits')
             if inherits and inherits in self.implementedActions:
-                inheritedAction = self.implementedActions[inherits]
+                inheritedActionGeneartor = self.implementedActions[inherits]
+                if inheritedActionGeneartor.name in self.baseActionsDict:
+                    baseActionName = self.baseActionsDict[inheritedActionGeneartor.name]
+                    self.baseActionsDict[actionName] = baseActionName
+
+
                 """
                 Copies should be shallow
                 Inheriting generators "impact" each other, but currently that doesn't
                 Really come to action, as each generator resets parameters after action.
                 """
-                paramExpressions = inheritedAction.paramExpressions.copy() # Should be shallow copy.
-                preconditions = inheritedAction.preconditions.copy()
-                conflictingPreconditions = inheritedAction.conflictingPreconditions.copy()
-                effects = inheritedAction.effects.copy()
-                cost = inheritedAction.cost
+                paramExpressions = inheritedActionGeneartor.paramExpressions.copy() # Should be shallow copy.
+                preconditions = inheritedActionGeneartor.preconditions.copy()
+                conflictingPreconditions = inheritedActionGeneartor.conflictingPreconditions.copy()
+                effects = inheritedActionGeneartor.effects.copy()
+                cost = inheritedActionGeneartor.cost
             else:
                 paramExpressions = []
                 preconditions = []
                 conflictingPreconditions = []
                 effects = []
                 cost = ConstNode(0)
+                if inherits and inherits in baseActionNames:
+                    baseActionName = inherits
+                    self.baseActionsDict[actionName] = baseActionName
 
             entities = [self.parsedEntities[entity][0] for entity in actionData["entities"]]
             parameters = actionData["parameters"]
@@ -80,7 +90,8 @@ class ActionGeneratorParser:
                 conflictingPreconditions=conflictingPreconditions,
                 effects=effects,
                 cost=cost,
-                paramExpressions=paramExpressions # Parameter objects
+                paramExpressions=paramExpressions, # Parameter objects
+                baseActionName=baseActionName
             )
             # Reorder the preconditions for more efficient valid action production.
             actionGenerator.reArrangePreconditions()

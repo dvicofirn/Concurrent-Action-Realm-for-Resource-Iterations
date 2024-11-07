@@ -1,6 +1,4 @@
 from CARRI.translator import Translator
-from planner import Planner
-from planner import Planner
 from manager import Manager
 from CARRI.problem import Problem
 import time
@@ -8,15 +6,14 @@ from search import PartialAssigner
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
 DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1", "Trucks and Drones 2"),
-                        "Cars": ("Cars 1",),}
-instance = 'Cars' #"Trucks and Drones"
-
+                        "Cars": ("Cars 1",),
+                       "MotorCycles and Letters": ("MotorCycles and Letters 1",)}
 def main():
     translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + instance + ".CARRI",
-                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict[instance][0] + ".CARRI")
-    manager = Manager(simulator, iterations, 1,30, 10)
-    manager.run() 
+    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
+            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
+    manager = Manager(simulator, iterations, 30, 10, )
+    manager.run()
 
     """
     actions = simulator.generate_all_valid_actions_seperatly()
@@ -67,23 +64,24 @@ def main():
 
 def runMain():
     translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
-            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][1] + ".CARRI")
+    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "MotorCycles and Letters.CARRI",
+            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["MotorCycles and Letters"][0] + ".CARRI")
     partial = PartialAssigner(simulator)
-    results = partial.search(simulator.current_state, 5, 5)
-    for item in results:
-        print(item[1])
-        print()
-        print(item[2])
-        print()
-        for transition in item[2]:
-            for action in transition:
-                print(simulator.actionStringRepresentor.represent(action), end=', ')
-            print("--")
-        print(item[3])
-        print()
-        print(item[4])
-        print()
+    results = partial.search(simulator.current_state, 20, 200)
+    for stateBefore, stateAfter, transition in zip(results[0][0], results[0][1], results[0][2]):
+        print(stateBefore)
+        print("---------------- ")
+        for action in transition:
+            print(simulator.actionStringRepresentor.represent(action), end=', ')
+        print("\n----------------")
+        print(stateAfter)
+        print("======================================")
+
+
+    """print(results[0][3])
+    print()
+    print(results[0][4])
+    print("--------------")"""
     #manager = Manager(simulator, iterations, 30, 10, {"search_algorithm": PartialAssigner})
 
     #manager.run()

@@ -1,0 +1,92 @@
+Problem Motorcycles and Letters
+Start Problem:
+
+Location: 12
+
+locAdj:
+	1, 2
+	0, 3
+	0, 4, 6
+	1, 5
+	2, 5, 6, 7 #4
+	3, 4, 11
+	2, 4, 8, 9, 10
+	4, 8
+	6, 7, 9 #8
+	6, 8, 10
+	6, 9, 11
+	5, 10
+MotorCycle:
+0, 5
+0, 2
+6, 1
+6, 2
+8, 1
+Letter:
+0, 0, Location
+0, 2, Location
+1, 1, Location
+3, 6, Location
+Person:
+0, 2, true
+0, 2, false
+1, 8, false
+1, 8, true
+2, 11, true
+*
+Letter:
+1, 1, Location
+2, 4, Location
+3, 8, Location
+Person:
+0, 6, false
+1, 8, false
+3, 9, false
+4, 1, true
+*
+MotorCycle:
+0, 4
+Letter:
+0, 1, Location
+1, 1, Location
+4, 9, Location
+Person:
+1, 6, true
+2, 5, false
+3, 6, false
+4, 1, false
+*
+Letter:
+2, 0, Location
+3, 5, Location
+3, 6, Location
+Person:
+0, 8, true
+*
+MotorCycle:
+0, 3
+6, 5
+8, 4
+Letter:
+0, 1, Location
+1, 1, Location
+4, 9, Location
+4, 8, Location
+Person:
+3, 2, true
+4, 2, false
+*
+MotorCycle:
+0, 2
+Letter:
+0, 1, Location
+1, 1, Location
+2, 9, Location
+1, 8, Location
+Person:
+2, 2, true
+1, 10, false
+0, 6, true
+1, 5, false
+*
+End Problem

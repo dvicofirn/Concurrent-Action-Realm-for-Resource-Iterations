@@ -60,7 +60,7 @@ class Problem:
             if info["is_constant"]:
                 self.constants[name] = variable
                 if name == "locAdj" and entities[info["entity"]][1] == "Location":
-                    self.locAdjStatus = info["type"] == Dict
+                    self.locAdjStatus = info["type"]
                     self.locationRanges = range(len(variable))
                 if entities[info["entity"]][0] not in self.entityIdToItemId:
                     self.entityIdToItemId[entities[info["entity"]][0]] = None
@@ -91,7 +91,7 @@ class Problem:
                 elif entities[info["entity"]][1] == "Request":
                     self.requestsIndexes.append(itemIndex)
                 elif entities[info["entity"]][1] == "Vehicle":
-                    self.vehicleEntities.append(itemIndex)
+                    self.vehicleEntities.append(entities[info["entity"]][0])
                 continue
 
             varIndex = len(variableTups)

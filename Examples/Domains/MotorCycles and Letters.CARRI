@@ -1,0 +1,106 @@
+Domain MotorCycles and Letters
+Start Domain:
+Entities:
+Location (Location), MotorCycle (Vehicle), Letter (Package), Person (Request)
+Variables:
+const locAdj MULTY (Location)
+
+
+items MotorCycle var: loc INT, available INT
+items Letter var: type INT, loc INT, onEntity INT
+items Person var: type INT, loc INT, moveToLow BOOL
+
+End Variables
+
+Actions:
+
+MotorTravel: id - MotorCycle, to - Location (Travel)
+	Precs:
+		locAdj (MotorCycle loc id) ? to
+	Effects:
+		MotorCycle loc id : to
+Cost:
+	1
+End Action
+
+MotorWait: id - MotorCycle (Wait)
+End Action
+
+MotorPick: id - MotorCycle, l - Letter (Pick)
+	Precs:
+		MotorCycle loc id = Letter loc l
+	Confs:
+		Letter onEntity l = entity Location
+	Effects:
+		Letter loc l: id
+		Letter onEntity l: entity MotorCycle
+End Action
+
+MotorDeliver: id - MotorCycle, p - Person, l - Letter (Deliver)
+	Precs:
+		MotorCycle loc id = Person loc p
+		Letter onEntity l = entity MotorCycle
+		Letter loc l = id
+		Letter type l = Person type p
+	Confs:
+		Person exists p
+	Effects:
+		Letter remove : l
+		Person remove : p
+End Action
+
+
+End Actions
+
+EnvSteps:
+
+MovingPeople: 
+	Effects:
+		All (p - Person):
+			NewVal newLoc : Person loc p
+			Case (Person moveToLow p  = true):
+				Person moveToLow p : false	
+				All (to - Location) ((locAdj (Person loc p) ? to) and (to < newLoc)):
+					newLoc : to
+				End All
+			Else:
+				Person moveToLow p : true	
+				All (to - Location) ((locAdj (Person loc p) ? to) and (to > newLoc)):
+					newLoc : to
+				End All
+			End Case
+			Person loc p : newLoc
+		End All
+End EnvStep
+
+LettersCost:
+	Cost:
+		NewVal c : 0
+		All (l - Letter):
+			c : c + 2
+			c : c + (Letter type l) * 2
+		End All
+		c
+End EnvSteps
+
+IterStep:
+	NewVal count : 0
+	All (motor - MotorCycle):
+		Case (MotorCycle available motor = 1):
+			All (l - Letter) ((Letter onEntity l = entity MotorCycle) and (Letter loc l = motor)):
+				Letter onEntity l : entity Location
+				Letter loc l : MotorCycle loc motor
+			End All
+			MotorCycle remove : motor
+		Else:
+			MotorCycle available motor : MotorCycle available motor - 1
+			count : count + 1
+		End Case
+	End All
+	Case (count <= 2):
+		MotorCycle add: (0, 4)
+		MotorCycle add: (0, 4)
+	End Case
+End IterStep
+
+End Domain

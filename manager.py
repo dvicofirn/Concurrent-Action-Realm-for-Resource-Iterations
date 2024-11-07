@@ -1,12 +1,11 @@
 import time
 import traceback
-from planner import Planner
 from business import Business
 from genetic_planner import CARRIPlannerGA
 import concurrent.futures
 
 class Manager:
-    def __init__(self, simulator, iterations, iter_time, transitions_per_iteration, **planner_kwargs):
+    def __init__(self, simulator, iterations, iter_time, transitions_per_iteration):
         """
         :param Simulator: Simulator object with problem object in it.
         :param Iterations: List of iterations, with objects to add in each one of them.
@@ -17,7 +16,6 @@ class Manager:
         self.iter_time = iter_time
         self.business = Business(simulator, iterations)
         self.transitions_per_iteration = transitions_per_iteration
-        self.planner = Planner(simulator, iter_time, transitions_per_iteration, **planner_kwargs)
         #self.planner = Planner(simulator, init_time, iter_time, transitions_per_iteration, **planner_kwargs)
         self.genetic_planner = CARRIPlannerGA(simulator)
         self.total_plan = []
@@ -51,17 +49,6 @@ class Manager:
         Calls Planner to generate and execute the plan, enforcing iteration timing constraints.
         """
         start_time = time.time()
-        plan = self.planner.run_iteration(self.business.getState())
-        end_time = time.time()
-        if end_time - start_time > self.iter_time:
-            raise Exception("Iteration time limit exceeded")
-        try:
-            if len(plan) < self.transitions_per_iteration:
-                raise Exception("Plan is too short")
-            self.business.advanceIteration(plan[:self.transitions_per_iteration]) # Raises exception
-        except:
-            print('ERROR - no plan')
-
 
         # Execute genetic planner with timeout
         plan = []
@@ -90,13 +77,13 @@ class Manager:
         """
         return sum(self.genetic_planner.fitness_function(chromosome) for chromosome in plan)
 
-    def create_and_run_genetic_planner(self, state, iter_time, start_time):
+    def create_and_run_genetic_planner(self, state, start_time):
         """
         Creates an isolated instance of the genetic planner and runs it with the provided state.
         """
-        planner_instance = CARRIPlannerGA(self.business.simulator)
-        return planner_instance.plan(state, iter_time, start_time)
-    
+        planner_instance = CARRIPlannerGA(self.business.simulator.copy())
+        return planner_instance.plan(state.copy(), self.iter_time, start_time)
+
 
     def count_pick_deliver(self):
         pick_count, deliver_count = 0, 0
