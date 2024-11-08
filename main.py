@@ -66,8 +66,8 @@ def main():
 
 def runMain():
     translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "MotorCycles and Letters.CARRI",
-            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["MotorCycles and Letters"][0] + ".CARRI")
+    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
+            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][1] + ".CARRI")
     partial = PartialAssigner(simulator)
     start = time.time()
     results = partial.search(simulator.current_state, 25, 500)
@@ -88,6 +88,7 @@ def runMain():
         print(state)
         print(cost)
         print("---")
+    print(end - start)
 
 
 

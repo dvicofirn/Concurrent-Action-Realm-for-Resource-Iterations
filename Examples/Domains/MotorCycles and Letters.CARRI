@@ -3,12 +3,12 @@ Start Domain:
 Entities:
 Location (Location), MotorCycle (Vehicle), Letter (Package), Person (Request)
 Variables:
-const locAdj MULTY (Location)
+const locAdj MULTY - Location (adjacency)
 
 
-items MotorCycle var: loc INT, available INT
-items Letter var: type INT, loc INT, onEntity INT
-items Person var: type INT, loc INT, moveToLow BOOL
+items MotorCycle var loc INT (location), available INT
+items Letter var type INT (type), loc INT (location), onEntity INT (entity)
+items Person var type INT (type), loc INT (location), moveToLow BOOL
 
 End Variables
 

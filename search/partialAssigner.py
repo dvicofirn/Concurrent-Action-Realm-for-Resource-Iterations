@@ -26,7 +26,9 @@ class PartialAssigner:
 
             while len(vehicleList) >= minSplitSize:
                 # Determine the split size for this segment
-                split_size = min(random.randint(minSplitSize, maxSplitSize), len(vehicleList))
+                # Todo: Handle split_size to be fit.
+                #split_size = min(random.randint(minSplitSize, maxSplitSize), len(vehicleList))
+                split_size = 1
 
                 # Randomly sample unique items for the current segment
                 segment = random.sample(vehicleList, split_size)
