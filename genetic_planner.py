@@ -13,7 +13,7 @@ class CARRIPlannerGA:
         self.prev_state_chrom = self.simulator.current_state
         self.plan_sequence = []
         self.fitness_cache = {}  # Cache for storing fitness results
-
+        self.itemKeysPositions = self.simulator.problem.itemKeysPositions
 
     def initialize_population(self, initial_state):
         """Initializes a population with action selection based on estimated fitness impact."""
@@ -55,15 +55,15 @@ class CARRIPlannerGA:
 
         for action in joint_action:
             # Add rewards or penalties similar to main fitness function
-            if 'Pick' in action.name:
+            if action.baseAction == 'Pick':
                 score += 100  # Reward for picking up packages
-            elif 'Deliver' in action.name:
+            elif action.baseAction == 'Deliever':
                 score += 100  # Reward for delivering
-            elif 'Wait' in action.name:
+            elif action.baseAction == 'Wait':
                 if self.has_pending_packages(state) or self.is_vehicle_loaded(state, joint_action.index(action)):
                     score -= 1000  # Penalize unnecessary waiting
-            elif 'Fuel' in action.name:
-                score += 50 if self.fuel_level(state, joint_action.index(action)) else -15  # Fueling has context-based score
+            #elif 'Fuel' in action.name:
+               # score += 50 if self.fuel_level(state, joint_action.index(action)) else -15  # Fueling has context-based score
 
         return score
 
@@ -82,8 +82,6 @@ class CARRIPlannerGA:
         if key in self.fitness_cache:
             return self.fitness_cache[key]  # Return cached fitness if available
 
-
-
         total_cost = sum(cost for _, cost, _ in chromosome)
         
         collision_penalty = 0
@@ -95,25 +93,25 @@ class CARRIPlannerGA:
         for actions, _, state in chromosome:
             package_picks = set()
             for i, action in enumerate(actions):
-                if 'Wait' in action.name:
+                if action.baseAction == 'Wait':
                     # Check if there are packages to pick up or if the vehicle is carrying something
-                    if self.has_pending_packages(state) or self.is_vehicle_loaded(state, actions.index(action)):
-                        waiting_penalty += 20  # Adjust the penalty value as needed
+                    if self.has_pending_packages(state) or self.is_vehicle_loaded(state, i, action):
+                        waiting_penalty += 50  # Adjust the penalty value as needed
 
-                if 'Fuel' in action.name:
-                    if self.fuel_level(state, actions.index(action)):
-                        fuel_penalty += 30
-                    else:
-                        fuel_penalty -= 100
+                #if 'Fuel' in action.name:
+                   # if self.fuel_level(state, actions.index(action)):
+                     #   fuel_penalty += 30
+                  #  else:
+                       # fuel_penalty -= 100
 
-                if 'Pick' in action.name:
+                if action.baseAction == 'Pick':
                     if tuple(action.params) not in package_picks:
                         pick_reward += 300
                         package_picks.add(tuple(action.params))
                     else:
                         collision_penalty += 100
 
-                if 'Deliver' in action.name:
+                if action.baseAction == 'Deliver':
                     deliver_reward += 200
 
         # Fitness formula: reward task completion, penalize cost, collisions, and unnecessary waiting
@@ -122,15 +120,54 @@ class CARRIPlannerGA:
         return score
     
     def has_pending_packages(self, state):
-        for pack in state.items[0].values():
-            if pack[2]== False:
+        """
+        Checks if there are any packages in the state that are not yet delivered.
+        
+        :param state: The current state of the problem.
+        :return: True if there are pending packages, False otherwise.
+        """
+        item_index, property_index = self.itemKeysPositions['Package onEntity']
+        # Check if any package is not delivered
+        x = state.items[item_index]
+        for pack in state.items[item_index].values():
+            if pack[property_index] == 0:
                 return True
-        return False 
+        return False
     
-    def is_vehicle_loaded(self, state, index):
-        if index >= len(state.variables[2]):
-            x = 1
-        return state.variables[2][index] > 0
+    def is_vehicle_loaded(self, state, index, action):
+        inner_index , enititytype = self.indextype(index)
+
+        for key, val in self.simulator.entities.items():
+            if val == (enititytype, 'Vehicle'):
+                vehicle_name = key.lower()
+
+        cap_key = []
+        for key in self.simulator.problem.varPositions.keys():
+            if 'Cap' in key and vehicle_name in key:
+                cap_key.append(key)
+
+        for k in cap_key:
+            cap_index = self.simulator.problem.varPositions[k]
+            if state.variables[cap_index][inner_index] > 0:
+                True
+
+        return False
+    
+    def indextype(self, index):
+        relevant_ranges = []
+        for EntityIndex in self.simulator.vehicle_keys:
+            curr_range = self.simulator.problem.ranges[EntityIndex]
+            relevant_ranges.extend(curr_range)
+
+        length = 0
+        for EntityIndex in self.simulator.vehicle_keys:
+            curr_range = self.simulator.problem.ranges[EntityIndex]
+            length += len(curr_range)
+            if index < length:
+                enititytype = EntityIndex
+                break
+
+        return relevant_ranges[index], enititytype
     
     def fuel_level(self, state, index):
         return state.variables[1][index] > 2

@@ -205,6 +205,9 @@ class Problem:
             state.set_item_value(self.setAbleItemKeysPosition[variableName][0],
                                   self.setAbleItemKeysPosition[variableName][1],
                                   index, value)
+            
+    def get_base_action_indexes(self, actionName):
+        return self.itemKeysPositions[actionName]
 
     def copyState(self, state):
         return copy(state)

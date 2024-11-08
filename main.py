@@ -8,59 +8,17 @@ FOLDER_PROBLEMS = "Examples\\Problems"
 DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1", "Trucks and Drones 2"),
                         "Cars": ("Cars 1",),
                        "MotorCycles and Letters": ("MotorCycles and Letters 1",)}
+
+instance = "Trucks and Drones" #"Cars"  # #"" ##"MotorCycles and Letters"
+
+
 def main():
     translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
-            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
-    manager = Manager(simulator, iterations, 30, 10, )
+    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + instance + ".CARRI",
+            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict[instance][0] + ".CARRI")
+    manager = Manager(simulator, iterations, 60, 10, )
     manager.run()
 
-    """
-    actions = simulator.generate_all_valid_actions_seperatly()
-    """
-    actions = simulator.generate_all_valid_actions_seperatly()
-
-    for _ in actions.keys():
-        for act in actions[_].values():
-            for a in act:
-                x = simulator.actionStringRepresentor.represent(a)
-                print(x)
-
-    actions = simulator.generate_all_valid_actions()
-    i = 0
-    for act in actions :
-        print('\n')
-        print(f'full reduced action {i}')
-        for a in act:
-            x = simulator.actionStringRepresentor.represent(a)
-            print(x)
-        i += 1
-
-    """
-    """
-    i = 0
-    succesors = simulator.generate_successor_states(simulator.current_state)
-    for next_state, action, cost in succesors:
-        print(i)
-        print(next_state)
-        i+= 1
-    """
-    """
-    i = 0
-    succesors = simulator.generate_successor_states(simulator.current_state)
-    for next_state, action, cost in succesors:
-        print(i)
-        print(next_state)
-        i+= 1
-    init_time = 5.0
-    iter_t = 5.0
-
-
-    planner = Planner(simulator, init_time, iter_t)
-    planner.run_iteration()
-    """
-    planner.run_iteration()
-    """
 
 def runMain():
     translator = Translator()
@@ -88,4 +46,5 @@ def runMain():
 
 
 if __name__ == '__main__':
-    runMain()
+    #runMain()
+    main()
