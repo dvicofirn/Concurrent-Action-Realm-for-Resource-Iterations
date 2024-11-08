@@ -23,6 +23,8 @@ droneLoc:
 1
 4
 droneCap: 0
+1. 1
+
 droneCharge: 10
 #droneBoard: False - this is a comment, droneBoard is "missing" meaning
 #To initiate False droneBoard for every Drone
