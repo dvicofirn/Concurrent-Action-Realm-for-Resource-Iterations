@@ -4,91 +4,47 @@ import numpy as np
 
 import random
 
+from search.partialAssigner import PartialAssigner
+
 class CARRIPlannerGA:
     def __init__(self, simulator, population_size=20, planning_horizon=5, generations=15):
         self.simulator = simulator
         self.population_size = population_size
         self.planning_horizon = planning_horizon
         self.generations = generations
+        self.partial_assigner = PartialAssigner(self.simulator) 
         self.prev_state_chrom = self.simulator.current_state
         self.plan_sequence = []
         self.fitness_cache = {}  # Cache for storing fitness results
-        self.itemKeysPositions = self.simulator.problem.itemKeysPositions
+        self.onEntityIndexes = self.simulator.problem.get_onEntity_indexes()
 
     def initialize_population(self, initial_state):
         """Initializes a population with action selection based on estimated fitness impact."""
         self.prev_state_chrom = initial_state
-        population = []
-        for _ in range(self.population_size):
-            chromosome = []
-            state = initial_state
+        population = list(self.partial_assigner.successors_genetic(initial_state, self.planning_horizon, self.population_size))      
 
-            for _ in range(self.planning_horizon):
-                successors = list(self.simulator.generate_successors(state))
-                if not successors:
-                    break
-
-                # Estimate fitness impact for each action and prioritize
-                fitness_scored_actions = [
-                    (ns, ja, cost, self.estimate_action_fitness(ja, cost, ns))
-                    for ns, ja, cost in successors
-                    if any(a.name in ('Pick', 'Deliver') for a in ja)
-                ]
-
-                if fitness_scored_actions:
-                    # Sort based on estimated fitness (higher is better)
-                    fitness_scored_actions.sort(key=lambda x: -x[3])  # Sort by descending fitness
-                    next_state, joint_action, cost, _ = fitness_scored_actions[0]
-                else:
-                    next_state, joint_action, cost = random.choice(successors)
-
-                chromosome.append((joint_action, cost, next_state))
-                state = next_state
-
-            population.append(chromosome)
         return population
-
-
-    def estimate_action_fitness(self, joint_action, cost, state):
-        """Estimates the fitness impact of an action sequence, mirroring the main fitness criteria."""
-        score = -cost  # Start with negative cost to minimize
-
-        for action in joint_action:
-            # Add rewards or penalties similar to main fitness function
-            if action.baseAction == 'Pick':
-                score += 100  # Reward for picking up packages
-            elif action.baseAction == 'Deliever':
-                score += 100  # Reward for delivering
-            elif action.baseAction == 'Wait':
-                if self.has_pending_packages(state) or self.is_vehicle_loaded(state, joint_action.index(action)):
-                    score -= 1000  # Penalize unnecessary waiting
-            #elif 'Fuel' in action.name:
-               # score += 50 if self.fuel_level(state, joint_action.index(action)) else -15  # Fueling has context-based score
-
-        return score
-
-    def chromosome_to_key(self, chromosome):
-        """
-        Converts a chromosome to a unique, immutable representation (tuple of tuples) to use as a cache key.
-        """
-        return tuple(tuple(action.name for action in actions) for actions, _, _ in chromosome)
 
 
     def fitness_function(self, chromosome):
         """Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting."""
 
-        # Convert chromosome to a key and check cache
-        key = self.chromosome_to_key(chromosome)
-        if key in self.fitness_cache:
-            return self.fitness_cache[key]  # Return cached fitness if available
+        try:
+            total_cost = sum(cost for _, cost, _ in chromosome)
+        except:
+            print(chromosome[1])
+            print(len(chromosome))
 
-        total_cost = sum(cost for _, cost, _ in chromosome)
-        
+
         collision_penalty = 0
         pick_reward = 0
         deliver_reward = 0
         waiting_penalty = 0
         fuel_penalty = 0
+        total_cost = 0
+        actions = chromosome[0]
+        _ = chromosome[1]
+        state = chromosome[2]
 
         for actions, _, state in chromosome:
             package_picks = set()
@@ -97,12 +53,6 @@ class CARRIPlannerGA:
                     # Check if there are packages to pick up or if the vehicle is carrying something
                     if self.has_pending_packages(state) or self.is_vehicle_loaded(state, i, action):
                         waiting_penalty += 50  # Adjust the penalty value as needed
-
-                #if 'Fuel' in action.name:
-                   # if self.fuel_level(state, actions.index(action)):
-                     #   fuel_penalty += 30
-                  #  else:
-                       # fuel_penalty -= 100
 
                 if action.baseAction == 'Pick':
                     if tuple(action.params) not in package_picks:
@@ -116,7 +66,6 @@ class CARRIPlannerGA:
 
         # Fitness formula: reward task completion, penalize cost, collisions, and unnecessary waiting
         score = pick_reward + deliver_reward - total_cost - collision_penalty- waiting_penalty - fuel_penalty
-        self.fitness_cache[key] = score
         return score
     
     def has_pending_packages(self, state):
@@ -126,7 +75,7 @@ class CARRIPlannerGA:
         :param state: The current state of the problem.
         :return: True if there are pending packages, False otherwise.
         """
-        item_index, property_index = self.itemKeysPositions['Package onEntity']
+        item_index, property_index = self.onEntityIndexes
         # Check if any package is not delivered
         x = state.items[item_index]
         for pack in state.items[item_index].values():
@@ -157,21 +106,20 @@ class CARRIPlannerGA:
         relevant_ranges = []
         for EntityIndex in self.simulator.vehicle_keys:
             curr_range = self.simulator.problem.ranges[EntityIndex]
-            relevant_ranges.extend(curr_range)
+            if curr_range is not None:
+                relevant_ranges.extend(curr_range)
 
+        enititytype = None
         length = 0
         for EntityIndex in self.simulator.vehicle_keys:
             curr_range = self.simulator.problem.ranges[EntityIndex]
-            length += len(curr_range)
+            length += len(curr_range) if curr_range is not None else 0
             if index < length:
                 enititytype = EntityIndex
                 break
 
         return relevant_ranges[index], enititytype
     
-    def fuel_level(self, state, index):
-        return state.variables[1][index] > 2
-
     def mutation_helper(self, child, replace_index):
         prev_state = self.prev_state_chrom if replace_index == 0 else child[replace_index - 1][2]
         succ = list(self.simulator.generate_successors(prev_state))

@@ -208,6 +208,15 @@ class Problem:
             
     def get_base_action_indexes(self, actionName):
         return self.itemKeysPositions[actionName]
+    
+    def get_onEntity_indexes(self):
+        on_key = None
+        for key in self.itemKeysPositions.keys():
+            if 'onEntity' in key:
+                on_key = key
+                break
+        return self.itemKeysPositions[on_key]
+
 
     def copyState(self, state):
         return copy(state)

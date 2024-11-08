@@ -16,7 +16,7 @@ class Simulator:
         self.current_state = problem.copyState(problem.initState)
         self.vehicle_keys = self.problem.vehicleEntities
 
-    def get_state(self):
+    def getState(self):
         return self.problem.copyState(self.current_state)
 
     def generate_all_valid_seperate_actions(self, state):

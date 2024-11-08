@@ -127,3 +127,49 @@ class PartialAssigner:
         return searchQueue
 
 
+
+    def successors_genetic(self, state, steps=1, max_states=1500):
+        """
+        Generate successors for the current state by using PartialAssigner's vehicle splitting
+        and decompose the results to provide transitions, costs, and states for each step.
+        """
+        # Use PartialAssigner's `search` method to generate successors
+        search_results = self.search(initState=state, steps=steps, maxStates=max_states)
+        
+        # Decompose the search results
+        decomposed_successors = []
+
+        for result_state, transitions, costs, ncosts in search_results:
+            current_state = state.copy()
+            stepwise_results = []
+
+            for i, transition in enumerate(transitions):
+                succeeded = True
+
+                # Apply the transition to the current state
+                for action in transition:
+                    try:
+                        if action.reValidate(self.problem, current_state):
+                            action.apply(self.problem, current_state)
+                        else:
+                            succeeded = False
+                            break
+                    except Exception:
+                        succeeded = False
+                        break
+
+                if succeeded:
+                    # Append the transition, cost, and state after applying this transition
+                    transition_cost = costs[i] if i < len(costs) else 0
+                    stepwise_results.append((transition, transition_cost, deepcopy(current_state)))
+                else:
+                    # If any transition fails to apply, skip further processing
+                    break
+
+            if len(stepwise_results) == len(transitions):
+                # If all transitions succeeded, add the full sequence to decomposed_successors
+                decomposed_successors.append(stepwise_results)
+
+        return decomposed_successors
+
+

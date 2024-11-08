@@ -9,14 +9,14 @@ DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1", "Trucks and 
                         "Cars": ("Cars 1",),
                        "MotorCycles and Letters": ("MotorCycles and Letters 1",)}
 
-instance = "Trucks and Drones" #"Cars"  # #"" ##"MotorCycles and Letters"
+instance = "Trucks and Drones" #"MotorCycles and Letters" #"Trucks and Drones" #"" ##"MotorCycles and Letters"
 
 
 def main():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + instance + ".CARRI",
             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict[instance][0] + ".CARRI")
-    manager = Manager(simulator, iterations, 60, 10, )
+    manager = Manager(simulator, iterations, 30, 10, )
     manager.run()
 
 
