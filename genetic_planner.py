@@ -1,13 +1,15 @@
 import collections
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import lru_cache
 import time
 import numpy as np
-
+from copy import copy, deepcopy
 import random
 
 from search.partialAssigner import PartialAssigner
 
 class CARRIPlannerGA:
-    def __init__(self, simulator, population_size=20, planning_horizon=5, generations=15):
+    def __init__(self, simulator, population_size=20, planning_horizon=5, generations=10):
         self.simulator = simulator
         self.population_size = population_size
         self.planning_horizon = planning_horizon
@@ -21,20 +23,16 @@ class CARRIPlannerGA:
     def initialize_population(self, initial_state):
         """Initializes a population with action selection based on estimated fitness impact."""
         self.prev_state_chrom = initial_state
+        
+        start = time.time()
         population = list(self.partial_assigner.successors_genetic(initial_state, self.planning_horizon, self.population_size))      
-
+        #print("took :", time.time() - start )
         return population
-
 
     def fitness_function(self, chromosome):
         """Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting."""
 
-        try:
-            total_cost = sum(cost for _, cost, _ in chromosome)
-        except:
-            print(chromosome[1])
-            print(len(chromosome))
-
+        total_cost = sum(cost for _, cost, _ in chromosome)
 
         collision_penalty = 0
         pick_reward = 0
@@ -98,7 +96,7 @@ class CARRIPlannerGA:
         for k in cap_key:
             cap_index = self.simulator.problem.varPositions[k]
             if state.variables[cap_index][inner_index] > 0:
-                True
+                return True
 
         return False
     
@@ -119,18 +117,6 @@ class CARRIPlannerGA:
                 break
 
         return relevant_ranges[index], enititytype
-    
-    def mutation_helper(self, child, replace_index):
-        prev_state = self.prev_state_chrom if replace_index == 0 else child[replace_index - 1][2]
-        succ = list(self.simulator.generate_successors(prev_state))
-
-        # Shuffle successors to reduce repeated random selection
-        random.shuffle(succ)
-        for new_state, joint_action, cost in succ:
-            if new_state == child[replace_index][2]:
-                return joint_action, cost, new_state
-
-        return child[replace_index]  # Fallback if no suitable successor is found
 
 
     def valid_child(self, child):
@@ -146,48 +132,88 @@ class CARRIPlannerGA:
         self.simulator.current_state = inner_state
         return valid
     
-    def valid_parent_split(self, crossover_point, parent1, parent2):
-        child1 = parent1[:crossover_point] + parent2[crossover_point:]
-        child2 = parent2[:crossover_point] + parent1[crossover_point:]
-
-        return self.valid_child(child1) and self.valid_child(child2)
-
-
     def crossover_mutation(self, selected_population):
-        # Crossover: Swap segments of action sequences
+        # Modified Crossover: Sample one parent and regenerate the rest of the list concurrently
+        num_to_generate = self.population_size - len(selected_population)
+        parents = random.choices(selected_population, k=num_to_generate)
+        crossover_points = random.choices(range(1, self.planning_horizon), k=num_to_generate)
 
-        while len(selected_population) < self.population_size:
-            parent1, parent2 = random.sample(selected_population, 2)
-            crossover_point = random.randint(1, self.planning_horizon - 1)
-            child1 = parent1[:crossover_point] + parent2[crossover_point:]
-            child2 = parent2[:crossover_point] + parent1[crossover_point:]
+        new_children = []
+        with ThreadPoolExecutor() as executor:
+            # Submit tasks in larger batches to reduce overhead
+            futures = [executor.submit(self.generate_child, copy(parent), crossover_point) for parent, crossover_point in zip(parents, crossover_points)]
 
-            for child in [child1, child2]:
-                if random.random() < 0.3:
-                    replace_index = random.randint(0, len(child) - 1)
-                    child[replace_index] = self.mutation_helper(child, replace_index)
-                if self.valid_child(child):
-                    selected_population.append(child)
-        
+            for future in as_completed(futures):
+                child = future.result()
+                if child is not None:
+                    new_children.append(child)
+
+        selected_population.extend(new_children)
         return selected_population
+
+
+    def generate_child(self, parent, crossover_point):
+        # Use a new instance of PartialAssigner and deepcopy the simulator for thread safety
+        start = time.time()
+        partial_assigner = PartialAssigner(deepcopy(self.simulator))
+        #print('took deepcopy: ' , time.time() - start)
+        child = parent[:crossover_point]
+        rest_of_child_candidates = list(partial_assigner.successors_genetic(self.simulator.problem.copyState(parent[crossover_point][2]), self.planning_horizon - crossover_point, 5))
+        
+        # Filter out invalid candidates early to reduce workload
+        try:
+            rest_of_child = random.choice(rest_of_child_candidates)
+        except:
+            return None
+        child.extend(rest_of_child)
+
+        return child if self.valid_child(child) else None
+    
+    def stochastic_universal_sampling(self, population, fitness_scores, k):
+        pointers = np.linspace(0, sum(fitness_scores), k)
+        fitness_sum = 0
+        selected = []
+        index = 0
+
+        for pointer in pointers:
+            while fitness_sum < pointer:
+                fitness_sum += fitness_scores[index]
+                index += 1
+            selected.append(population[index - 1])
+
+        return selected
 
     def run_ga(self, initial_state):
         population = self.initialize_population(initial_state)
         for generation in range(1, self.generations + 1):
             # Elitism: Preserve the best chromosomes before creating the new population
-            elite_size = max(1, self.population_size // 10)  # Preserve top 10% as elites
+            elite_size = max(1, self.population_size // 3)  # Preserve top 10% as elites
+            start = time.time()
             elites = sorted(population, key=self.fitness_function, reverse=True)[:elite_size]
-
+            #print("took elit:", time.time() - start )
             if generation % 5 == 0:
                 population.extend(self.initialize_population(self.simulator.current_state)[:self.population_size // 2])
-            
-            fitness_scores = np.array([self.fitness_function(chrom) for chrom in population])
-            min_score = fitness_scores.min()
+
+            start = time.time()
+            # Evaluate fitness concurrently
+            with ThreadPoolExecutor() as executor:
+                fitness_scores = list(executor.map(self.fitness_function, population))
+
+            min_score = min(fitness_scores)
             if min_score <= 0:
-                fitness_scores -= min_score - 1
-            fitness_scores = fitness_scores / fitness_scores.sum()
-            selected_population = random.choices(population, weights=fitness_scores, k=self.population_size // 2)
+                fitness_scores = [score - min_score + 1 for score in fitness_scores]
+
+            total_fitness = sum(fitness_scores)
+            fitness_scores = [score / total_fitness for score in fitness_scores]
+
+            #print("took fitness:", time.time() - start )
+            start = time.time()
+            selected_population = self.stochastic_universal_sampling(population, fitness_scores, self.population_size // 2)
+            #print("took selected:", time.time() - start )
+            start = time.time()
             population = elites + self.crossover_mutation(selected_population)  # Include elites in new population
+            #print("took mutation:", time.time() - start )
+            
         
         joint_action, _, state = max(population, key=self.fitness_function)[0]
         self.simulator.current_state = state.copy()
@@ -203,7 +229,7 @@ class CARRIPlannerGA:
         
         while time.time() - start_time < iter_time:
         #for iteration in range(max_iterations):
-            print(f"Iteration {iteration}: Planning Step")
+            print(f"Planning Step : {iteration}")
             self.run_ga(self.simulator.current_state)
             iteration+= 1
 

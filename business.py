@@ -42,7 +42,7 @@ class Business:
         # Advance state by each transition of actions.
         self.simulator.current_state = state.copy()
         for i, transition in enumerate(plan):
-            if not self.simulator.validate_Transition(transition):
+            if not self.simulator.validate_Transition_state(self.simulator.current_state, transition):
                 raise Exception(
                     f"Transition no.{i} is invalid:"
                     f"\nState: {self.simulator.current_state}"
