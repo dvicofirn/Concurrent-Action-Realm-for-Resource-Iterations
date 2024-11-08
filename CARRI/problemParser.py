@@ -306,11 +306,11 @@ class CARRIProblemParser:
     def parse_value(self, value_str, variable):
         var_type = variable['type']
         if var_type == int:
-            return self.convert_value_by_type(value_str, 'INT')
+            return self.convert_value_by_type(value_str, int)
         elif var_type == bool:
             return value_str.lower() in ('true', '1', 'yes', 't')
         elif var_type == Set:
-            items = [self.convert_value_by_type(x.strip(), 'INT') for x in value_str.split(',') if x.strip()]
+            items = [self.convert_value_by_type(x.strip(), int) for x in value_str.split(',') if x.strip()]
             return set(items)
         elif var_type == Dict:
             d = {}
@@ -321,8 +321,8 @@ class CARRIProblemParser:
                     continue
                 if '-' in pair:
                     key_str, value_str = pair.split('-', 1)
-                    key = self.convert_value_by_type(key_str.strip(), 'INT')
-                    value = self.convert_value_by_type(value_str.strip(), 'INT')
+                    key = self.convert_value_by_type(key_str.strip(), int)
+                    value = self.convert_value_by_type(value_str.strip(), int)
                     d[key] = value
             return d
         elif var_type == List:
@@ -339,7 +339,7 @@ class CARRIProblemParser:
             return value_str
 
     def convert_value_by_type(self, value, key_type):
-        if key_type == 'INT':
+        if key_type == int:
             try:
                 return int(value)
             except ValueError:
@@ -349,7 +349,7 @@ class CARRIProblemParser:
                     return entity_index
                 else:
                     raise ValueError(f"Cannot convert value '{value}' to int or known entity name")
-        elif key_type == 'BOOL':
+        elif key_type == bool:
             return value.lower() in ('true', '1', 'yes', 't')
         else:
             # Handle other types as needed

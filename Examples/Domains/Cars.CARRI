@@ -3,16 +3,16 @@ Start Domain:
 Entities:
 Location (Location), Car (Vehicle), Package (Package), Request (Request)
 Variables:
-const locAdj MATCH (Location)
-const locStation BOOL (Location)
+const locStation BOOL - Location
+const locAdj MATCH - Location (adjacency)
 
-var carLoc INT (Car)
-var carCap INT (Car)
-var carFuel INT (Car)
-var carDebt INT (Car)
+var carLoc INT - Car (location)
+var carCap INT - Car
+var carFuel INT - Car
+var carDebt INT - Car
 
-items Package var: type INT, loc INT, onEntity INT
-items Request const: type INT, loc INT
+items Package var type INT (type), loc INT (location), onEntity INT (entity)
+items Request const type INT (type), loc INT (location
 
 End Variables
 

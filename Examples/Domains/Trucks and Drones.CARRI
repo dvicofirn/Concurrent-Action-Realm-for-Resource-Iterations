@@ -6,22 +6,22 @@ End Entities
 
 Variables:
 #Right now no use for entity in brackets
-const locType INT (Location) #Related to Location entity, is constant therefore tuple, and expected having #integers
-const locAdj MULTY (Location) #Have Set - meaning tuple of Sets. Sets will have integers.
+const locType INT - Location #Related to Location entity, is constant therefore tuple, and expected having #integers
+const locAdj MULTY - Location (adjacency) #Have Set - meaning tuple of Sets. Sets will have integers.
 ## var locCap INT (Location) Will not use this variable for now 
 
-var droneLoc INT (Drone) #Variable, meaning it is a list
-var droneCap INT (Drone)
-var droneCharge INT (Drone)
-var droneBoard BOOL (Drone) # Could also be INT of 0 and 1
+var droneLoc INT - Drone (location) #Variable, meaning it is a list
+var droneCap INT - Drone
+var droneCharge INT - Drone
+var droneBoard BOOL - Drone # Could also be INT of 0 and 1
 
-var truckLoc INT (Truck)
-var truckDroneCap INT (Truck)
-var truckPackCap INT (Truck)
+var truckLoc INT - Truck (location)
+var truckDroneCap INT - Truck
+var truckPackCap INT - Truck
 
-items Package var: type INT, loc INT, onEntity INT
+items Package var type INT (type) , loc INT (location), onEntity INT (entity)
 # Dictionary of lists, each list has 3 integers (Later will give example how interpreted)
-items Request const: type INT, loc INT, urgency INT
+items Request const type INT (type), loc INT (location), urgency INT
 #Dictionary of tuples. Despite urgency is changing, because it only changes between iterations, it will be #considered const.
 
 End Variables

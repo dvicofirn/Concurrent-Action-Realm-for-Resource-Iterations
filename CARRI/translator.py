@@ -196,79 +196,110 @@ class CARRIEntitiesTranslator:
         return self.entities
 
 
+import re
+from typing import Set, Dict, List, Tuple
+
 class CARRIVariablesTranslator:
     def __init__(self, variables_text):
         self.variables_text = variables_text
 
     def translate(self):
         """
-        Translates the Variables section to a dictionary containing constants and non-constants.
+        Translates the Variables section to a dictionary containing constants, variables, and items.
         """
         variables = {}
-
-        # Splitting lines and processing each line to distinguish between constants and non-constants
         lines = [line.strip() for line in self.variables_text.split("\n") if line.strip()]
 
+        # Patterns to match variable and items definitions
+        variable_pattern = r'^(const|var)\s+(.+?)\s+([A-Z]+)\s*-\s*([A-Za-z0-9_]+)(?:\s*\(([^)]+)\))?$'
+        items_pattern = r'^items\s+(.+?)\s+(var|const)\s+(.*)$'
+
         for line in lines:
-            # Extract the variable type (const, var, items)
-            parts = line.split()
-            var_type = parts[0]
-            name = parts[1]  # Extract the variable name
-            entities = parts[-1].strip("()") if parts[-1].startswith("(") else ""  # Related entities without brackets
+            variable_match = re.match(variable_pattern, line)
+            items_match = re.match(items_pattern, line)
+            if variable_match:
+                # Parse const or var line
+                var_type = variable_match.group(1)   # 'const' or 'var'
+                name = variable_match.group(2).strip()
+                variable_type_str = variable_match.group(3)  # 'INT', 'BOOL', 'MULTY', 'MATCH'
+                entity_name = variable_match.group(4)   # '-'
+                base_name = line.split('(')
+                if len(base_name) > 1:
+                    base_name = base_name[1].strip(')')
+                else:
+                    base_name = None
 
-            # Default type to INT if not specified
-            variable_type = parts[2] if len(parts) > 2 else "INT"
+                # Determine the data structure type
+                if variable_type_str == "MULTY":
+                    variable_type = Set
+                elif variable_type_str == "MATCH":
+                    variable_type = Dict
+                elif variable_type_str == "BOOL":
+                    variable_type = bool
+                else:
+                    variable_type = int
 
-            # Determine the data structure type
-            if variable_type == "MULTY":
-                variable_type = Set
-            elif variable_type == "MATCH":
-                variable_type = Dict
-            elif variable_type == "BOOL":
-                variable_type = bool
-            else:
-                variable_type = int
-
-            # Handle items differently to add 'key types' and 'key names'
-            if var_type == "items":
-                key_names, key_types = self.split_key_vars(parts[3:])
-                structure_type = List if "var:" in line else Tuple
-                details = {
-                    "type": structure_type,
-                    "entity": name,
-                    "key types": key_types,
-                    "key names": key_names,
-                    "is_constant": False,
-                    "is_items": True
-                }
-            else:
                 details = {
                     "type": variable_type,
-                    "entity": entities,
+                    "entity": entity_name,
+                    "base_name": base_name,
                     "is_constant": var_type == "const",
                     "is_items": False
                 }
 
-            # Add the variable to the dictionary
-            variables[name] = details
+                variables[name] = details
+
+            elif items_match:
+                # Parse items line
+                entity_name = items_match.group(1).strip()
+                is_var_const = items_match.group(2)  # 'var' or 'const'
+                key_definitions_str = items_match.group(3)
+
+                structure_type = Tuple if is_var_const == 'const' else List
+
+                key_names = []
+                key_types = []
+                key_base_names = []
+
+                # Split key definitions by commas
+                key_parts = [kp.strip() for kp in key_definitions_str.split(',') if kp.strip()]
+                for key_part in key_parts:
+                    # Each key_part may be: keyName type [ '(' baseName ')' ]
+                    key_pattern = r'(\w+)\s+([A-Z]+)(?:\s*\(([^)]+)\))?'
+                    key_match = re.match(key_pattern, key_part)
+                    if key_match:
+                        key_name = key_match.group(1)
+                        key_type_str = key_match.group(2)
+                        key_base_name = key_match.group(3)  # May be None
+                        key_names.append(key_name)
+                        key_type = None
+                        if key_type_str == "INT":
+                            key_type = int
+                        elif key_type_str == "BOOL":
+                            key_type = bool
+                        key_types.append(key_type)
+                        key_base_names.append(key_base_name)
+                    else:
+                        raise ValueError(f"Invalid key definition: {key_part}")
+
+                details = {
+                    "type": structure_type,
+                    "entity": entity_name,
+                    "base_name": None,
+                    "key names": tuple(key_names),
+                    "key types": tuple(key_types),
+                    "key base names": tuple(key_base_names),
+                    "is_constant": False,
+                    "is_items": True
+                }
+
+                variables[entity_name] = details
+
+            else:
+                raise ValueError(f"Invalid line format: {line}")
 
         return variables
 
-    def split_key_vars(self, parts_list):
-        """
-        Splits the parts list into two separate lists: one for the key types and one for the key names.
-        """
-        key_names = []
-        key_types = []
-
-        for i in range(0, len(parts_list), 2):
-            if parts_list[i].startswith("("):
-                break
-            key_names.append(parts_list[i].strip(','))
-            if i + 1 < len(parts_list):
-                key_types.append(parts_list[i + 1].strip(','))
-
-        return tuple(key_names), tuple(key_types)
 
 
 class CARRIActionsTranslator:

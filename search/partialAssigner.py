@@ -26,7 +26,9 @@ class PartialAssigner:
 
             while len(vehicleList) >= minSplitSize:
                 # Determine the split size for this segment
-                split_size = min(random.randint(minSplitSize, maxSplitSize), len(vehicleList))
+                # Todo: Handle split_size to be fit.
+                #split_size = min(random.randint(minSplitSize, maxSplitSize), len(vehicleList))
+                split_size = 1
 
                 # Randomly sample unique items for the current segment
                 segment = random.sample(vehicleList, split_size)
@@ -54,57 +56,73 @@ class PartialAssigner:
 
         return splits
 
-    def search(self, state, steps, maxStates):
+    def search(self, initState, steps, maxStates):
         splits = self.split_vehicles()
+
         # Add initial states, transitions, costs
         split = splits[0]
-        initSearchResult = self.simulator.generate_partial_successors(state, split)
+        initSearchResult = self.simulator.generate_partial_successors(initState, split)
         afterEnvResult = self.simulator.applyEnvSteps(initSearchResult)
-        topSearchResult = sorted(afterEnvResult, key=lambda x: x[4])[:maxStates]
         searchQueue = deque()
-        for resultItems in topSearchResult:
-            searchQueue.append(([resultItems[0]], [resultItems[1]],
-                                [resultItems[2]], [resultItems[3]], [resultItems[4]]))
+        for resultItems in afterEnvResult:
+            searchQueue.append((resultItems[0], [resultItems[1]],
+                                [resultItems[2]], [resultItems[3]]))
 
         for step in range(1, steps):
             nextSearches = []
             while searchQueue:
-                currentStates, currentAfterEnv, currentTransitions, currentCosts, currentNCosts = searchQueue.pop()
-                currentSearch = self.simulator.generate_partial_successors(currentAfterEnv[-1], split)
+                state, currentTransitions, currentCosts, currentNCosts = searchQueue.pop()
+                currentSearch = self.simulator.generate_partial_successors(state, split)
                 afterEnvResult = self.simulator.applyEnvSteps(currentSearch)
-                topSearchResult = sorted(afterEnvResult, key=lambda x: x[4])[:maxStates]
-                for state, afterEnv, transition, cost, nCost in topSearchResult:
+                for state, transition, cost, nCost in afterEnvResult:
                     nextSearches.append((
-                        currentStates + [state],
-                        currentAfterEnv + [afterEnv],
+                        state,
                         currentTransitions + [transition],
                         currentCosts + [cost + currentCosts[-1]],
                         currentNCosts + [nCost + currentNCosts[-1]]
                     ))
-            searchQueue.extend(sorted(nextSearches, key=lambda x: x[3][-1] + x[4][-1])[:maxStates])
+            if len(nextSearches) > maxStates:
+                nextSearches = random.sample(nextSearches, maxStates)
+            searchQueue.extend(nextSearches)
+        searchQueue = (sorted(searchQueue, key=lambda x: x[2][-1] + x[3][-1])[:maxStates])
 
         for split in splits[1:]:
             for step in range(steps):
                 nextSearches = []
                 while searchQueue:
-                    currentStates, currentAfterEnv, currentTransitions, currentCosts, currentNCosts = searchQueue.pop()
-                    state = currentStates[step]
+                    state, currentTransitions, currentCosts, currentNCosts = searchQueue.pop()
+                    if step == 0:
+                        state = initState.copy()
+                    succeeded = True
+                    for action in currentTransitions[step]:
+                        try:
+                            if action.reValidate(self.problem, state):
+                                action.apply(self.problem, state)
+                            else:
+                                succeeded = False
+                                break
+                        except Exception as e:
+                            succeeded = False
+                            break
+                    if not succeeded:
+                        continue
                     currentSearch = self.simulator.generate_partial_successors(state, split)
                     afterEnvResult = self.simulator.applyEnvSteps(currentSearch)
-                    topSearchResult = sorted(afterEnvResult, key=lambda x: x[4])[:maxStates]
-                    for state, afterEnv, transition, cost, nCost in topSearchResult:
+                    for state, transition, cost, nCost in afterEnvResult:
                         nextTransitionStep = currentTransitions[step].copy()
                         nextTransitionStep.extend(transition)
                         nextNCost = nCost + currentNCosts[step - 1] if step > 0 else nCost
                         lastNCost = currentNCosts[step]
                         nextSearches.append((
-                            currentStates[:step] + [state] + currentStates[step + 1:],
-                            currentAfterEnv[:step] + [afterEnv] + currentAfterEnv[step + 1:],
+                            state,
                             currentTransitions[:step] + [nextTransitionStep] + currentTransitions[step + 1:],
                             currentCosts[:step] + [cost + lastCost for lastCost in currentCosts[step:]],
-                            currentNCosts[:step] + [nextNCost] +[nextNCost - lastNCost + cost for cost in currentNCosts[step + 1:]]
+                            currentNCosts[:step] + [nextNCost] + [nextNCost - lastNCost + cost for cost in currentNCosts[step + 1:]]
                         ))
-                searchQueue.extend(sorted(nextSearches, key=lambda x: x[3][-1] + x[4][-1])[:maxStates])
+                if len(nextSearches) > maxStates:
+                    nextSearches = random.sample(nextSearches, maxStates)
+                searchQueue.extend(nextSearches)
+            searchQueue = (sorted(searchQueue, key=lambda x: x[2][-1] + x[3][-1])[:maxStates])
 
         return searchQueue
 
