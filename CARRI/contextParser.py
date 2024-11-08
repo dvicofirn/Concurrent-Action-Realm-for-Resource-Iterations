@@ -1,6 +1,5 @@
 from CARRI.expression import *
 from CARRI.expressionParser import ExpressionParser
-from typing import Union
 
 class ContextParser:
     def __init__(self, parameters, paramExpressions, parsedEntities):

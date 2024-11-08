@@ -139,7 +139,7 @@ class Problem:
         itemTups = kwargs.get("itemTups", tuple())
         self.initState = kwargs.get("initState", State(varbleTups, itemTups))
 
-    def copy(self):
+    def __copy__(self):
         """
         Returns a copy of the instance with all attributes.
         """

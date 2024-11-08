@@ -2,7 +2,7 @@ from CARRI import Simulator, Problem, State
 import random
 import math
 from collections import deque
-from copy import deepcopy
+
 class PartialAssigner:
     def __init__(self, simulator: Simulator):
         self.simulator = simulator
@@ -92,7 +92,7 @@ class PartialAssigner:
                 while searchQueue:
                     state, currentTransitions, currentCosts, currentNCosts = searchQueue.pop()
                     if step == 0:
-                        state = initState.copy()
+                        state = initState.__copy__()
                     succeeded = True
                     for action in currentTransitions[step]:
                         try:

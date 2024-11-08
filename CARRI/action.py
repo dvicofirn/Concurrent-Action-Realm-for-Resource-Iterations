@@ -1,5 +1,4 @@
 from typing import List, Iterable
-from copy import copy
 from CARRI.problem import Problem
 from CARRI.state import State
 from CARRI.expression import ExpressionNode, ValueParameterNode, Update, CostExpression
@@ -79,7 +78,7 @@ class ActionGenerator:
 
     def generate_action(self):
         # Create an Action instance using the parameter values
-        newParams = [copy(par) for par in self.paramExpressions]
+        newParams = [par.__copy__() for par in self.paramExpressions]
         preconditions = [pre.copies(newParams) for pre in self.preconditions]
         conflictingPreconditions = [conf.copies(newParams) for conf in self.conflictingPreconditions]
         effects = [eff.copies(newParams) for eff in self.effects]

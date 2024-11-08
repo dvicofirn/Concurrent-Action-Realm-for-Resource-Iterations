@@ -40,7 +40,7 @@ class Business:
         state = self.state
         cost = self.cost
         # Advance state by each transition of actions.
-        self.simulator.current_state = state.copy()
+        self.simulator.current_state = state.__copy__()
         for i, transition in enumerate(plan):
             if not self.simulator.validate_Transition(transition):
                 raise Exception(
@@ -60,7 +60,7 @@ class Business:
                 state = self.simulator.addItems(entityName, currentIterationList[entityName])
 
         # Finalize
-        self.state = self.simulator.current_state.copy()
+        self.state = self.simulator.current_state.__copy__()
         self.cost = cost
 
         #if self.iteration % 10 == 0:

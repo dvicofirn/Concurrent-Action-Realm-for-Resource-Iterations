@@ -21,7 +21,7 @@ class State:
         ))
 
     # It works.
-    def copy(self):
+    def __copy__(self):
         """
         It works.
         Manual copy instead of deepcopy - hopefully it's faster.

@@ -1,7 +1,6 @@
 from CARRI.action import ActionProducer, ActionStringRepresentor, Action, EnvStep
 from CARRI.problem import Problem
 from collections import deque
-from copy import copy
 from typing import List
 
 class Simulator:
@@ -153,7 +152,7 @@ class Simulator:
                     currentState, transition, cost = currentQueue.pop()
                     for action in vehicleIdActions:
                         if action.reValidate(self.problem, currentState):
-                            nextState = currentState.copy()
+                            nextState = currentState.__copy__()
                             action.apply(self.problem, nextState)
                             nextTransition = transition + [action]
                             nextCost = cost + action.get_cost(self.problem, nextState)
@@ -170,15 +169,14 @@ class Simulator:
         for i in range(len(queue)):
             # Initialize the tuple elements
             state, transition, cost = queue[i]
-            afterEnvState = state.copy()
             envCost = 0
             # Apply each envStep to afterEnvState and accumulate envCost
             for envStep in self.envSteps:
-                envStep.apply(self.problem, afterEnvState)
-                envCost += envStep.get_cost(self.problem, afterEnvState)
+                envStep.apply(self.problem, state)
+                envCost += envStep.get_cost(self.problem, state)
 
             # Replace the tuple in-place with the updated values
-            queue[i] = (afterEnvState, transition, cost, envCost)
+            queue[i] = (state, transition, cost, envCost)
 
         return queue
     def generate_successors(self, state):
@@ -194,7 +192,7 @@ class Simulator:
                     currentState, transition, cost = currentQueue.pop()
                     for action in vehicleIdActions:
                         if action.reValidate(self.problem, currentState):
-                            nextState = currentState.copy()
+                            nextState = currentState.__copy__()
                             action.apply(self.problem, nextState)
                             nextTransition = transition + [action]
                             nextCost = cost + action.get_cost(self.problem, nextState)
@@ -231,7 +229,7 @@ class Simulator:
 
     def apply_environment_steps(self, state):
         cost = 0
-        state = state.copy()
+        state = state.__copy__()
         for envStep in self.envSteps:
             envStep.apply(self.problem, state)
             cost += envStep.get_cost(self.problem, state)
@@ -239,7 +237,7 @@ class Simulator:
 
     def apply_transition(self, state, transition):
         cost = 0
-        state = state.copy()
+        state = state.__copy__()
         for action in transition:
             action.apply(self.problem, state)
             cost += action.get_cost(self.problem, state)

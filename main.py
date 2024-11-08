@@ -70,7 +70,7 @@ def runMain():
             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][1] + ".CARRI")
     partial = PartialAssigner(simulator)
     start = time.time()
-    results = partial.search(simulator.current_state, 25, 500)
+    results = partial.search(simulator.current_state, 15, 100)
     end = time.time()
     print(end - start)
     print()
