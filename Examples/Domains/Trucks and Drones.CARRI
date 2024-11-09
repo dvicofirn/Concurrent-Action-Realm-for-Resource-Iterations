@@ -108,11 +108,14 @@ End Action
 
 DroneBoard: id - Drone, trk - Truck
 Precs:
-((droneLoc id = truckLoc trk) and (droneBoard id = false)) or ((droneLoc id = trk) and (droneBoard id = true))
+	((droneLoc id = truckLoc trk) and (droneBoard id = false)) or ((droneLoc id = trk) and (droneBoard id = true))
 Confs:
 truckDroneCap trk < 4
 (truckPackCap trk < 8) or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
 Effects:
+	Case (droneBoard id = False):
+		truckDroneCap trk : truckDroneCap trk + 1
+	End Case
 	droneLoc id : trk
 	droneBoard id : true
 	Case (droneCharge id < 8):
@@ -124,6 +127,7 @@ Effects:
 		All(pack - Package) ((Package onEntity pack = entity Drone) and (Package loc pack = id)):
 			Package onEntity pack : entity Truck
 			Package loc pack : trk
+			truckPackCap trk : truckPackCap trk + 1
 		End All
 		droneCap id : 0 
 	End Case
@@ -139,18 +143,20 @@ not (locType(truckLoc trk) = 2)
 Effects:
 	droneLoc id : truckLoc trk
 	droneBoard id : false
+	truckDroneCap trk : truckDroneCap trk - 1
 Cost:
 1
 End Action
 
 DroneExitBoardWithPack: id - Drone, trk - Truck, pack - Package (DroneExitBoard) #This is an example of addition to existing action
 Precs Add:
-	Package loc pack: trk
+	Package loc pack = trk
 Confs: #Could also implement as Confs Add
 	Package onEntity pack = entity Truck #Other drone might want to take it. It's fine to not re check package location
 Effects Add:
 	Package onEntity pack : entity Drone
 	Package loc pack : id
+	truckPackCap trk : truckPackCap trk - 1
 End Action
 
 TruckWait: id - Truck (Wait)
@@ -188,7 +194,7 @@ NewVal c : 0
 All (req - Request): #Fancy way to say "for req in Request"
 	c : c + 5
 	c : c + (Request urgency req) * 5 #Could be c + (Request urgency req *5) + 5 if possible
-End All
+End All	
 c
 End EnvStep
 

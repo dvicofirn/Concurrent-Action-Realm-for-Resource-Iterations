@@ -61,6 +61,9 @@ class State:
         self.items[entityIndex].pop(removeId)
 
     def replace_entity(self, entityIndex, replaceId, *newVals):
+        self.items[entityIndex][replaceId] = newVals
+
+    def replace_entity_list(self, entityIndex, replaceId, *newVals):
         self.items[entityIndex][replaceId] = list(newVals)
 
     def __lt__(self, other):

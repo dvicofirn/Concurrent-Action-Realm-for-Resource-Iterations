@@ -182,6 +182,8 @@ class Problem:
 
     def replace_entity(self, state: State, entityIndex: int,
                        entityId: int, *newVals):
+        if entityIndex in self.setAbleEntities:
+            state.replace_entity_list(self.entityIdToItemId[entityIndex], entityId, *newVals)
         state.replace_entity(self.entityIdToItemId[entityIndex], entityId, *newVals)
 
     def get_value(self, state: State, variableName: str, index: int):

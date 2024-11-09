@@ -7,9 +7,15 @@ import time
 from search import PartialAssigner
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
+DomainsDict = {0: "Trucks and Drones", 1: "Cars", 2: "MotorCycles and Letters"}
 DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1", "Trucks and Drones 2"),
                         "Cars": ("Cars 1",),
                        "MotorCycles and Letters": ("MotorCycles and Letters 1",)}
+def getDomainProblemFiles(domain, problem):
+    domainName = DomainsDict[domain]
+    problemName = DomainsProblemsDict[domainName][problem]
+    return domainName + ".CARRI", problemName + ".CARRI"
+
 def main():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
@@ -65,27 +71,38 @@ def main():
     """
 
 def runMain():
+    domainFile, problemFile = getDomainProblemFiles(0, 1)
     translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
-            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][1] + ".CARRI")
+    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
+            FOLDER_PROBLEMS + "\\" + problemFile)
     partial = PartialAssigner(simulator)
     start = time.time()
-    results = partial.search(simulator.current_state, 15, 100)
+    results = partial.search(simulator.current_state, 15, 75)
     end = time.time()
-    print(end - start)
-    print()
+    #print(end - start)
+    #print()
     for i in range(len(results)):
         transitions = results[i][1]
         state = simulator.get_state()
         cost = 0
+        invalid = False
         for transition in transitions:
+            print(state)
+            for action in transition:
+                print(simulator.actionStringRepresentor.represent(action), end=", ")
+            print()
             if not simulator.validate_Transition_state(state, transition):
-                print(f"Problem with transition {transition}\nIndex {i}")
+                print(f"Problem, end Instance of {i}")
+                invalid = True
                 break
             state, actionCost = simulator.apply_transition(state, transition)
             state, envCost = simulator.apply_environment_steps(state)
             cost += actionCost + envCost
-        print(state)
+            #print(cost, actionCost, envCost)
+            #print(state)
+        if invalid:
+            continue
+        print(f"Success at {i}. {state}")
         print(cost)
         print("---")
     print(end - start)
@@ -114,6 +131,14 @@ def runMain():
 
     #manager.run()
 
+def testMain():
+    translator = Translator()
+    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
+                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][
+                                                     1] + ".CARRI")
+    partial = PartialAssigner(simulator)
+    print(partial.split_vehicles())
+    print(partial.vehicleTypes)
 
 if __name__ == '__main__':
     runMain()

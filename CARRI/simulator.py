@@ -1,7 +1,8 @@
 from CARRI.action import ActionProducer, ActionStringRepresentor, Action, EnvStep
 from CARRI.problem import Problem
+from CARRI.state import State
 from collections import deque
-from typing import List
+from typing import List, Tuple
 
 class Simulator:
     def __init__(self, problem: Problem, actionGenerators, envSteps: List[EnvStep], iterStep, entities):
@@ -34,16 +35,12 @@ class Simulator:
             valid_actions[vehicleEntityType] = entityActions
         return valid_actions
 
-    def generate_all_valid_partial_seperate_actions(self, state, partialVehciles):
+    def generate_all_valid_partial_seperate_actions(self, state: State, vehicleType: int, partialVehciles):
         valid_actions = {}
-        # New thing from problem: vehicleEntities
-        for vehicleEntityType, vehicleEntityIds in zip(self.problem.vehicleEntities, partialVehciles):
-            entityActions = {}
-            for entityId in vehicleEntityIds:
-                actions = self.ActionProducer.produce_actions(self.problem, state,
-                                                              entityId, vehicleEntityType)
-                entityActions[entityId] = actions
-            valid_actions[vehicleEntityType] = entityActions
+        for entityId in partialVehciles:
+            actions = self.ActionProducer.produce_actions(self.problem, state,
+                                                              entityId, vehicleType)
+            valid_actions[entityId] = actions
         return valid_actions
 
     def generate_all_valid_actions_recursive(self, all_valid_actions, vehicle_keys, partial_assignment=None):
@@ -93,9 +90,23 @@ class Simulator:
         return all_combinations
 
     def validate_Transition_state(self, state, transition):
+        """
+        This validation method is not as reliable as thought.
+        It doesn't take into consideration vehicle's action at the same time,
+        For example in the domain of Drones and Trucks - it won't take
+        into consideration one drone existing and another one boarding instead.
+        """
         for action in transition:
             if not action.validate(self.problem, state):
                 return False
+        return True
+
+    def validate_Transition_state(self, state, transition):
+        state = state.__copy__()
+        for action in transition:
+            if not action.validate(self.problem, state):
+                return False
+            action.apply(self.problem, state)
         return True
 
     def validate_Transition(self, transition):
@@ -139,26 +150,24 @@ class Simulator:
             print(f"Unexpected error while applying action {action}: {e}")
             raise
 
-    def generate_partial_successors(self, state, vehicleIds: List):
+    def generate_partial_successors(self, state: State, vehicleType: int, vehicleIds: Tuple):
         currentQueue = deque()
         currentQueue.append((state, [], 0))
-        validSeperates = self.generate_all_valid_partial_seperate_actions(state, vehicleIds)
+        validSeperates = self.generate_all_valid_partial_seperate_actions(state, vehicleType, vehicleIds)
 
-        for vehicleType, vehicleTypeActions in validSeperates.items():
-            for vehicleId, vehicleIdActions in vehicleTypeActions.items():
+        for vehicleId, vehicleIdActions in validSeperates.items():
+            nextQueue = deque()
+            while currentQueue:
+                currentState, transition, cost = currentQueue.pop()
+                for action in vehicleIdActions:
+                    if action.reValidate(self.problem, currentState):
+                        nextState = currentState.__copy__()
+                        action.apply(self.problem, nextState)
+                        nextTransition = transition + [action]
+                        nextCost = cost + action.get_cost(self.problem, nextState)
+                        nextQueue.append((nextState, nextTransition, nextCost))
 
-                nextQueue = deque()
-                while currentQueue:
-                    currentState, transition, cost = currentQueue.pop()
-                    for action in vehicleIdActions:
-                        if action.reValidate(self.problem, currentState):
-                            nextState = currentState.__copy__()
-                            action.apply(self.problem, nextState)
-                            nextTransition = transition + [action]
-                            nextCost = cost + action.get_cost(self.problem, nextState)
-                            nextQueue.append((nextState, nextTransition, nextCost))
-
-                currentQueue = nextQueue
+            currentQueue = nextQueue
         return currentQueue
     def applyEnvSteps(self, queue):
         # No envStep case
