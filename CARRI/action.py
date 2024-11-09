@@ -158,21 +158,23 @@ class ActionProducer:
 
     def produce_actions(self, problem, state, entityId, entityType):
         allActions = []
-        for actionGenerator in self.actionGenerators:
-            if actionGenerator.name == 'CarPick':
-                x = 1
-            if actionGenerator.entities[0] == entityType:
-                # Generate all valid actions for the given entity_id
-                actions = []
-                # Initialize parameter values with the fixed entity parameter (id)
-                actionGenerator.paramExpressions[0].updateParam(entityId)
-                if self.evaluate_partial_preconditions(actionGenerator, problem, state, 0):
-                    # Start recursive parameter assignment
-                    self.assign_parameters_recursive(actionGenerator, problem, state, 1, actions)
 
-                allActions.extend(actions)
-                #actionGenerator.resetParams()
-        return [sublist for sublist in allActions if sublist]
+        for actionGenerator in self.actionGenerators:
+            if actionGenerator.entities[0] != entityType:
+                continue  # Skip action generators that don't match the entity type
+
+            # Initialize parameter values with the fixed entity parameter (id)
+            actionGenerator.paramExpressions[0].updateParam(entityId)
+
+            # Evaluate initial preconditions
+            if not self.evaluate_partial_preconditions(actionGenerator, problem, state, 0):
+                continue
+
+            actions = []
+            self.assign_parameters_recursive(actionGenerator, problem, state, 1, actions)
+            allActions.extend(actions)
+
+        return allActions
 
     def assign_parameters_recursive(self, actionGenerator: ActionGenerator,
                                     problem: Problem, state: State,

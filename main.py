@@ -71,13 +71,13 @@ def main():
     """
 
 def runMain():
-    domainFile, problemFile = getDomainProblemFiles(0, 1)
+    domainFile, problemFile = getDomainProblemFiles(0, 0)
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
             FOLDER_PROBLEMS + "\\" + problemFile)
     partial = PartialAssigner(simulator)
     start = time.time()
-    results = partial.search(simulator.current_state, 15, 75)
+    results = partial.search(simulator.current_state, 10, 50)
     end = time.time()
     #print(end - start)
     #print()
@@ -87,10 +87,10 @@ def runMain():
         cost = 0
         invalid = False
         for transition in transitions:
-            print(state)
+            """print(state)
             for action in transition:
                 print(simulator.actionStringRepresentor.represent(action), end=", ")
-            print()
+            print()"""
             if not simulator.validate_Transition_state(state, transition):
                 print(f"Problem, end Instance of {i}")
                 invalid = True

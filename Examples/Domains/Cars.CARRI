@@ -12,7 +12,7 @@ var carFuel INT - Car
 var carDebt INT - Car
 
 items Package var type INT (type), loc INT (location), onEntity INT (entity)
-items Request const type INT (type), loc INT (location
+items Request const type INT (type), loc INT (location)
 
 End Variables
 
