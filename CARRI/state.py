@@ -1,7 +1,7 @@
 from typing import Tuple, List, Dict, Iterable
 from copy import copy
 class State:
-    def __init__(self, variables: Tuple[List], items: Tuple[Dict]):
+    def __init__(self, variables: Tuple[List], items: List[Dict]):
         self.variables = variables
         self.items = items
 
@@ -27,7 +27,7 @@ class State:
         Manual copy instead of deepcopy - hopefully it's faster.
         """
         return State(tuple(var.copy() for var in self.variables),
-                     tuple({id: copy(item) for id, item in entity.items()} for entity in self.items))
+                     [{id: copy(item) for id, item in entity.items()} for entity in self.items])
 
     def get_variable_value(self, varIndex, index):
         return self.variables[varIndex][index]
@@ -35,6 +35,7 @@ class State:
     def get_item_value(self, entityIndex, keyIndex, index):
         # Pay attention: item -> entity -> key Package[pack][type]
         return self.items[entityIndex][index][keyIndex]
+
 
     def set_variable_value(self, varIndex, index, value):
         self.variables[varIndex][index] = value
@@ -49,16 +50,21 @@ class State:
     def get_len(self, entityIndex) -> int:
         return len(self.items[entityIndex])
 
-    def add_entity(self, entityIndex, itemIndex, *params):
-        # Add new item (tuple) with the max id
-        self.items[entityIndex][itemIndex] = params[0]
-
-    def add_list_entity(self, entityIndex, maxId, *params):
+    def add_entity_list(self, entityIndex, maxId, *params):
         # Add new item (list) with the max id
-        self.items[entityIndex][maxId] = params[0]
+        addDict = self.items[entityIndex].copy()
+        addDict[maxId] = list(params)
+        self.items[entityIndex] = addDict
+    def add_entity(self, entityIndex, maxId, *params):
+        # Add new item (tuple) with the max id
+        addDict = self.items[entityIndex].copy()
+        addDict[maxId] = params
+        self.items[entityIndex] = addDict
 
     def remove_entity(self, entityIndex, removeId):
-        self.items[entityIndex].pop(removeId)
+        removeDict = self.items[entityIndex].copy()
+        removeDict.pop(removeId)
+        self.items[entityIndex] = removeDict
 
     def replace_entity(self, entityIndex, replaceId, *newVals):
         self.items[entityIndex][replaceId] = newVals

@@ -31,7 +31,7 @@ class Problem:
         self.constants = {} # Constant name: Constant tuple
         variableTups = [] # Becomes: tuple of variables (state.variables)
         self.varPositions = {} # Variable name: index in tuple
-        itemTups = [] # Becomes: tuple of items (state.items)
+        itemList = [] # Becomes: tuple of items (state.items)
         self.itemPositions = {} # Items name: index in tuple
         # Items & key name: (items index, key index)
         self.itemKeysPositions = {}
@@ -84,7 +84,7 @@ class Problem:
                 continue
 
             if itemsInfo:
-                itemIndex = len(itemTups)
+                itemIndex = len(itemList)
                 self.itemPositions[name] = itemIndex
 
                 for keyIndex, (keyName, keyBase) in enumerate(zip(info["key names"], info["key base names"])):
@@ -99,8 +99,8 @@ class Problem:
                 if typeInfo == List:
                     self.setAbleEntities.add(itemIndex)
 
-                self.itemsMaxId.append(itemIndex)
-                itemTups.append(variable)
+                self.itemsMaxId.append(max(variable, key=variable.get))
+                itemList.append(variable)
                 # There is only one "items" per entity
                 self.entityIdToItemId[entities[entityInfo][0]] = itemIndex
                 ranges[entities[entityInfo][0]] = None
@@ -123,9 +123,9 @@ class Problem:
                     self.vehicleEntities.append(entities[entityInfo][0])
 
         variableTups = tuple(variableTups)
-        itemTups = tuple(itemTups)
+        itemList = itemList
         self.ranges = tuple([ranges[i] for i in range(len(ranges))])
-        self.initState = State(variableTups, itemTups)
+        self.initState = State(variableTups, itemList)
 
         self.packagesIndexes = tuple(self.packagesIndexes)
         self.requestsIndexes = tuple(self.requestsIndexes)
@@ -161,8 +161,8 @@ class Problem:
 
         # Initialize initState if provided, otherwise default to empty State
         varbleTups = kwargs.get("variableTups", tuple())
-        itemTups = kwargs.get("itemTups", tuple())
-        self.initState = kwargs.get("initState", State(varbleTups, itemTups))
+        itemList = kwargs.get("itemList", [])
+        self.initState = kwargs.get("initState", State(varbleTups, itemList))
 
     def __copy__(self):
         """
@@ -212,12 +212,14 @@ class Problem:
             count += state.get_len(item)
         return count
 
-    def add_entity(self, state: State, entityIndex: int, itemsINdex: int,  *params):
+    def add_entity(self, state: State, entityIndex: int,  *params):
         entity = self.entityIdToItemId[entityIndex]
+        maxId = self.itemsMaxId[entity] + 1
+        self.itemsMaxId[entity] = maxId
         if entity in self.setAbleEntities:
-            state.add_entity(entity, itemsINdex, *params)
+            state.add_entity_list(entity, maxId, *params)
         else:
-            state.add_list_entity(entity, itemsINdex, *params)
+            state.add_entity(entity, maxId, *params)
 
     def remove_entity(self, state: State, entityIndex: int, entityId):
         state.remove_entity(self.entityIdToItemId[entityIndex], entityId)

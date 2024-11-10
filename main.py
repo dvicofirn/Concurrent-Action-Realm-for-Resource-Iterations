@@ -71,13 +71,13 @@ def main():
     """
 
 def runMain():
-    domainFile, problemFile = getDomainProblemFiles(0, 0)
+    domainFile, problemFile = getDomainProblemFiles(2, 0)
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
             FOLDER_PROBLEMS + "\\" + problemFile)
     partial = PartialAssigner(simulator)
     start = time.time()
-    results = partial.search(simulator.current_state, 10, 50)
+    results = partial.produce_paths(simulator.current_state, 10, 50)
     end = time.time()
     #print(end - start)
     #print()
@@ -91,7 +91,7 @@ def runMain():
             for action in transition:
                 print(simulator.actionStringRepresentor.represent(action), end=", ")
             print()"""
-            if not simulator.validate_Transition_state(state, transition):
+            if not simulator.validate_Transition(state, transition):
                 print(f"Problem, end Instance of {i}")
                 invalid = True
                 break
@@ -109,28 +109,6 @@ def runMain():
 
 
 
-
-""" for transition, cost, nCost in zip(results[0][1], results[0][2], results[0][3]):
-        for action in transition:
-            print(simulator.actionStringRepresentor.represent(action), end=', ')
-        print("\n-----")
-        print(cost, nCost)
-        print("======================================")
-    print(simulator.getState())
-    print(results[0][1])
-    print()
-    print(end - start)
-    print("And")
-    for i in range(len(results)):
-        print(f"{i}. {results[i][2][-1]}, {results[i][3][-1]}")
-    print(results[0][3])
-    print()
-    print(results[0][4])
-    print("--------------")"""
-    #manager = Manager(simulator, iterations, 30, 10, {"search_algorithm": PartialAssigner})
-
-    #manager.run()
-
 def testMain():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
@@ -140,5 +118,13 @@ def testMain():
     print(partial.split_vehicles())
     print(partial.vehicleTypes)
 
+def managerMain():
+    domainFile, problemFile = getDomainProblemFiles(0, 0)
+    translator = Translator()
+    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
+                                                 FOLDER_PROBLEMS + "\\" + problemFile)
+    manager = Manager(simulator, iterations, 60, 10, )
+    manager.run()
+
 if __name__ == '__main__':
-    runMain()
+    managerMain()

@@ -1,21 +1,20 @@
 from typing import List
-from CARRI.simulator import Simulator
-from CARRI.problem import Problem, State
+from CARRI import Simulator, Problem, State, Action
 class Business:
-    def __init__(self, simulator, iterationsList: List):
-        self.simulator = simulator
+    def __init__(self, simulator: Simulator, iterationsList: List):
+        self.simulator = simulator#.__copy__()
         self.iterationsList = iterationsList
-        self.state = simulator.getState()
+        self.state = simulator.get_state()
         self.iteration = 0
         self.cost = 0
 
-    def getState(self):
-        return self.state
+    def getState(self) -> State:
+        return self.state.__copy__()
 
-    def getCost(self):
+    def getCost(self) -> int:
         return self.cost
 
-    def getIteration(self):
+    def getIteration(self) -> int:
         return self.iteration
 
     def canAdvance(self):
@@ -25,7 +24,10 @@ class Business:
 
         return len(package_type.intersection(request_type)) !=0
 
-    def advanceIteration(self, plan: List):
+    def canAdvanceIteration(self) -> bool:
+        return self.iteration < len(self.iterationsList)
+
+    def advanceIteration(self, plan: List[List[Action]]) -> None:
         """
         Advance business' state by Plan of transition actions.
         Then apply iteration step on state.
@@ -33,37 +35,26 @@ class Business:
         :param plan:
         :return:
         """
-                        
-        #for i, joint_action in enumerate(plan):
-        #    print(f"{i}.[{[self.simulator.actionStringRepresentor.represent(a) for a in joint_action]}")
-                
+
         state = self.state
         cost = self.cost
         # Advance state by each transition of actions.
-        self.simulator.current_state = state.__copy__()
         for i, transition in enumerate(plan):
-            if not self.simulator.validate_Transition(transition):
+            if not self.simulator.validate_Transition(state, transition):
                 raise Exception(
-                    f"Transition no.{i} is invalid:"
+                    f"Transition no. {i} is invalid:"
                     f"\nState: {self.simulator.current_state}"
                     f"\nTransition: {[self.simulator.actionStringRepresentor.represent(action) for action in transition]}"
                 )
+            state, cost = self.simulator.apply_full_Transition(state, cost, transition)
 
-            for action in transition: # updating cost and state
-                cost += self.simulator.advance_state(action)
+        currentIterationItems = self.iterationsList[self.iteration]
 
-        # Add items to state.
-        if self.iteration < len(self.iterationsList):
-            currentIterationList = self.iterationsList[self.iteration] 
 
-            for entityName in currentIterationList:
-                state = self.simulator.addItems(entityName, currentIterationList[entityName])
+        self.simulator.apply_iter_step(state, currentIterationItems)
 
         # Finalize
-        self.state = self.simulator.current_state.__copy__()
+        self.state = state
         self.cost = cost
-
-        #if self.iteration % 10 == 0:
-         #   print(f'Iteration {self.iteration} ...')
 
         self.iteration += 1

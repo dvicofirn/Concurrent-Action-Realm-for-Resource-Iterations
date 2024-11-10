@@ -1,11 +1,12 @@
-from CARRI.action import ActionProducer, ActionStringRepresentor, Action, EnvStep
+from CARRI.action import ActionProducer, ActionStringRepresentor, ActionGenerator, Action, EnvStep, Step
 from CARRI.problem import Problem
 from CARRI.state import State
 from collections import deque
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 class Simulator:
-    def __init__(self, problem: Problem, actionGenerators, envSteps: List[EnvStep], iterStep, entities):
+    def __init__(self, problem: Problem, actionGenerators: List[ActionGenerator],
+                 envSteps: List[EnvStep], iterStep: Step, entities: Dict[str, Tuple]):
         self.problem = problem
         self.ActionProducer = ActionProducer(actionGenerators)
         self.actionStringRepresentor = ActionStringRepresentor(actionGenerators)
@@ -15,6 +16,14 @@ class Simulator:
         self.entities = entities
         self.current_state = problem.copyState(problem.initState)
         self.vehicle_keys = self.problem.vehicleEntities
+
+    #Todo: manage copying better.
+    def __copy__(self):
+        def __copy__(self):
+            # Collect all instance attributes
+            attributes = vars(self).copy()
+            # Create a new Problem instance using the copied attributes as kwargs
+            return Problem(**attributes)
 
     def get_state(self):
         return self.problem.copyState(self.current_state)
@@ -89,7 +98,7 @@ class Simulator:
         all_combinations = self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
         return all_combinations
 
-    def validate_Transition_state(self, state, transition):
+    def validate_Transition_shallow(self, state, transition):
         """
         This validation method is not as reliable as thought.
         It doesn't take into consideration vehicle's action at the same time,
@@ -101,18 +110,12 @@ class Simulator:
                 return False
         return True
 
-    def validate_Transition_state(self, state, transition):
+    def validate_Transition(self, state, transition):
         state = state.__copy__()
         for action in transition:
             if not action.validate(self.problem, state):
                 return False
             action.apply(self.problem, state)
-        return True
-
-    def validate_Transition(self, transition):
-        for action in transition:
-            if not self.validate_action(action):
-                return False
         return True
 
     def validate_action(self, action: Action):
@@ -144,11 +147,10 @@ class Simulator:
             action.apply(self.problem, state)
             #print(f"Action applied successfully: {action}")
         except KeyError as e:
-            print(f"KeyError while applying action {action}: {e}")
-            raise
+            raise Exception(f"KeyError while applying action {action}: {e}")
         except Exception as e:
-            print(f"Unexpected error while applying action {action}: {e}")
-            raise
+            raise Exception(f"Unexpected error while applying action {action}: {e}")
+
 
     def generate_partial_successors(self, state: State, vehicleType: int, vehicleIds: Tuple):
         currentQueue = deque()
@@ -252,8 +254,26 @@ class Simulator:
             cost += action.get_cost(self.problem, state)
         return state, cost
 
+    def apply_full_Transition(self, state, cost, transition):
+        for action in transition:
+            action.apply(self.problem, state)
+            cost += action.get_cost(self.problem, state)
+        for envStep in self.envSteps:
+            envStep.apply(self.problem, state)
+            cost += envStep.get_cost(self.problem, state)
+        return state, cost
+
+
     def addItems(self, entityName, entityList):
         entity_index = self.problem.entities[entityName][0]
-        for itemImdex, param in entityList.items():
-            self.problem.add_entity(self.current_state, entity_index, itemImdex, param)
+        for itemImdex, params in entityList.items():
+            self.problem.add_entity(self.current_state, entity_index, *params)
         return self.current_state
+
+    def apply_iter_step(self, state, iterationItems):
+        self.iterStep.apply(self.problem, state)
+        for entityName, entities in iterationItems.items():
+            entityType = self.entities[entityName][0]
+            for itemParams in entities:
+                self.problem.add_entity(state, entityType, *itemParams)
+        return state
