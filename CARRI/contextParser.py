@@ -141,6 +141,7 @@ class ContextParser:
             else_segment = effect.get('else segment', [])
             updates_else = self.parse_effects(else_segment, parameters, paramExpressions)
             updates.append(CaseUpdate(condition, updates_segment, updates_else))
+
         elif block_name == 'all':
             entityIndex = self.parsedEntities[effect['entity']][0]
             parameter_name = effect['parameter']
@@ -156,6 +157,13 @@ class ContextParser:
                 condition = None
             updates_segment = self.parse_effects(segment, parameters, paramExpressions)
             updates.append(AllUpdate(entityIndex, parameter_node, updates_segment, condition))
+
+        elif block_name == 'repeat':
+            condition_str = effect['condition']
+            condition = self.parse_expression(condition_str, parameters, paramExpressions)
+            segment = effect['segment']
+            updates_segment = self.parse_effects(segment, parameters, paramExpressions)
+            updates.append(RepeatUpdate(condition, updates_segment))
         else:
             raise ValueError(f"Unknown block name: {block_name}")
 

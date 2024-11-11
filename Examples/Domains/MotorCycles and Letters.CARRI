@@ -94,10 +94,10 @@ IterStep:
 			count : count + 1
 		End Case
 	End All
-	Case (count <= 2):
+	Repeat (count < 3):
 		MotorCycle add: (0, 4)
-		MotorCycle add: (0, 4)
-	End Case
+		count : count + 1
+	End Repeat
 End IterStep
 
 End Domain
