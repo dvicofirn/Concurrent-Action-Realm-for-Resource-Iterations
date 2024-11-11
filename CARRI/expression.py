@@ -366,6 +366,17 @@ class AllUpdate(Update):
                     for update in self.updates:
                         update.apply(problem, state)
 
+    def copies(self, params: List):
+        """
+        Copies object's expressions, makes sure uses the same AllUpdate's parameter
+        """
+        # Using the same parameter for all expressions and updates in block.
+        params = params.copy()
+        params.append(self.parameter)
+        return AllUpdate(self.entityIndex, self.parameter,
+                         [expression.copies(params) for expression in self.updates],
+                         self.condition.copies(params) if self.condition else None)
+
 class RepeatUpdate(Update):
     def __init__(self, condition: ExpressionNode, updates):
         self.condition = condition
