@@ -1,7 +1,7 @@
 from typing import Tuple, List, Dict, Iterable
 from copy import copy
 class State:
-    def __init__(self, variables: Tuple[List], items: List[Dict]):
+    def __init__(self, variables: Tuple[List], items: Tuple[Dict]):
         self.variables = variables
         self.items = items
 
@@ -27,7 +27,7 @@ class State:
         Manual copy instead of deepcopy - hopefully it's faster.
         """
         return State(tuple(var.copy() for var in self.variables),
-                     [{id: copy(item) for id, item in entity.items()} for entity in self.items])
+                     tuple({id: copy(item) for id, item in entity.items()} for entity in self.items))
 
     def get_variable_value(self, varIndex, index):
         return self.variables[varIndex][index]
@@ -45,26 +45,20 @@ class State:
         self.items[entityIndex][index][keyIndex] = value
 
     def get_items_ids(self, entityIndex) -> Iterable[int]:
-        return self.items[entityIndex].keys()
+        return tuple(self.items[entityIndex].keys())
 
     def get_len(self, entityIndex) -> int:
         return len(self.items[entityIndex])
 
     def add_entity_list(self, entityIndex, maxId, *params):
         # Add new item (list) with the max id
-        addDict = self.items[entityIndex].copy()
-        addDict[maxId] = list(params)
-        self.items[entityIndex] = addDict
+        self.items[entityIndex][maxId] = list(params)
     def add_entity(self, entityIndex, maxId, *params):
         # Add new item (tuple) with the max id
-        addDict = self.items[entityIndex].copy()
-        addDict[maxId] = params
-        self.items[entityIndex] = addDict
+        self.items[entityIndex][maxId] = params
 
     def remove_entity(self, entityIndex, removeId):
-        removeDict = self.items[entityIndex].copy()
-        removeDict.pop(removeId)
-        self.items[entityIndex] = removeDict
+        self.items[entityIndex].pop(removeId)
 
     def replace_entity(self, entityIndex, replaceId, *newVals):
         self.items[entityIndex][replaceId] = newVals

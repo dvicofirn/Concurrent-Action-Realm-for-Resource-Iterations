@@ -31,7 +31,7 @@ class Problem:
         self.constants = {} # Constant name: Constant tuple
         variableTups = [] # Becomes: tuple of variables (state.variables)
         self.varPositions = {} # Variable name: index in tuple
-        itemList = [] # Becomes: tuple of items (state.items)
+        itemTups = [] # Becomes: tuple of items (state.items)
         self.itemPositions = {} # Items name: index in tuple
         # Items & key name: (items index, key index)
         self.itemKeysPositions = {}
@@ -84,7 +84,7 @@ class Problem:
                 continue
 
             if itemsInfo:
-                itemIndex = len(itemList)
+                itemIndex = len(itemTups)
                 self.itemPositions[name] = itemIndex
 
                 for keyIndex, (keyName, keyBase) in enumerate(zip(info["key names"], info["key base names"])):
@@ -100,7 +100,7 @@ class Problem:
                     self.setAbleEntities.add(itemIndex)
 
                 self.itemsMaxId.append(max(variable, key=variable.get))
-                itemList.append(variable)
+                itemTups.append(variable)
                 # There is only one "items" per entity
                 self.entityIdToItemId[entities[entityInfo][0]] = itemIndex
                 ranges[entities[entityInfo][0]] = None
@@ -123,9 +123,9 @@ class Problem:
                     self.vehicleEntities.append(entities[entityInfo][0])
 
         variableTups = tuple(variableTups)
-        itemList = itemList
+        itemTups = tuple(itemTups)
         self.ranges = tuple([ranges[i] for i in range(len(ranges))])
-        self.initState = State(variableTups, itemList)
+        self.initState = State(variableTups, itemTups)
 
         self.packagesIndexes = tuple(self.packagesIndexes)
         self.requestsIndexes = tuple(self.requestsIndexes)
@@ -161,8 +161,8 @@ class Problem:
 
         # Initialize initState if provided, otherwise default to empty State
         varbleTups = kwargs.get("variableTups", tuple())
-        itemList = kwargs.get("itemList", [])
-        self.initState = kwargs.get("initState", State(varbleTups, itemList))
+        itemTups = kwargs.get("itemTups", tuple())
+        self.initState = kwargs.get("initState", State(varbleTups, itemTups))
 
     def __copy__(self):
         """
