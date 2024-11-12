@@ -151,7 +151,7 @@ class CARRIProblemParser:
         """
         variable = self.variables[variable_name]
         if variable_name not in iteration_values:
-            iteration_values[variable_name] = {}
+            iteration_values[variable_name] = []
 
         index = start_index
         value_lines = []
@@ -162,15 +162,12 @@ class CARRIProblemParser:
             value_lines.append(line)
             index += 1
 
-        last_item_index = self.last_item_indices.get(variable_name, -1)
         for line in value_lines:
             line = line.strip()
             if not line:
                 continue
             value = self.parse_value(line, variable)
-            last_item_index += 1
-            iteration_values[variable_name][last_item_index] = value
-        self.last_item_indices[variable_name] = last_item_index
+            iteration_values[variable_name].append(value)
 
         return index
 

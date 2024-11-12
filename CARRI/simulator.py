@@ -1,11 +1,12 @@
-from CARRI.action import ActionProducer, ActionStringRepresentor, Action, EnvStep
+from CARRI.action import ActionProducer, ActionStringRepresentor, ActionGenerator, Action, EnvStep, Step
 from CARRI.problem import Problem
+from CARRI.state import State
 from collections import deque
-from copy import copy
-from typing import List
+from typing import List, Tuple, Dict
 
 class Simulator:
-    def __init__(self, problem: Problem, actionGenerators, envSteps: List[EnvStep], iterStep, entities):
+    def __init__(self, problem: Problem, actionGenerators: List[ActionGenerator],
+                 envSteps: List[EnvStep], iterStep: Step, entities: Dict[str, Tuple]):
         self.problem = problem
         self.ActionProducer = ActionProducer(actionGenerators)
         self.actionStringRepresentor = ActionStringRepresentor(actionGenerators)
@@ -16,7 +17,15 @@ class Simulator:
         self.current_state = problem.copyState(problem.initState)
         self.vehicle_keys = self.problem.vehicleEntities
 
-    def getState(self):
+    #Todo: manage copying better.
+    def __copy__(self):
+        def __copy__(self):
+            # Collect all instance attributes
+            attributes = vars(self).copy()
+            # Create a new Problem instance using the copied attributes as kwargs
+            return Problem(**attributes)
+
+    def get_state(self):
         return self.problem.copyState(self.current_state)
 
     def generate_all_valid_seperate_actions(self, state):
@@ -35,16 +44,12 @@ class Simulator:
             valid_actions[vehicleEntityType] = entityActions
         return valid_actions
 
-    def generate_all_valid_partial_seperate_actions(self, state, partialVehciles):
+    def generate_all_valid_partial_seperate_actions(self, state: State, vehicleType: int, partialVehciles):
         valid_actions = {}
-        # New thing from problem: vehicleEntities
-        for vehicleEntityType, vehicleEntityIds in zip(self.problem.vehicleEntities, partialVehciles):
-            entityActions = {}
-            for entityId in vehicleEntityIds:
-                actions = self.ActionProducer.produce_actions(self.problem, state,
-                                                              entityId, vehicleEntityType)
-                entityActions[entityId] = actions
-            valid_actions[vehicleEntityType] = entityActions
+        for entityId in partialVehciles:
+            actions = self.ActionProducer.produce_actions(self.problem, state,
+                                                              entityId, vehicleType)
+            valid_actions[entityId] = actions
         return valid_actions
 
     def generate_all_valid_actions_recursive(self, all_valid_actions, vehicle_keys, partial_assignment=None):
@@ -93,16 +98,24 @@ class Simulator:
         all_combinations = self.generate_all_valid_actions_recursive(all_valid_actions, vehicle_keys)
         return all_combinations
 
-    def validate_Transition_state(self, state, transition):
+    def validate_Transition_shallow(self, state, transition):
+        """
+        This validation method is not as reliable as thought.
+        It doesn't take into consideration vehicle's action at the same time,
+        For example in the domain of Drones and Trucks - it won't take
+        into consideration one drone existing and another one boarding instead.
+        """
         for action in transition:
             if not action.validate(self.problem, state):
                 return False
         return True
 
-    def validate_Transition(self, transition):
+    def validate_Transition(self, state, transition):
+        state = state.__copy__()
         for action in transition:
-            if not self.validate_action(action):
+            if not action.validate(self.problem, state):
                 return False
+            action.apply(self.problem, state)
         return True
 
     def validate_action(self, action: Action):
@@ -134,32 +147,29 @@ class Simulator:
             action.apply(self.problem, state)
             #print(f"Action applied successfully: {action}")
         except KeyError as e:
-            print(f"KeyError while applying action {action}: {e}")
-            raise
+            raise Exception(f"KeyError while applying action {action}: {e}")
         except Exception as e:
-            print(f"Unexpected error while applying action {action}: {e}")
-            raise
+            raise Exception(f"Unexpected error while applying action {action}: {e}")
 
-    def generate_partial_successors(self, state, vehicleIds: List):
+
+    def generate_partial_successors(self, state: State, vehicleType: int, vehicleIds: Tuple):
         currentQueue = deque()
         currentQueue.append((state, [], 0))
-        validSeperates = self.generate_all_valid_partial_seperate_actions(state, vehicleIds)
+        validSeperates = self.generate_all_valid_partial_seperate_actions(state, vehicleType, vehicleIds)
 
-        for vehicleType, vehicleTypeActions in validSeperates.items():
-            for vehicleId, vehicleIdActions in vehicleTypeActions.items():
+        for vehicleId, vehicleIdActions in validSeperates.items():
+            nextQueue = deque()
+            while currentQueue:
+                currentState, transition, cost = currentQueue.pop()
+                for action in vehicleIdActions:
+                    if action.reValidate(self.problem, currentState):
+                        nextState = currentState.__copy__()
+                        action.apply(self.problem, nextState)
+                        nextTransition = transition + [action]
+                        nextCost = cost + action.get_cost(self.problem, nextState)
+                        nextQueue.append((nextState, nextTransition, nextCost))
 
-                nextQueue = deque()
-                while currentQueue:
-                    currentState, transition, cost = currentQueue.pop()
-                    for action in vehicleIdActions:
-                        if action.reValidate(self.problem, currentState):
-                            nextState = currentState.copy()
-                            action.apply(self.problem, nextState)
-                            nextTransition = transition + [action]
-                            nextCost = cost + action.get_cost(self.problem, nextState)
-                            nextQueue.append((nextState, nextTransition, nextCost))
-
-                currentQueue = nextQueue
+            currentQueue = nextQueue
         return currentQueue
     def applyEnvSteps(self, queue):
         # No envStep case
@@ -170,15 +180,14 @@ class Simulator:
         for i in range(len(queue)):
             # Initialize the tuple elements
             state, transition, cost = queue[i]
-            afterEnvState = state.copy()
             envCost = 0
             # Apply each envStep to afterEnvState and accumulate envCost
             for envStep in self.envSteps:
-                envStep.apply(self.problem, afterEnvState)
-                envCost += envStep.get_cost(self.problem, afterEnvState)
+                envStep.apply(self.problem, state)
+                envCost += envStep.get_cost(self.problem, state)
 
             # Replace the tuple in-place with the updated values
-            queue[i] = (afterEnvState, transition, cost, envCost)
+            queue[i] = (state, transition, cost, envCost)
 
         return queue
     def generate_successors(self, state):
@@ -194,7 +203,7 @@ class Simulator:
                     currentState, transition, cost = currentQueue.pop()
                     for action in vehicleIdActions:
                         if action.reValidate(self.problem, currentState):
-                            nextState = currentState.copy()
+                            nextState = currentState.__copy__()
                             action.apply(self.problem, nextState)
                             nextTransition = transition + [action]
                             nextCost = cost + action.get_cost(self.problem, nextState)
@@ -231,7 +240,7 @@ class Simulator:
 
     def apply_environment_steps(self, state):
         cost = 0
-        state = state.copy()
+        state = state.__copy__()
         for envStep in self.envSteps:
             envStep.apply(self.problem, state)
             cost += envStep.get_cost(self.problem, state)
@@ -239,14 +248,32 @@ class Simulator:
 
     def apply_transition(self, state, transition):
         cost = 0
-        state = state.copy()
+        state = state.__copy__()
         for action in transition:
             action.apply(self.problem, state)
             cost += action.get_cost(self.problem, state)
         return state, cost
 
+    def apply_full_Transition(self, state, cost, transition):
+        for action in transition:
+            action.apply(self.problem, state)
+            cost += action.get_cost(self.problem, state)
+        for envStep in self.envSteps:
+            envStep.apply(self.problem, state)
+            cost += envStep.get_cost(self.problem, state)
+        return state, cost
+
+
     def addItems(self, entityName, entityList):
         entity_index = self.problem.entities[entityName][0]
-        for itemImdex, param in entityList.items():
-            self.problem.add_entity(self.current_state, entity_index, itemImdex, param)
+        for itemImdex, params in entityList.items():
+            self.problem.add_entity(self.current_state, entity_index, *params)
         return self.current_state
+
+    def apply_iter_step(self, state, iterationItems):
+        self.iterStep.apply(self.problem, state)
+        for entityName, entities in iterationItems.items():
+            entityType = self.entities[entityName][0]
+            for itemParams in entities:
+                self.problem.add_entity(state, entityType, *itemParams)
+        return state

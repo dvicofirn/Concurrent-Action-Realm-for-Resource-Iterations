@@ -1,3 +1,4 @@
+from .searchEngine import SearchEngine
 from .adaptiveAstar import adaptive_a_star
 from .Astar import a_star_search
 from .biDirectional import bidirectional_search

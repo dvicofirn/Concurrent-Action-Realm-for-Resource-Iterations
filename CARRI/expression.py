@@ -377,6 +377,26 @@ class AllUpdate(Update):
                          [expression.copies(params) for expression in self.updates],
                          self.condition.copies(params) if self.condition else None)
 
+class RepeatUpdate(Update):
+    def __init__(self, condition: ExpressionNode, updates):
+        self.condition = condition
+        self.updates = updates
+
+    def __str__(self):
+        return ("repeat by (" + str(self.condition) + ") updates (" + str([exp for exp in self.updates]) + ") ")
+
+    def apply(self, problem: Problem, state: State):
+        while self.condition.evaluate(problem, state):
+            for update in self.updates:
+                update.apply(problem, state)
+
+    def copies(self, params: List):
+        """
+        Repeat object's expressions
+        """
+        return RepeatUpdate(self.condition.copies(params),
+                          [expression.copies(params) for expression in self.updates])
+
 class CostExpression(ExpressionNode):
     def __init__(self, updates: List[Update], costExpression: ExpressionNode):
         self.updates = updates

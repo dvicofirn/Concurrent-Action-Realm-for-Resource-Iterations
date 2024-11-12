@@ -24,8 +24,7 @@ droneLoc:
 4
 droneCap: 0
 droneCharge: 10
-#droneBoard: False - this is a comment, droneBoard is "missing" meaning
-#To initiate False droneBoard for every Drone
+droneBoard: Location
 truckLoc:
 2
 # Again, truckDroneCap & truckPackCap having 0 default value.

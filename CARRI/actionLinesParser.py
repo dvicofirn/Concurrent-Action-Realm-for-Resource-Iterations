@@ -35,6 +35,11 @@ def parse_inside_segment(lines, start):
                 condition = extract_within_brackets(part3).strip()
                 block["condition"] = condition
             segments.append(block)
+        elif line.startswith("Repeat"):
+            condition = extract_within_brackets(line.split("Repeat")[1]).strip()
+            segment, index = parse_inside_segment(lines, index + 1)
+            block = {"name": "repeat", "condition": condition, "segment": segment}
+            segments.append(block)
         else:
             segments.append(line)
         index += 1

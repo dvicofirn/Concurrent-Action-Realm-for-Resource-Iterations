@@ -13,7 +13,7 @@ const locAdj MULTY - Location (adjacency) #Have Set - meaning tuple of Sets. Set
 var droneLoc INT - Drone (location) #Variable, meaning it is a list
 var droneCap INT - Drone
 var droneCharge INT - Drone
-var droneBoard BOOL - Drone # Could also be INT of 0 and 1
+var droneBoard INT - Drone (entity)
 
 var truckLoc INT - Truck (location)
 var truckDroneCap INT - Truck
@@ -38,7 +38,7 @@ Actions:
 DroneWait: id - Drone (Wait) #Action name, var related to acting entity, other required vars, inheriting action
 Precs:
 droneCharge id  > 0
-droneBoard id = false
+droneBoard id = entity Location
 Effects:
 droneCharge id  : droneCharge id - 1
 Cost:
@@ -50,7 +50,7 @@ Precs:
 	locAdj (droneLoc id) ? to # In this case because locAdj is tuple of sets, it should do 'is to in locAdj[from]'
 	not (locType to = 2)
 	droneCharge id > 0
-	droneBoard id = false
+	droneBoard id = entity Location
 Effects:
 	droneCharge id  : droneCharge id - 1
 	droneLoc id : to
@@ -61,7 +61,7 @@ End Action
 DronePick: id - Drone, pack - Package (Pick)
 Precs:
 	droneCharge id > 0
-	droneBoard id = false 
+	droneBoard id = entity Location 
 	droneLoc id = Package loc pack
 	droneCap id = 0
 Confs:
@@ -79,7 +79,7 @@ DroneDeliver: id - Drone, pack - Package, req - Request (Deliver)
 Precs:
 	droneCap id = 1
 	droneCharge id > 0
-	droneBoard id = false
+	droneBoard id = entity Location
 	droneLoc id = Request loc req
 	Package onEntity pack = entity Drone
 	Package loc pack = id
@@ -98,8 +98,6 @@ End Action
 DroneEmergencyCharge: id - Drone
 Precs:
 droneCharge id = 0
-#droneBoard id = false I think this is unnecessary,
-#If a droneBoard = true, charge will be >=3
 Effects:
 droneCharge id : 10
 Cost:
@@ -108,13 +106,16 @@ End Action
 
 DroneBoard: id - Drone, trk - Truck
 Precs:
-((droneLoc id = truckLoc trk) and (droneBoard id = false)) or ((droneLoc id = trk) and (droneBoard id = true))
+	((droneLoc id = truckLoc trk) and (droneBoard id = entity Location)) or ((droneLoc id = trk) and (droneBoard id = entity Truck))
 Confs:
 truckDroneCap trk < 4
 (truckPackCap trk < 8) or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
 Effects:
+	Case (droneBoard id = entity Location):
+		truckDroneCap trk : truckDroneCap trk + 1
+	End Case
 	droneLoc id : trk
-	droneBoard id : true
+	droneBoard id : entity Truck
 	Case (droneCharge id < 8):
 		droneCharge id : droneCharge id + 3
 	Else:
@@ -124,6 +125,7 @@ Effects:
 		All(pack - Package) ((Package onEntity pack = entity Drone) and (Package loc pack = id)):
 			Package onEntity pack : entity Truck
 			Package loc pack : trk
+			truckPackCap trk : truckPackCap trk + 1
 		End All
 		droneCap id : 0 
 	End Case
@@ -133,24 +135,26 @@ End Action
 
 DroneExitBoard: id - Drone, trk - Truck
 Precs:
-droneBoard id = true
+droneBoard id = entity Truck
 droneLoc id = trk
 not (locType(truckLoc trk) = 2)
 Effects:
 	droneLoc id : truckLoc trk
-	droneBoard id : false
+	droneBoard id : entity Location
+	truckDroneCap trk : truckDroneCap trk - 1
 Cost:
 1
 End Action
 
 DroneExitBoardWithPack: id - Drone, trk - Truck, pack - Package (DroneExitBoard) #This is an example of addition to existing action
 Precs Add:
-	Package loc pack: trk
+	Package loc pack = trk
 Confs: #Could also implement as Confs Add
 	Package onEntity pack = entity Truck #Other drone might want to take it. It's fine to not re check package location
 Effects Add:
 	Package onEntity pack : entity Drone
 	Package loc pack : id
+	truckPackCap trk : truckPackCap trk - 1
 End Action
 
 TruckWait: id - Truck (Wait)
@@ -188,7 +192,7 @@ NewVal c : 0
 All (req - Request): #Fancy way to say "for req in Request"
 	c : c + 5
 	c : c + (Request urgency req) * 5 #Could be c + (Request urgency req *5) + 5 if possible
-End All
+End All	
 c
 End EnvStep
 

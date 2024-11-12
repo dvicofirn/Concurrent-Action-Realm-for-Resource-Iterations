@@ -4,11 +4,13 @@ Entities:
 Location (Location), MotorCycle (Vehicle), Letter (Package), Person (Request)
 Variables:
 const locAdj MULTY - Location (adjacency)
+const highRoute INT - Location
+const lowRoute INT - Location
 
 
 items MotorCycle var loc INT (location), available INT
 items Letter var type INT (type), loc INT (location), onEntity INT (entity)
-items Person var type INT (type), loc INT (location), moveToLow BOOL
+items Person var type INT (type), loc INT (location), routeChoice INT
 
 End Variables
 
@@ -57,20 +59,15 @@ EnvSteps:
 MovingPeople: 
 	Effects:
 		All (p - Person):
-			NewVal newLoc : Person loc p
-			Case (Person moveToLow p  = true):
-				Person moveToLow p : false	
-				All (to - Location) ((locAdj (Person loc p) ? to) and (to < newLoc)):
-					newLoc : to
-				End All
-			Else:
-				Person moveToLow p : true	
-				All (to - Location) ((locAdj (Person loc p) ? to) and (to > newLoc)):
-					newLoc : to
-				End All
-			End Case
-			Person loc p : newLoc
-		End All
+		Case (Person routeChoice p = 5):
+			Person routeChoice p : 0
+		End Case
+		Case (Person routeChoice p < 2):
+			Person loc p : lowRoute (Person loc p)
+		Else:
+			Person loc p : highRoute (Person loc p)
+		End Case
+		Person routeChoice p : Person routeChoice p + 1
 End EnvStep
 
 LettersCost:
@@ -97,10 +94,10 @@ IterStep:
 			count : count + 1
 		End Case
 	End All
-	Case (count <= 2):
+	Repeat (count < 3):
 		MotorCycle add: (0, 4)
-		MotorCycle add: (0, 4)
-	End Case
+		count : count + 1
+	End Repeat
 End IterStep
 
 End Domain

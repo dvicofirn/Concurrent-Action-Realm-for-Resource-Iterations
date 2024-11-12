@@ -26,6 +26,8 @@ class Problem:
         The point of all of this is to make action on state faster.
         Saves constants at problem, variables and entity items at self.initState.
         """
+        self.variablesInfo = variablesInfo
+        self.entities = entities
         self.constants = {} # Constant name: Constant tuple
         variableTups = [] # Becomes: tuple of variables (state.variables)
         self.varPositions = {} # Variable name: index in tuple
@@ -44,64 +46,81 @@ class Problem:
         # items indexes that qualify for Request
         self.requestsIndexes = []
         # None - no locAdj. Dict or Set - locAdj with that type.
-        self.locAdjStatus = None
+        self.adjacencyStatus = None
+        self.adjacencyConstName = None
         # Iterable of locations (only for Location with locAdj)
         self.locationRanges = tuple()
         # Tuple of all Entity Ids of vehicles.
         self.vehicleEntities = []
 
+        self.entityBaseItemsKeysPosition = {}
+        self.locationBaseItemsKeysPosition = {}
+
         # Save ranges for consts and vars, save entities
         ranges = {}
         self.entityIdToItemId = {}
 
+        # Get entity name and entity base by entity index
+        self.entitiesReversed = {info[0]: (entity, info[1]) for entity, info in entities.items()}
+
         for name, variable in initialValues.items():
             info = variablesInfo[name]
+            constInfo = info["is_constant"]
+            itemsInfo = info["is_items"]
+            baseInfo = info["base_name"]
+            typeInfo = info["type"]
+            entityInfo = info["entity"]
 
-            if info["is_constant"]:
+            if constInfo:
                 self.constants[name] = variable
-                if name == "locAdj" and entities[info["entity"]][1] == "Location":
-                    self.locAdjStatus = info["type"]
+                if baseInfo == "adjacency" and entities[entityInfo][1] == "Location":
+                    self.adjacencyStatus = typeInfo
                     self.locationRanges = range(len(variable))
-                if entities[info["entity"]][0] not in self.entityIdToItemId:
-                    self.entityIdToItemId[entities[info["entity"]][0]] = None
-                    ranges[entities[info["entity"]][0]] = range(len(variable))
+                    self.adjacencyConstName = name
+                if entities[entityInfo][0] not in self.entityIdToItemId:
+                    self.entityIdToItemId[entities[entityInfo][0]] = None
+                    ranges[entities[entityInfo][0]] = range(len(variable))
 
                 continue
 
-            if info["is_items"]:
+            if itemsInfo:
                 itemIndex = len(itemTups)
                 self.itemPositions[name] = itemIndex
 
-                for keyIndex, keyName in enumerate(info["key names"]):
+                for keyIndex, (keyName, keyBase) in enumerate(zip(info["key names"], info["key base names"])):
                     itemKeyName = name + " " + keyName
                     self.itemKeysPositions[itemKeyName] = (itemIndex, keyIndex)
-                    if info["type"] == List:
+                    if typeInfo == List:
                         self.setAbleItemKeysPosition[itemKeyName] = (itemIndex, keyIndex)
-                if info["type"] == List:
+                    if keyBase == "entity":
+                        self.entityBaseItemsKeysPosition[itemIndex] = keyIndex
+                    elif keyBase == "location":
+                        self.locationBaseItemsKeysPosition[itemIndex] = keyIndex
+                if typeInfo == List:
                     self.setAbleEntities.add(itemIndex)
 
-                self.itemsMaxId.append(itemIndex)
+                self.itemsMaxId.append(max(variable, key=variable.get))
                 itemTups.append(variable)
                 # There is only one "items" per entity
-                self.entityIdToItemId[entities[info["entity"]][0]] = itemIndex
-                ranges[entities[info["entity"]][0]] = None
+                self.entityIdToItemId[entities[entityInfo][0]] = itemIndex
+                ranges[entities[entityInfo][0]] = None
 
-                if entities[info["entity"]][1] == "Package":
+                if entities[entityInfo][1] == "Package":
                     self.packagesIndexes.append(itemIndex)
-                elif entities[info["entity"]][1] == "Request":
+                elif entities[entityInfo][1] == "Request":
                     self.requestsIndexes.append(itemIndex)
-                elif entities[info["entity"]][1] == "Vehicle":
-                    self.vehicleEntities.append(entities[info["entity"]][0])
+                elif entities[entityInfo][1] == "Vehicle":
+                    self.vehicleEntities.append(entities[entityInfo][0])
                 continue
 
             varIndex = len(variableTups)
             self.varPositions[name] = varIndex
             variableTups.append(variable)
-            if entities[info["entity"]][0] not in self.entityIdToItemId:
-                self.entityIdToItemId[entities[info["entity"]][0]] = None
-                ranges[entities[info["entity"]][0]] = range(len(variable))
-                if entities[info["entity"]][1] == "Vehicle":
-                    self.vehicleEntities.append(entities[info["entity"]][0])
+            if entities[entityInfo][0] not in self.entityIdToItemId:
+                self.entityIdToItemId[entities[entityInfo][0]] = None
+                ranges[entities[entityInfo][0]] = range(len(variable))
+                if entities[entityInfo][1] == "Vehicle":
+                    self.vehicleEntities.append(entities[entityInfo][0])
 
         variableTups = tuple(variableTups)
         itemTups = tuple(itemTups)
@@ -119,6 +138,9 @@ class Problem:
         This method assumes that all necessary variables are provided as keyword arguments.
         """
         self.constants = kwargs.get("constants", {})
+        self.variablesInfo = kwargs.get("variablesInfo", {})
+        self.entities = kwargs.get("entities", {})
+        self.entitiesReversed = kwargs.get("entitiesReversed", {})
         self.varPositions = kwargs.get("varPositions", {})
         self.itemPositions = kwargs.get("itemPositions", {})
         self.itemKeysPositions = kwargs.get("itemKeysPositions", {})
@@ -130,16 +152,19 @@ class Problem:
         self.entityIdToItemId = kwargs.get("entityIdToItemId", {})
         self.ranges = kwargs.get("ranges", tuple())
         self.requestsIndexes = kwargs.get("requestsIndexes", tuple())
-        self.locAdjStatus = kwargs.get("requestsIndexes", None)
+        self.adjacencyStatus = kwargs.get("adjacencyStatus", None)
+        self.adjacencyConstName = kwargs.get("adjacencyConstName", None)
         self.locationRanges = kwargs.get("requestsIndexes", tuple())
         self.vehicleEntities = kwargs.get("vehicleEntities", tuple())
+        self.entityBaseItemsKeysPosition = kwargs.get("entityBaseItemsKeysPosition", {})
+        self.locationBaseItemsKeysPosition = kwargs.get("locationBaseItemsKeysPosition", {})
 
         # Initialize initState if provided, otherwise default to empty State
         varbleTups = kwargs.get("variableTups", tuple())
         itemTups = kwargs.get("itemTups", tuple())
         self.initState = kwargs.get("initState", State(varbleTups, itemTups))
 
-    def copy(self):
+    def __copy__(self):
         """
         Returns a copy of the instance with all attributes.
         """
@@ -150,9 +175,26 @@ class Problem:
     def get_locations(self):
         return self.locationRanges
     def get_adjacents(self, locId):
-        return self.constants["locAdj"][locId].copy()
+        return self.constants[self.adjacencyConstName][locId].copy()
     def get_adjacents_status(self):
-        return self.locAdjStatus
+        return self.adjacencyStatus
+
+    def countsPackagesOfEntities(self, state):
+        """
+        :return: two numbers - number of packages on vehicles,
+        number of packages not on vehicles
+        """
+        countVehicles = 0
+        countNotVehicles = 0
+        for packIndex in self.packagesIndexes:
+            keyIndex = self.entityBaseItemsKeysPosition[packIndex]
+            for entityId in state.get_items_ids(packIndex):
+                if self.entitiesReversed[state.get_item_value(packIndex, keyIndex, entityId)][1] == "Vehicle":
+                    countVehicles += 1
+                else:
+                    countNotVehicles += 1
+        return countVehicles, countNotVehicles
+
     def get_entity_ids(self, state: State, entityIndex: int) -> Iterable[int]:
         if self.ranges[entityIndex] is not None:
             return self.ranges[entityIndex]
@@ -170,18 +212,22 @@ class Problem:
             count += state.get_len(item)
         return count
 
-    def add_entity(self, state: State, entityIndex: int, itemsINdex: int,  *params):
+    def add_entity(self, state: State, entityIndex: int,  *params):
         entity = self.entityIdToItemId[entityIndex]
+        maxId = self.itemsMaxId[entity] + 1
+        self.itemsMaxId[entity] = maxId
         if entity in self.setAbleEntities:
-            state.add_entity(entity, itemsINdex, *params)
+            state.add_entity_list(entity, maxId, *params)
         else:
-            state.add_list_entity(entity, itemsINdex, *params)
+            state.add_entity(entity, maxId, *params)
 
     def remove_entity(self, state: State, entityIndex: int, entityId):
         state.remove_entity(self.entityIdToItemId[entityIndex], entityId)
 
     def replace_entity(self, state: State, entityIndex: int,
                        entityId: int, *newVals):
+        if entityIndex in self.setAbleEntities:
+            state.replace_entity_list(self.entityIdToItemId[entityIndex], entityId, *newVals)
         state.replace_entity(self.entityIdToItemId[entityIndex], entityId, *newVals)
 
     def get_value(self, state: State, variableName: str, index: int):

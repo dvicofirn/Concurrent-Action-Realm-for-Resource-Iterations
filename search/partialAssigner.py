@@ -1,129 +1,102 @@
-from CARRI import Simulator, Problem, State
 import random
-import math
+from typing import List, Tuple
 from collections import deque
-from copy import deepcopy
-class PartialAssigner:
-    def __init__(self, simulator: Simulator):
-        self.simulator = simulator
+from .searchEngine import SearchEngine
+from CARRI import Simulator, Problem, State, Action
+
+
+class PartialAssigner(SearchEngine):
+    def __init__(self, simulator: Simulator, **kwargs):
+        super().__init__(simulator, **kwargs)
         self.problem = simulator.problem
         self.vehicleTypes = self.problem.vehicleEntities
-        self.vehicleIds = []
+        self.lenVehicleTypes = len(self.vehicleTypes)
+        self.minSplitLen = kwargs.get('minSplitLen', 1)
+        self.maxSplitLen = kwargs.get('maxSplitLen', 3)
+        self.minAdvanceStep = kwargs.get('minAdvanceStep', 1)
+        self.maxAdvanceStep = kwargs.get('maxAdvanceStep', 4)
+
+
+    def split_vehicles(self, state) -> List[List[Tuple]]:
+        # List to hold all the splits per vehicle type
+        # Collect vehicle IDs per type
+        vehicleIds = [] # List of iterables
         for type in self.vehicleTypes:
-            self.vehicleIds.append(self.problem.get_entity_ids(self.problem.initState, type))
+            # Convert keys to a list to enable slicing
+            vehicleIds.append(list(self.problem.get_entity_ids(state, type)))
+        all_splits = []
 
-    def split_vehicles(self):
-        # Find the maximum number of vehicles for any type
-        splits = []
-        for vehicleIndex, vehicleType in enumerate(self.vehicleIds):
-            vehicleList = list(vehicleType)
-            vehicleSplit = []
+        # Iterate over each list of vehicle IDs for each type
+        for ids in vehicleIds:
+            type_splits = []
+            i = 0
 
-            base = math.log(len(vehicleList)) + 1
-            factor = math.log(base)
-            minSplitSize = round(base - factor)
-            maxSplitSize = round(base)
+            # Group IDs into tuples of size 1-3
+            while i < len(ids):
+                # Choose a random size for the group (1-3) while respecting remaining ids
+                group_size = min(random.randint(self.minSplitLen, self.maxSplitLen), len(ids) - i)
+                type_splits.append(tuple(ids[i:i + group_size]))
+                i += group_size
 
-            while len(vehicleList) >= minSplitSize:
-                # Determine the split size for this segment
-                # Todo: Handle split_size to be fit.
-                #split_size = min(random.randint(minSplitSize, maxSplitSize), len(vehicleList))
-                split_size = 1
+            # Append the split list for this vehicle type
+            all_splits.append(type_splits)
 
-                # Randomly sample unique items for the current segment
-                segment = random.sample(vehicleList, split_size)
-                vehicleSplit.append(segment)
+        return all_splits
 
-                # Remove selected items from vehicle_list
-                vehicleList = [v for v in vehicleList if v not in segment]
-
-                # Add remaining items if any, or an empty tuple if none
-            if vehicleList:
-                vehicleSplit.append(vehicleList)
-
-            lenSplits = len(splits)
-            lenVehicleSplit = len(vehicleSplit)
-            if lenVehicleSplit < lenSplits:
-                for i in range(lenVehicleSplit):
-                    splits[i].append(vehicleSplit[i])
-                for i in range(lenVehicleSplit, lenSplits):
-                    splits[i].append(())
-            else:
-                for i in range(lenSplits):
-                    splits[i].append(vehicleSplit[i])
-                for i in range(lenSplits, lenVehicleSplit):
-                    splits.append([() for i in range(vehicleIndex)] + [vehicleSplit[i]])
-
-        return splits
-
-    def search(self, initState, steps, maxStates):
-        splits = self.split_vehicles()
-
-        # Add initial states, transitions, costs
-        split = splits[0]
-        initSearchResult = self.simulator.generate_partial_successors(initState, split)
-        afterEnvResult = self.simulator.applyEnvSteps(initSearchResult)
-        searchQueue = deque()
-        for resultItems in afterEnvResult:
-            searchQueue.append((resultItems[0], [resultItems[1]],
-                                [resultItems[2]], [resultItems[3]]))
-
-        for step in range(1, steps):
-            nextSearches = []
-            while searchQueue:
-                state, currentTransitions, currentCosts, currentNCosts = searchQueue.pop()
-                currentSearch = self.simulator.generate_partial_successors(state, split)
-                afterEnvResult = self.simulator.applyEnvSteps(currentSearch)
-                for state, transition, cost, nCost in afterEnvResult:
-                    nextSearches.append((
-                        state,
-                        currentTransitions + [transition],
-                        currentCosts + [cost + currentCosts[-1]],
-                        currentNCosts + [nCost + currentNCosts[-1]]
-                    ))
-            if len(nextSearches) > maxStates:
-                nextSearches = random.sample(nextSearches, maxStates)
-            searchQueue.extend(nextSearches)
-        searchQueue = (sorted(searchQueue, key=lambda x: x[2][-1] + x[3][-1])[:maxStates])
-
-        for split in splits[1:]:
-            for step in range(steps):
-                nextSearches = []
-                while searchQueue:
-                    state, currentTransitions, currentCosts, currentNCosts = searchQueue.pop()
-                    if step == 0:
-                        state = initState.copy()
-                    succeeded = True
-                    for action in currentTransitions[step]:
-                        try:
-                            if action.reValidate(self.problem, state):
-                                action.apply(self.problem, state)
+    def produce_paths(self, initState: State, steps: int, maxStates: int):
+        splits = self.split_vehicles(initState)
+        searchQueue = deque([([initState, None],
+                              [[] for _ in range(steps)],
+                              [0 for _ in range(steps)],
+                              [0 for _ in range(steps)])])
+        currentStep = 0
+        while currentStep < steps:
+            stopStep = currentStep + min(random.randint(self.minAdvanceStep, self.maxAdvanceStep), steps - currentStep)
+            for typeIndex, (vehicleType, vehicleTypeSplit) in enumerate(zip(self.vehicleTypes, splits)):
+                lenSplits = len(vehicleTypeSplit)
+                for splitIndex, split in enumerate(vehicleTypeSplit):
+                    for step in range(currentStep, stopStep):
+                        nextSearches = []
+                        while searchQueue:
+                            state2, currentTransitions, currentCosts, currentNCosts = searchQueue.pop()
+                            if step == currentStep:
+                                state = state2[0].__copy__()
                             else:
-                                succeeded = False
-                                break
-                        except Exception as e:
-                            succeeded = False
-                            break
-                    if not succeeded:
-                        continue
-                    currentSearch = self.simulator.generate_partial_successors(state, split)
-                    afterEnvResult = self.simulator.applyEnvSteps(currentSearch)
-                    for state, transition, cost, nCost in afterEnvResult:
-                        nextTransitionStep = currentTransitions[step].copy()
-                        nextTransitionStep.extend(transition)
-                        nextNCost = nCost + currentNCosts[step - 1] if step > 0 else nCost
-                        lastNCost = currentNCosts[step]
-                        nextSearches.append((
-                            state,
-                            currentTransitions[:step] + [nextTransitionStep] + currentTransitions[step + 1:],
-                            currentCosts[:step] + [cost + lastCost for lastCost in currentCosts[step:]],
-                            currentNCosts[:step] + [nextNCost] + [nextNCost - lastNCost + cost for cost in currentNCosts[step + 1:]]
-                        ))
-                if len(nextSearches) > maxStates:
-                    nextSearches = random.sample(nextSearches, maxStates)
-                searchQueue.extend(nextSearches)
-            searchQueue = (sorted(searchQueue, key=lambda x: x[2][-1] + x[3][-1])[:maxStates])
-
+                                state = state2[1]
+                            invalid = False
+                            for action in currentTransitions[step]:
+                                try:
+                                    if action.validate(self.problem, state):
+                                        action.apply(self.problem, state)
+                                    else:
+                                        invalid = True
+                                        break
+                                except Exception as e:
+                                    invalid = True
+                                    break
+                            if invalid:
+                                continue
+                            currentSearch = self.simulator.generate_partial_successors(state, vehicleType, split)
+                            afterEnvResult = self.simulator.applyEnvSteps(currentSearch)
+                            for state, transition, cost, nCost in afterEnvResult:
+                                nextTransitionStep = currentTransitions[step].copy()
+                                nextTransitionStep.extend(transition)
+                                nextNCost = nCost + currentNCosts[step - 1] if step > 0 else nCost
+                                lastNCost = currentNCosts[step]
+                                if splitIndex == lenSplits - 1 and typeIndex == self.lenVehicleTypes - 1 and step == stopStep - 1:
+                                    state2[0] = state
+                                nextSearches.append((
+                                    [state2[0], state],
+                                    currentTransitions[:step] + [nextTransitionStep] + currentTransitions[step + 1:],
+                                    currentCosts[:step] + [cost + lastCost for lastCost in currentCosts[step:]],
+                                    currentNCosts[:step] + [nextNCost] + [nextNCost - lastNCost + cost for cost in
+                                                                          currentNCosts[step + 1:]]
+                                ))
+                        if len(nextSearches) > maxStates:
+                            nextSearches = random.sample(nextSearches, maxStates)
+                        searchQueue.extend(nextSearches)
+                    searchQueue = (sorted(searchQueue, key=lambda x: x[2][-1] + x[3][-1])[:maxStates])
+            currentStep = stopStep
         return searchQueue
 
 
@@ -172,4 +145,7 @@ class PartialAssigner:
 
         return decomposed_successors
 
-
+    def search(self, state: State, **kwargs) -> List[List[Action]]:
+        steps = kwargs.get('steps', 5)
+        maxStates = kwargs.get('maxStates', 10)
+        return self.produce_paths(state, steps, maxStates)[0][1]

@@ -21,7 +21,7 @@ class State:
         ))
 
     # It works.
-    def copy(self):
+    def __copy__(self):
         """
         It works.
         Manual copy instead of deepcopy - hopefully it's faster.
@@ -36,6 +36,7 @@ class State:
         # Pay attention: item -> entity -> key Package[pack][type]
         return self.items[entityIndex][index][keyIndex]
 
+
     def set_variable_value(self, varIndex, index, value):
         self.variables[varIndex][index] = value
 
@@ -44,23 +45,25 @@ class State:
         self.items[entityIndex][index][keyIndex] = value
 
     def get_items_ids(self, entityIndex) -> Iterable[int]:
-        return self.items[entityIndex].keys()
+        return tuple(self.items[entityIndex].keys())
 
     def get_len(self, entityIndex) -> int:
         return len(self.items[entityIndex])
 
-    def add_entity(self, entityIndex, itemIndex, *params):
-        # Add new item (tuple) with the max id
-        self.items[entityIndex][itemIndex] = params[0]
-
-    def add_list_entity(self, entityIndex, maxId, *params):
+    def add_entity_list(self, entityIndex, maxId, *params):
         # Add new item (list) with the max id
-        self.items[entityIndex][maxId] = params[0]
+        self.items[entityIndex][maxId] = list(params)
+    def add_entity(self, entityIndex, maxId, *params):
+        # Add new item (tuple) with the max id
+        self.items[entityIndex][maxId] = params
 
     def remove_entity(self, entityIndex, removeId):
         self.items[entityIndex].pop(removeId)
 
     def replace_entity(self, entityIndex, replaceId, *newVals):
+        self.items[entityIndex][replaceId] = newVals
+
+    def replace_entity_list(self, entityIndex, replaceId, *newVals):
         self.items[entityIndex][replaceId] = list(newVals)
 
     def __lt__(self, other):
