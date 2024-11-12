@@ -1,14 +1,16 @@
 from typing import List, Iterable
 from CARRI.problem import Problem
 from CARRI.state import State
-from CARRI.expression import ExpressionNode, ValueParameterNode, Update, CostExpression
-
+from CARRI.expression import ExpressionNode, ValueParameterNode, Update, CostExpression, OperatorNode
+import operator  # Fixing the 'operator' reference issue
 
 class Step:
     def __init__(self, effects: List[Update]):
-        self.effects = effects # List of Effect objects
+        self.effects = effects  # List of Effect objects
+
     def __repr__(self):
         return str(self.effects)
+
     def __str__(self):
         return "Step effects: " + str(self.effects)
 
@@ -16,12 +18,12 @@ class Step:
         for effect in self.effects:
             effect.apply(problem, state)
 
-
 class EnvStep(Step):
     def __init__(self, name: str, effects: List[Update], cost: CostExpression):
         super().__init__(effects)
         self.name = name
         self.cost = cost
+
     def __str__(self):
         return self.name + ":\nEffects: " + str(self.effects) + "\n" + str(self.cost)
 
@@ -35,7 +37,7 @@ class Action(EnvStep):
         super().__init__(name, effects, cost)
         self.preconditions = preconditions  # List of Condition objects
         self.conflictingPreconditions = conflictingPreconditions
-        self.params = params # Currently not implemented
+        self.params = params  # Currently not implemented
         self.baseAction = baseAction
 
     def validate(self, problem, state):
@@ -45,10 +47,8 @@ class Action(EnvStep):
     def reValidate(self, problem, state):
         return all(precondition.evaluate(problem, state) for precondition in self.conflictingPreconditions)
 
-    # Todo: implement a system to get string representation of action.
     def __str__(self):
         return str(self.name)
-
 
 class ActionGenerator:
     def __init__(self, name, entities, params, preconditions,
@@ -56,17 +56,19 @@ class ActionGenerator:
                  baseActionName):
         self.name = name
         self.entities = entities
-        self.params = params # List of parameter names
+        self.params = params  # List of parameter names
         self.preconditions = preconditions
         self.conflictingPreconditions = conflictingPreconditions
         self.effects = effects
         self.cost = cost
-        self.paramExpressions = paramExpressions # List of fitting expressions
+        self.paramExpressions = paramExpressions  # List of fitting expressions
         self.applicablePrecsRanges = []
         self.applicableConfPrecsRanges = []
         self.baseActionName = baseActionName
+
     def __repr__(self):
         return self.__str__()
+
     def __str__(self):
         return ("Action: " + self.name + "\nEntities: " + str(self.entities)
                 + "\nParams: " + str(self.params) + "\nPreconditions: " + str(self.preconditions)
@@ -136,9 +138,9 @@ class ActionGenerator:
             self.conflictingPreconditions = notYet
         self.resetParams()
 
-        self.applicablePrecsRanges = [range(applicablePrecsLens[i-1], applicablePrecsLens[i])
+        self.applicablePrecsRanges = [range(applicablePrecsLens[i - 1], applicablePrecsLens[i])
                                       for i in range(1, len(applicablePrecsLens))]
-        self.applicableConfPrecsRanges = [range(applicableConfPrecsLens[i-1], applicableConfPrecsLens[i])
+        self.applicableConfPrecsRanges = [range(applicableConfPrecsLens[i - 1], applicableConfPrecsLens[i])
                                           for i in range(1, len(applicableConfPrecsLens))]
         self.preconditions = newOrderPrecs
         self.conflictingPreconditions = newOrderConfPrecs
@@ -182,9 +184,6 @@ class ActionProducer:
         if paramIndex >= len(actionGenerator.params):
             # All parameters are assigned, create and validate action
             action = actionGenerator.generate_action()
-            """If action was created after validating all parameters
-            in evaluate_partial_preconditions, no such need for the if statement.
-            if action.validate(problem, state):"""
             actions.append(action)
             return
 
@@ -214,21 +213,82 @@ class ActionProducer:
     def filter_parameter_values(self, actionGenerator: ActionGenerator,
                                 problem: Problem, state: State,
                                 paramIndex: int, possibleValues: Iterable):
-        filtered_values = []
         parameterNode = actionGenerator.paramExpressions[paramIndex]
+        paramEntityIndex = actionGenerator.entities[paramIndex]
 
+        # Get assigned parameters
+        assigned_params = {index: actionGenerator.paramExpressions[index].value
+                           for index in range(paramIndex)}
+
+        # Extract constraints for current parameter
+        constraints = self.extract_constraints(actionGenerator.preconditions, paramIndex, assigned_params)
+
+        # Compute possible values based on constraints
+        possibleValues = self.apply_constraints(constraints, problem, state, paramIndex, assigned_params,
+                                                paramEntityIndex, actionGenerator)
+
+        filtered_values = []
         for value in possibleValues:
-            # Set current parameter value
             parameterNode.updateParam(value)
-
-            # Evaluate preconditions involving parameters assigned so far
             if self.evaluate_partial_preconditions(actionGenerator, problem, state, paramIndex):
                 filtered_values.append(value)
-
+        parameterNode.updateParam(None)
         return filtered_values
 
+    def extract_constraints(self, preconditions, current_param_index, assigned_params):
+        constraints = []
+        for prec in preconditions:
+            involved_params = prec.get_parameters()
+            if current_param_index in involved_params and all(
+                    idx in assigned_params for idx in involved_params if idx != current_param_index):
+                constraints.append(prec)
+        return constraints
+
+    def apply_constraints(self, constraints, problem, state, current_param_index, assigned_params, paramEntityIndex,
+                          actionGenerator):
+        possible_values = set(problem.get_entity_ids(state, paramEntityIndex))
+        for constraint in constraints:
+            possible_values &= self.compute_possible_values_from_constraint(constraint, problem, state,
+                                                                            current_param_index, assigned_params,
+                                                                            actionGenerator)
+            if not possible_values:
+                break
+        return possible_values
+
+    def compute_possible_values_from_constraint(self, constraint, problem, state, current_param_index, assigned_params,
+                                                actionGenerator):
+        # For simplicity, handle equality constraints where current_param == some_value
+        if isinstance(constraint, OperatorNode) and constraint.operator == operator.eq:
+            left, right = constraint.operands
+            left_params = left.get_parameters()
+            right_params = right.get_parameters()
+
+            if current_param_index in left_params and all(idx in assigned_params for idx in right_params):
+                right_value = right.evaluate_with_params(problem, state, assigned_params)
+                return self.find_entities_with_value(problem, state, left, current_param_index, right_value,
+                                                     actionGenerator, assigned_params)
+            elif current_param_index in right_params and all(idx in assigned_params for idx in left_params):
+                left_value = left.evaluate_with_params(problem, state, assigned_params)
+                return self.find_entities_with_value(problem, state, right, current_param_index, left_value,
+                                                     actionGenerator, assigned_params)
+        # Handle other constraint types as needed
+        return set(problem.get_entity_ids(state, actionGenerator.entities[current_param_index]))
+
+    def find_entities_with_value(self, problem, state, expression, current_param_index, target_value, actionGenerator, assigned_params):
+        entity_type = actionGenerator.entities[current_param_index]
+        possible_entities = problem.get_entity_ids(state, entity_type)
+        matching_entities = []
+        for entity_id in possible_entities:
+            # Create a new assigned_params dictionary including the current parameter assignment
+            new_assigned_params = {**assigned_params, current_param_index: entity_id}
+            # Evaluate the expression with the new assigned parameters
+            value = expression.evaluate_with_params(problem, state, new_assigned_params)
+            if value == target_value:
+                matching_entities.append(entity_id)
+        return set(matching_entities)
+
     def evaluate_partial_preconditions(self, actionGenerator, problem, state, paramIndex: int):
-        # Evaluate applicable preconditions. Searches in pre determined ranges.
+        # Evaluate applicable preconditions. Searches in pre-determined ranges.
         for index in actionGenerator.applicablePrecsRanges[paramIndex]:
             if not actionGenerator.preconditions[index].evaluate(problem, state):
                 return False
@@ -237,4 +297,3 @@ class ActionProducer:
             if not actionGenerator.conflictingPreconditions[index].evaluate(problem, state):
                 return False
         return True
-

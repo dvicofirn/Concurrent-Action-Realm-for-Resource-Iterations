@@ -20,6 +20,7 @@ operatorStringMap = {
     operator.contains: '?',
     operator.getitem: '@'
 }
+
 class Copies:
     def copies(self, params: List):
         raise NotImplementedError("Must be implemented by subclasses")
@@ -29,13 +30,23 @@ class ExpressionNode(Copies):
         raise NotImplementedError("Must be implemented by subclasses")
 
     def applicable(self) -> bool:
-        return NotImplemented("Must be implemented by subclasses")
+        raise NotImplementedError("Must be implemented by subclasses")
+
     def __repr__(self):
         return self.__str__()
+
+    def get_parameters(self):
+        """Return a set of parameter indices involved in the expression."""
+        return set()
+
+    def evaluate_with_params(self, problem, state, assigned_params):
+        """Evaluate the expression using assigned parameters."""
+        return self.evaluate(problem, state)
 
 class ConstNode(ExpressionNode):
     def __init__(self, const):
         self.const = const
+
     def __str__(self):
         return str(self.const) + " "
 
@@ -51,6 +62,12 @@ class ConstNode(ExpressionNode):
     def applicable(self) -> bool:
         return True
 
+    def get_parameters(self):
+        return set()
+
+    def evaluate_with_params(self, problem, state, assigned_params):
+        return self.const
+
 class ParameterNode(ExpressionNode):
     def __init__(self, index):
         self.index = index
@@ -62,8 +79,10 @@ class ParameterNode(ExpressionNode):
         If it's an All's parameter, returning the same object.
         """
         return params[self.index]
+
     def __copy__(self):
-        return NotImplemented("Must be implemented by subclasses")
+        raise NotImplementedError("Must be implemented by subclasses")
+
     def updateParam(self, newParam):
         raise NotImplementedError("Must be implemented by subclasses")
 
@@ -71,40 +90,74 @@ class ValueParameterNode(ParameterNode):
     def __init__(self, index, value=None):
         super().__init__(index)
         self.value = value
+
     def __str__(self):
         return "par: " + str(self.value) + " at " + str(self.index) + " "
+
     def __copy__(self):
         return ValueParameterNode(self.index, self.value)
+
     def updateParam(self, newParam):
         self.value = newParam
+
     def evaluate(self, problem, state):
         return self.value
+
     def applicable(self) -> bool:
         return self.value is not None
+
+    def get_parameters(self):
+        return {self.index}
+
+    def evaluate_with_params(self, problem, state, assigned_params):
+        if self.value is not None:
+            return self.value
+        elif self.index in assigned_params:
+            return assigned_params[self.index]
+        else:
+            return None
 
 class NewValParameterNode(ParameterNode):
     def __init__(self, index, value=None):
         super().__init__(index)
         self.value = value
+
     def __str__(self):
         return "par: " + str(self.value) + " at " + str(self.index) + " "
+
     def __copy__(self):
         return NewValParameterNode(self.index, self.value)
+
     def updateParam(self, newParam):
         self.value = newParam
+
     def evaluate(self, problem, state):
         return self.value
+
     def applicable(self) -> bool:
         return self.value is not None
+
     def copies(self, params):
         return self
+
+    def get_parameters(self):
+        return {self.index}
+
+    def evaluate_with_params(self, problem, state, assigned_params):
+        if self.value is not None:
+            return self.value
+        elif self.index in assigned_params:
+            return assigned_params[self.index]
+        else:
+            return None
 
 class ValueIndexNode(ExpressionNode):
     def __init__(self, variableName: str, index: int):
         self.variableName = variableName
         self.index = index
+
     def __str__(self):
-        return "var: "+ str(self.variableName) + " at " +str(self.index) + " "
+        return "var: " + str(self.variableName) + " at " + str(self.index) + " "
 
     def evaluate(self, problem: Problem, state: State):
         return problem.get_value(state, self.variableName, self.index)
@@ -118,21 +171,36 @@ class ValueIndexNode(ExpressionNode):
     def applicable(self) -> bool:
         return True
 
+    def get_parameters(self):
+        return set()
+
+    def evaluate_with_params(self, problem, state, assigned_params):
+        return problem.get_value(state, self.variableName, self.index)
+
 class ValueNode(ExpressionNode):
     def __init__(self, variableName: str, expression: ExpressionNode):
         self.variableName = variableName
         self.expression = expression
+
     def __str__(self):
-        return "var: "+ str(self.variableName) + " at (" +str(self.expression) + ") "
+        return "var: " + str(self.variableName) + " at (" + str(self.expression) + ") "
 
     def evaluate(self, problem: Problem, state: State):
-        return problem.get_value(state, self.variableName, self.expression.evaluate(problem, state))
+        index = self.expression.evaluate(problem, state)
+        return problem.get_value(state, self.variableName, index)
 
     def copies(self, params: List):
         """
         Copies object's expression
         """
         return ValueNode(self.variableName, self.expression.copies(params))
+
+    def get_parameters(self):
+        return self.expression.get_parameters()
+
+    def evaluate_with_params(self, problem, state, assigned_params):
+        index_value = self.expression.evaluate_with_params(problem, state, assigned_params)
+        return problem.get_value(state, self.variableName, index_value)
 
     def applicable(self) -> bool:
         return self.expression.applicable()
@@ -141,8 +209,10 @@ class ExistingExpressionNode(ExpressionNode):
     def __init__(self, entityIndex: int, expression: ExpressionNode):
         self.entityIndex = entityIndex
         self.expression = expression
+
     def __str__(self):
         return "exists: " + str(self.entityIndex) + " at (" + str(self.expression) + ") "
+
     def evaluate(self, problem: Problem, state: State):
         return self.expression.evaluate(problem, state) in problem.get_entity_ids(state, self.entityIndex)
 
@@ -155,12 +225,20 @@ class ExistingExpressionNode(ExpressionNode):
     def applicable(self) -> bool:
         return self.expression.applicable()
 
+    def get_parameters(self):
+        return self.expression.get_parameters()
+
+    def evaluate_with_params(self, problem, state, assigned_params):
+        value = self.expression.evaluate_with_params(problem, state, assigned_params)
+        return value in problem.get_entity_ids(state, self.entityIndex)
+
 class OperatorNode(ExpressionNode):
-    def __init__(self, operator, *operands):
-        self.operator = operator  # A callable operator (e.g., operator.add)
+    def __init__(self, operator_func, *operands):
+        self.operator = operator_func  # A callable operator (e.g., operator.add)
         self.operands = operands  # List of operand nodes of ExpressionNode type
+
     def __str__(self):
-        return " "+ operatorStringMap[self.operator] + str([expression for expression in self.operands]) + " "
+        return " " + operatorStringMap[self.operator] + str([expression for expression in self.operands]) + " "
 
     def evaluate(self, problem, state):
         evaluated_operands = [operand.evaluate(problem, state) for operand in self.operands]
@@ -174,6 +252,16 @@ class OperatorNode(ExpressionNode):
 
     def applicable(self) -> bool:
         return all(expression.applicable() for expression in self.operands)
+
+    def get_parameters(self):
+        params = set()
+        for operand in self.operands:
+            params.update(operand.get_parameters())
+        return params
+
+    def evaluate_with_params(self, problem, state, assigned_params):
+        evaluated_operands = [operand.evaluate_with_params(problem, state, assigned_params) for operand in self.operands]
+        return self.operator(*evaluated_operands)
 
 class Update(Copies):
     def apply(self, problem: Problem, state: State):
@@ -190,6 +278,7 @@ class ConstUpdate(Update):
         self.variableName = variableName
         self.const = const
         self.index = index
+
     def __str__(self):
         return "const update: " + str(self.variableName) + " <- " + str(self.const) + " at " + str(self.index) + " "
 
@@ -207,6 +296,7 @@ class ExpressionIndexUpdate(Update):
         self.variableName = variableName
         self.index = index
         self.expression = expression
+
     def __str__(self):
         return ("exp idx update: " + str(self.variableName) + " <- ("
                 + str(self.expression) + ") at " + str(self.index) + " ")
@@ -224,6 +314,7 @@ class ExpressionRemoveUpdate(Update):
     def __init__(self, entityIndex: int, expression: ExpressionNode):
         self.entityIndex = entityIndex
         self.expression = expression
+
     def __str__(self):
         return "remove from: " + str(self.entityIndex) + " <- (" + str(self.expression) + ") "
 
@@ -240,6 +331,7 @@ class ExpressionAddUpdate(Update):
     def __init__(self, entityIndex: int, *expressions: ExpressionNode):
         self.entityIndex = entityIndex
         self.expressions = expressions
+
     def __str__(self):
         return ("add to: " + str(self.entityIndex) + " <- ("
                 + str([expression for expression in self.expressions]) + ") ")
@@ -260,6 +352,7 @@ class ExpressionReplaceUpdate(Update):
         self.entityIndex = entityIndex
         self.expressionId = expressionId
         self.expressions = expressions
+
     def __str__(self):
         return ("replace in: " + str(self.entityIndex) + " instead (" + str(self.expressionId) + ") <- ("
                 + str([expression for expression in self.expressions]) + ") ")
@@ -273,15 +366,15 @@ class ExpressionReplaceUpdate(Update):
         """
         Copies object's expressions
         """
-        return ExpressionAddUpdate(self.entityIndex, self.expressionId.copies(params),
-                                   *[expression.copies(params) for expression in self.expressions])
-
+        return ExpressionReplaceUpdate(self.entityIndex, self.expressionId.copies(params),
+                                       *[expression.copies(params) for expression in self.expressions])
 
 class ExpressionUpdate(Update):
     def __init__(self, variableName: str, expressionIndex: ExpressionNode, expressionValue: ExpressionNode):
         self.variableName = variableName
         self.expressionIndex = expressionIndex
         self.expressionValue = expressionValue
+
     def __str__(self):
         return ("exp update: " + str(self.variableName) + " at (" + str(self.expressionIndex) + ") <- ("
                 + str(self.expressionValue) + ") ")
@@ -303,6 +396,7 @@ class ParameterUpdate(Update):
     def __init__(self, parameter: NewValParameterNode, expression: ExpressionNode):
         self.parameter = parameter
         self.expression = expression
+
     def __str__(self):
         return "par update: " + str(self.parameter) + ") <- (" + str(self.expression) + ") "
 
@@ -315,14 +409,14 @@ class ParameterUpdate(Update):
         """
         return ParameterUpdate(self.parameter.copies(params), self.expression.copies(params))
 
-
 class CaseUpdate(Update):
     def __init__(self, condition: ExpressionNode, updates, elseUpdates=None):
         self.condition = condition
         self.updates = updates
         self.elseUpdates = elseUpdates if elseUpdates else []
+
     def __str__(self):
-        return ("case by (" + str(self.condition) + ") updates (" + str([exp for exp in self.updates])+ ") otherwise ("
+        return ("case by (" + str(self.condition) + ") updates (" + str([exp for exp in self.updates]) + ") otherwise ("
                 + str([exp for exp in self.elseUpdates]) + ") ")
 
     def apply(self, problem: Problem, state: State):
@@ -341,7 +435,6 @@ class CaseUpdate(Update):
                           [expression.copies(params) for expression in self.updates],
                           [expression.copies(params) for expression in self.elseUpdates])
 
-
 class AllUpdate(Update):
     def __init__(self, entityIndex: int, parameter: ValueParameterNode, updates, condition: ExpressionNode = None):
         self.entityIndex = entityIndex
@@ -349,6 +442,7 @@ class AllUpdate(Update):
         self.parameter = parameter
         self.updates = updates
         self.condition = condition  # Optional condition to filter items
+
     def __str__(self):
         return ("all " + str(self.entityIndex) + " by (" + str(self.condition)
                 + ") updates (" + str([exp for exp in self.updates]) + ") ")
@@ -395,15 +489,16 @@ class RepeatUpdate(Update):
         Repeat object's expressions
         """
         return RepeatUpdate(self.condition.copies(params),
-                          [expression.copies(params) for expression in self.updates])
+                            [expression.copies(params) for expression in self.updates])
 
 class CostExpression(ExpressionNode):
     def __init__(self, updates: List[Update], costExpression: ExpressionNode):
         self.updates = updates
         self.costExpression = costExpression
+
     def __str__(self):
-        return ("Cost Sgement:\nUpdate: " + str([update for update in self.updates])
-                + "\nCost: " +str(self.costExpression) + " ")
+        return ("Cost Segment:\nUpdate: " + str([update for update in self.updates])
+                + "\nCost: " + str(self.costExpression) + " ")
 
     def evaluate(self, problem, state):
         # First, apply updates (e.g., 'NewVar' assignments)
@@ -421,4 +516,18 @@ class CostExpression(ExpressionNode):
 
     def applicable(self) -> bool:
         return self.costExpression.applicable()
-    
+
+    def get_parameters(self):
+        params = set()
+        for update in self.updates:
+            if isinstance(update, ExpressionNode):
+                params.update(update.get_parameters())
+        params.update(self.costExpression.get_parameters())
+        return params
+
+    def evaluate_with_params(self, problem, state, assigned_params):
+        # Apply updates (e.g., 'NewVar' assignments)
+        for update in self.updates:
+            update.apply(problem, state)  # Assuming updates don't need evaluate_with_params
+        # Then evaluate the cost expression
+        return self.costExpression.evaluate_with_params(problem, state, assigned_params)
