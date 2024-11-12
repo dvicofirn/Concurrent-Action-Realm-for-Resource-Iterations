@@ -7,10 +7,12 @@ import time
 from search import PartialAssigner
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
-DomainsDict = {0: "Trucks and Drones", 1: "Cars", 2: "MotorCycles and Letters"}
+DomainsDict = {0: "Trucks and Drones", 1: "Cars", 2: "MotorCycles and Letters",
+               3: "Rail System Factory"}
 DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1", "Trucks and Drones 2"),
                         "Cars": ("Cars 1",),
-                       "MotorCycles and Letters": ("MotorCycles and Letters 1",)}
+                       "MotorCycles and Letters": ("MotorCycles and Letters 1",),
+                       "Rail System Factory": ("Rail System Factory 1",)}
 def getDomainProblemFiles(domain, problem):
     domainName = DomainsDict[domain]
     problemName = DomainsProblemsDict[domainName][problem]
@@ -119,11 +121,11 @@ def testMain():
     print(partial.vehicleTypes)
 
 def managerMain():
-    domainFile, problemFile = getDomainProblemFiles(0, 0)
+    domainFile, problemFile = getDomainProblemFiles(3, 0)
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
                                                  FOLDER_PROBLEMS + "\\" + problemFile)
-    manager = Manager(simulator, iterations, 60, 10, )
+    manager = Manager(simulator, iterations, 240, 10, )
     manager.run()
 
 if __name__ == '__main__':
