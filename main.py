@@ -125,7 +125,7 @@ def managerMain():
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
                                                  FOLDER_PROBLEMS + "\\" + problemFile)
-    manager = Manager(simulator, iterations, 240, 10, )
+    manager = Manager(simulator, iterations, 120, 10, )
     manager.run()
 
 if __name__ == '__main__':
