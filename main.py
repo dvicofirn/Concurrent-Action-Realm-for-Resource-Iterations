@@ -9,8 +9,8 @@ FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
 DomainsDict = {0: "Trucks and Drones", 1: "Cars", 2: "MotorCycles and Letters",
                3: "Rail System Factory"}
-DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1", "Trucks and Drones 2"),
-                        "Cars": ("Cars 1",),
+DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1", "Trucks and Drones 2", "Trucks and Drones 3"),
+                        "Cars": ("Cars 1", "Cars 2"),
                        "MotorCycles and Letters": ("MotorCycles and Letters 1",),
                        "Rail System Factory": ("Rail System Factory 1",)}
 def getDomainProblemFiles(domain, problem):
@@ -73,7 +73,7 @@ def main():
     """
 
 def runMain():
-    domainFile, problemFile = getDomainProblemFiles(2, 0)
+    domainFile, problemFile = getDomainProblemFiles(0, 2)
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
             FOLDER_PROBLEMS + "\\" + problemFile)
@@ -89,10 +89,10 @@ def runMain():
         cost = 0
         invalid = False
         for transition in transitions:
-            """print(state)
+            print(state)
             for action in transition:
                 print(simulator.actionStringRepresentor.represent(action), end=", ")
-            print()"""
+            print()
             if not simulator.validate_Transition(state, transition):
                 print(f"Problem, end Instance of {i}")
                 invalid = True
@@ -121,11 +121,11 @@ def testMain():
     print(partial.vehicleTypes)
 
 def managerMain():
-    domainFile, problemFile = getDomainProblemFiles(3, 0)
+    domainFile, problemFile = getDomainProblemFiles(1, 1)
     translator = Translator()
     simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
                                                  FOLDER_PROBLEMS + "\\" + problemFile)
-    manager = Manager(simulator, iterations, 120, 10, )
+    manager = Manager(simulator, iterations, 240, 10, )
     manager.run()
 
 if __name__ == '__main__':
