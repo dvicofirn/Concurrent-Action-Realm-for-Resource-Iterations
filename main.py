@@ -119,11 +119,11 @@ def testMain():
     print(partial.vehicleTypes)
 
 def managerMain():
-    domainFile, problemFile = getDomainProblemFiles(1, 1)
+    domainFile, problemFile = getDomainProblemFiles(3, 0)
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                              FOLDER_PROBLEMS + "\\" + problemFile)
-    manager = Manager(simulator, iterations, 240, 10, )
+    manager = Manager(simulator, iterations, 360, 12, )
     manager.run()
 
 if __name__ == '__main__':

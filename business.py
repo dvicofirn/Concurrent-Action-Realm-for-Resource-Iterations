@@ -8,6 +8,14 @@ class Business:
         self.iteration = 0
         self.cost = 0
 
+    def __str__(self) -> str:
+        return (f"Iteration: {self.iteration}\n"
+                + self.simulator.problem.representState(self.state)
+                + f"Cost: {self.cost}")
+
+    def __repr__(self) -> str:
+        return self.__str__()
+
     def getState(self) -> State:
         return self.state.__copy__()
 

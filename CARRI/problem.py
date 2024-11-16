@@ -52,6 +52,7 @@ class Problem:
         self.setAbleEntities = set()
         # {items index: Max id for items}
         self.itemsMaxId = []
+        self.itemsKeysNames = {}
         # items indexes that qualify for Package
         self.packagesIndexes = []
         # items indexes that qualify for Request
@@ -99,6 +100,7 @@ class Problem:
             if itemsInfo:
                 itemIndex = len(itemTups)
                 self.itemPositions[name] = itemIndex
+                self.itemsKeysNames[name] = info["key names"]
 
                 for keyIndex, (keyName, keyBase) in enumerate(zip(info["key names"], info["key base names"])):
                     itemKeyName = name + " " + keyName
@@ -165,6 +167,7 @@ class Problem:
         self.setAbleItemKeysPosition = kwargs.get("setAbleItemKeysPosition", {})
         self.setAbleEntities = kwargs.get("setAbleEntities", set())
         self.itemsMaxId = kwargs.get("itemsMaxId", [])
+        self.itemsKeysNames = kwargs.get("itemsKeysNames", {})
         self.packagesIndexes = kwargs.get("packagesIndexes", tuple())
         self.requestsIndexes = kwargs.get("requestsIndexes", tuple())
         self.entityIdToItemId = kwargs.get("entityIdToItemId", {})
@@ -276,6 +279,17 @@ class Problem:
 
     def copyState(self, state):
         return copy(state)
+
+    def representState(self, state):
+        txt = "State:\n"
+        for name, index in self.varPositions.items():
+            txt += " {}: {}\n".format(name, state.variables[index])
+        for name, index in self.itemPositions.items():
+            txt += " {}:".format(name)
+            for i, keyName in enumerate(self.itemsKeysNames[name]):
+                txt+= " {}. {}".format(i, keyName)
+            txt += "\n  {}\n".format(state.items[index])
+        return txt
 
 class Heuristic:
     def __init__(self, problem: Problem):

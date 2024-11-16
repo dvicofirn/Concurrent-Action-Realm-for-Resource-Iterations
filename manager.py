@@ -20,15 +20,12 @@ class Manager:
 
     def run(self):
         print(f"Start")
-        print(f"current {self.business.getState()}")
-        print(f"current score {self.business.getCost()}")
+        print(self.business)
         print("----------")
         iterationCount = 1
         while self.business.canAdvanceIteration():
             self.execute_iteration()
-            print(f"Iteration {iterationCount}:")
-            print(f"current {self.business.getState()}")
-            print(f"current score {self.business.getCost()}")
+            print(self.business)
             print("----------")
             iterationCount += 1
         print("Executed plan with total cost of " + str(self.business.getCost()))
