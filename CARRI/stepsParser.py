@@ -1,7 +1,7 @@
 from typing import Dict, List
 from CARRI.action import Step, EnvStep
 from CARRI.expression import ConstNode
-from CARRI.contextParser import ContextParser
+from CARRI.Parser.contextParser import ContextParser
 class EnvStepParser:
     def __init__(self, parsedEnvSteps: Dict, parsedEntities: Dict) -> None:
         self.parsedEnvSteps = parsedEnvSteps

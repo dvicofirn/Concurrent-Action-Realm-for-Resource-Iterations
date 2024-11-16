@@ -6,7 +6,7 @@ from CARRI.simulator import Simulator
 from CARRI.problem import Problem
 import numpy as np
 from typing import List, Tuple
-from CARRI.translator import Translator
+from CARRI.parser import Translator
 
 import random
 

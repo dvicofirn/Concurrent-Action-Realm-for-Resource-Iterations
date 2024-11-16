@@ -8,7 +8,7 @@ if __name__ == "__main__":
     FILEPATH_PROBLEM = "Trucks and Drones Prolems Folder\Problem.CARRI"
 
     translator = CARRITranslator()
-    simulator, problem, iterations = translator.translate(FILEPATH_DOMAIN, FILEPATH_PROBLEM)
+    simulator, problem, iterations = translator.parse(FILEPATH_DOMAIN, FILEPATH_PROBLEM)
     x = 1
 
     init_time = 5.0

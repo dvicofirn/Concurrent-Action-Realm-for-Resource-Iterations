@@ -7,7 +7,7 @@ FILEPATH_PROBLEM = "Trucks and Drones Problems Folder\Problem.CARRI"
 
 def main():
     translator = CARRITranslator()
-    segments = translator.translate(FILEPATH_DOMAIN, FILEPATH_PROBLEM)[0]
+    segments = translator.parse(FILEPATH_DOMAIN, FILEPATH_PROBLEM)[0]
     x = 1
     
     print("---Entities---")
@@ -45,7 +45,7 @@ def tok(val):
 def actiontokenz():
     noToTokenz = {'entity par', 'entity type', 'inherits', 'parameters'}
     translator = CARRITranslator()
-    sections = translator.translate(FILEPATH_DOMAIN, FILEPATH_PROBLEM)[0]
+    sections = translator.parse(FILEPATH_DOMAIN, FILEPATH_PROBLEM)[0]
     #print(sections[0])
 
     for name in sections["Actions"]:

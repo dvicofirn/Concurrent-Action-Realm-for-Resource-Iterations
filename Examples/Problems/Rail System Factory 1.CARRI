@@ -12,6 +12,8 @@ storage: false
 9. true
 10. true
 
+railFree: true
+
 nearStation:
 1, 4, 5, 8
 0, 2, 4, 

@@ -56,7 +56,7 @@ class TestAStarCARRIDomain(unittest.TestCase):
     def setUpClass(cls):
         # Parse the .CARRI files to initialize the domain and problem
         cls.translator = CARRITranslator()
-        cls.domain, cls.problem = cls.translator.translate(DOMAIN_FILE, PROBLEM_FILE)
+        cls.domain, cls.problem = cls.translator.parse(DOMAIN_FILE, PROBLEM_FILE)
         
         # Initialize the initial state
         cls.initial_state = State(cls.problem["initial_state"])

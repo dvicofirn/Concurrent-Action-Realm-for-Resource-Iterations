@@ -1,7 +1,7 @@
 from typing import Dict
 from CARRI.action import ActionGenerator
 from CARRI.expression import *
-from CARRI.contextParser import ContextParser
+from CARRI.Parser.contextParser import ContextParser
 
 baseActionNames = ("Wait", "Travel", "Pick", "Deliver")
 class ActionGeneratorParser:

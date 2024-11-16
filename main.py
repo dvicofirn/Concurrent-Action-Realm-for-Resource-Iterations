@@ -1,8 +1,6 @@
-from CARRI.translator import Translator
-from planner import Planner
+from CARRI.Parser.parser import Parser
 from planner import Planner
 from manager import Manager
-from CARRI.problem import Problem
 import time
 from search import PartialAssigner
 FOLDER_DOMAINS = "Examples\\Domains"
@@ -19,8 +17,8 @@ def getDomainProblemFiles(domain, problem):
     return domainName + ".CARRI", problemName + ".CARRI"
 
 def main():
-    translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
+    parser = Parser()
+    simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
     manager = Manager(simulator, iterations, 30, 10, )
     manager.run()
@@ -74,9 +72,9 @@ def main():
 
 def runMain():
     domainFile, problemFile = getDomainProblemFiles(0, 2)
-    translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
-            FOLDER_PROBLEMS + "\\" + problemFile)
+    parser = Parser()
+    simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
+                                             FOLDER_PROBLEMS + "\\" + problemFile)
     partial = PartialAssigner(simulator)
     start = time.time()
     results = partial.produce_paths(simulator.current_state, 10, 50)
@@ -112,9 +110,9 @@ def runMain():
 
 
 def testMain():
-    translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
-                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][
+    parser = Parser()
+    simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
+                                             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Trucks and Drones"][
                                                      1] + ".CARRI")
     partial = PartialAssigner(simulator)
     print(partial.split_vehicles())
@@ -122,9 +120,9 @@ def testMain():
 
 def managerMain():
     domainFile, problemFile = getDomainProblemFiles(1, 1)
-    translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + domainFile,
-                                                 FOLDER_PROBLEMS + "\\" + problemFile)
+    parser = Parser()
+    simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
+                                             FOLDER_PROBLEMS + "\\" + problemFile)
     manager = Manager(simulator, iterations, 240, 10, )
     manager.run()
 

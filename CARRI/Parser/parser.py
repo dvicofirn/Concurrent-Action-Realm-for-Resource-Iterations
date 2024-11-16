@@ -1,91 +1,55 @@
-import re
-from typing import List, Tuple, Dict, Set
-from CARRI.actionLinesParser import parse_action_segments, parse_action_header, parse_segment
-from CARRI.problemParser import CARRIProblemParser
-from CARRI.actionGeneratorParser import ActionGeneratorParser
+from CARRI.Parser.actionLinesParser import parse_action_segments, parse_action_header, parse_segment
+from CARRI.Parser.problemParser import CARRIProblemParser
+from CARRI.Parser.actionGeneratorParser import ActionGeneratorParser
 from CARRI.stepsParser import EnvStepParser, IterParser
 from CARRI.problem import Problem
 from CARRI.simulator import Simulator
 
 
-class Translator:
-    def translate(self, carriDomainPath, carriProblemPath) -> tuple:
+class Parser:
+    def parse(self, carriDomainPath, carriProblemPath) -> tuple:
         self.domainFile = self.read_file(carriDomainPath)
         self.problemFile = self.read_file(carriProblemPath)
         """
-        Split and send sections to their respective translators.
+        Split and send sections to their respective parsers.
         """
         sections = self.split_sections()
-        translatedSections = {
+        parsedSections = {
             "Entities": {},
             "Variables": {},
             "Actions": {},
             "EnvSteps": {},
             "IterStep": {}
         }
-        # Send sections to respective translators
+        # Send sections to respective parsers
         if "Entities" in sections:
-            translatedSections["Entities"] = self.translate_entities(sections["Entities"])
+            parsedSections["Entities"] = self.parse_entities(sections["Entities"])
         if "Variables" in sections:
-            translatedSections["Variables"] = self.translate_variables(sections["Variables"])
+            parsedSections["Variables"] = self.parse_variables(sections["Variables"])
         if "Actions" in sections:
-            translatedSections["Actions"] = self.translate_actions(sections["Actions"])
+            parsedSections["Actions"] = self.parse_actions(sections["Actions"])
         if "EnvSteps" in sections:
-            translatedSections["EnvSteps"] = self.translate_env_steps(sections["EnvSteps"])
+            parsedSections["EnvSteps"] = self.parse_env_steps(sections["EnvSteps"])
         if "IterStep" in sections:
-            translatedSections["IterStep"] = self.translate_iter_step(sections["IterStep"])
+            parsedSections["IterStep"] = self.parse_iter_step(sections["IterStep"])
 
-        actionGenerators = ActionGeneratorParser(translatedSections["Actions"],
-                                                 translatedSections["Entities"]).parse()
-        envSteps = EnvStepParser(translatedSections["EnvSteps"], translatedSections["Entities"]).parse()
-        iterStep = IterParser(translatedSections["IterStep"], translatedSections["Entities"]).parse()
+        actionGenerators = ActionGeneratorParser(parsedSections["Actions"],
+                                                 parsedSections["Entities"]).parse()
+        envSteps = EnvStepParser(parsedSections["EnvSteps"], parsedSections["Entities"]).parse()
+        iterStep = IterParser(parsedSections["IterStep"], parsedSections["Entities"]).parse()
 
         # Parse the problem file to get initial values
         problem_text = self.extract_problem_text()
-        problem_parser = CARRIProblemParser(problem_text, translatedSections["Entities"],
-                                            translatedSections["Variables"])
+        problem_parser = CARRIProblemParser(problem_text, parsedSections["Entities"],
+                                            parsedSections["Variables"])
         initial_values, iterations = problem_parser.parse()
 
         problem = Problem(initialValues=initial_values,
-                          variablesInfo=translatedSections["Variables"],
-                          entities=translatedSections["Entities"])
-        simulator = Simulator(problem, actionGenerators, envSteps, iterStep, translatedSections["Entities"])
+                          variablesInfo=parsedSections["Variables"],
+                          entities=parsedSections["Entities"])
+        simulator = Simulator(problem, actionGenerators, envSteps, iterStep, parsedSections["Entities"])
 
         return simulator, iterations
-
-        """print(problem.initState)
-        # problem.set_value(problem.initState, "droneCharge", 3, 5)
-        # print(problem.initState)
-        # Todo: Need to create Simulator, return Simulator, problem and Iterations to Manager.
-        # actionGenerators should be given to simulator
-
-        print("-----Entities-----")
-        for entity in translatedSections["Entities"]:
-            print(f"{entity}: {translatedSections["Entities"][entity]}")
-        print("-----Variables-----")
-        for variable in translatedSections["Variables"]:
-            print(f"{variable}:\n{translatedSections["Variables"][variable]}")
-        print("-----Action Generators-----")
-        print(type(actionGenerators))
-        for actionGenerator in actionGenerators:
-            print(actionGenerator)
-            print("---")
-        print("-----Env Steps-----")
-        for step in envSteps:
-            print(str(step))
-        print("-----Iter step-----")
-        print(str(iterStep))
-        print("-----Initial Values-----")
-        for var_name, values in initial_values.items():
-            print(f"{var_name}: {values}")
-
-        print("-----Iterations-----")
-        for idx, iteration in enumerate(iterations):
-            print(f"Iteration {idx + 1}:")
-            for var_name, values in iteration.items():
-                print(f"  {var_name}: {values}")
-
-        return translatedSections, initial_values"""
 
     def read_file(self, file_path):
         """
@@ -145,40 +109,40 @@ class Translator:
 
         return sections
 
-    def translate_entities(self, entities_text):
-        return CARRIEntitiesTranslator(entities_text).translate()
+    def parse_entities(self, entities_text):
+        return CARRIEntitiesParser(entities_text).parse()
 
-    def translate_variables(self, variables_text):
+    def parse_variables(self, variables_text):
         """
-        Pass the variables section to the Variables Translator.
+        Pass the variables section to the Variables Parser.
         """
-        return CARRIVariablesTranslator(variables_text).translate()
+        return CARRIVariablesParser(variables_text).parse()
 
-    def translate_actions(self, actions_text):
+    def parse_actions(self, actions_text):
         """
-        Pass the actions section to the Actions Translator.
+        Pass the actions section to the Actions Parser.
         """
-        return CARRIActionsTranslator(actions_text).translate()
+        return CARRIActionsParser(actions_text).parse()
 
-    def translate_env_steps(self, envsStepsText):
+    def parse_env_steps(self, envsStepsText):
         """
-        Pass the actions section to the Actions Translator.
+        Pass the actions section to the Actions Parser.
         """
-        return CARRIEnvStepsTranslator(envsStepsText).translate()
+        return CARRIEnvStepsParser(envsStepsText).parse()
 
-    def translate_iter_step(self, envsStepsText):
+    def parse_iter_step(self, envsStepsText):
         """
-        Pass the actions section to the Actions Translator.
+        Pass the actions section to the Actions Parser.
         """
-        return CARRIIterStepTranslator(envsStepsText).translate()
+        return CARRIIterStepParser(envsStepsText).parse()
 
 
-class CARRIEntitiesTranslator:
+class CARRIEntitiesParser:
     def __init__(self, entities_text):
         self.entities_text = entities_text
         self.entities = {}
 
-    def translate(self):
+    def parse(self):
         # Define a regex pattern to capture entities and their optional origins
         pattern = r'([a-zA-Z_][a-zA-Z0-9_\s]*)(?:\s*\(\s*([a-zA-Z_][a-zA-Z0-9_\s]*)\s*\))?(?=,|$)'
 
@@ -199,13 +163,13 @@ class CARRIEntitiesTranslator:
 import re
 from typing import Set, Dict, List, Tuple
 
-class CARRIVariablesTranslator:
+class CARRIVariablesParser:
     def __init__(self, variables_text):
         self.variables_text = variables_text
 
-    def translate(self):
+    def parse(self):
         """
-        Translates the Variables section to a dictionary containing constants, variables, and items.
+        Parses the Variables section to a dictionary containing constants, variables, and items.
         """
         variables = {}
         lines = [line.strip() for line in self.variables_text.split("\n") if line.strip()]
@@ -302,13 +266,13 @@ class CARRIVariablesTranslator:
 
 
 
-class CARRIActionsTranslator:
+class CARRIActionsParser:
     def __init__(self, actions_text):
         self.actions_text = actions_text
 
-    def translate(self):
+    def parse(self):
         """
-        Translates the Actions section to a dictionary of actions with preconditions, effects, and costs.
+        Parses the Actions section to a dictionary of actions with preconditions, effects, and costs.
         """
         actions = {}
         # Split the entire actions text by "End Action" to isolate each action block
@@ -332,13 +296,13 @@ class CARRIActionsTranslator:
         return actions
 
 
-class CARRIEnvStepsTranslator:
+class CARRIEnvStepsParser:
     def __init__(self, envStepsText):
         self.envStepsText = envStepsText
 
-    def translate(self):
+    def parse(self):
         """
-        Translates the EnvSteps section to a dictionary of env steps with effects, and costs.
+        Parses the EnvSteps section to a dictionary of env steps with effects, and costs.
         """
         envSteps = {}
         # Split the entire actions text by "End EnvStep" to isolate each action block
@@ -357,13 +321,13 @@ class CARRIEnvStepsTranslator:
         return envSteps
 
 
-class CARRIIterStepTranslator:
+class CARRIIterStepParser:
     def __init__(self, iterStepText):
         self.iterStepText = iterStepText
 
-    def translate(self):
+    def parse(self):
         """
-        Translates the IterStep section to a list of effects.
+        Parses the IterStep section to a list of effects.
         """
         # Identify the start of an action using the line format "<action_name>: ..."
         lines = self.iterStepText.split("\n")
