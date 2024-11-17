@@ -37,7 +37,7 @@ class Simulator:
         # New thing from problem: vehicleEntities
         for vehicleEntityType in self.problem.vehicleEntities:
             entityActions = {}
-            for entityId in self.problem.get_entity_ids(self.current_state, vehicleEntityType):
+            for entityId in self.problem.get_entity_ids(state, vehicleEntityType):
                 actions = self.ActionProducer.produce_actions(self.problem, state,
                                                               entityId, vehicleEntityType)
                 entityActions[entityId] = actions

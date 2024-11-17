@@ -8,7 +8,7 @@ from search import *
 
 class SearcEnginehBasedPlanner:
     def __init__(self, simulator: Simulator, iterTime: int,
-                 transitionsPerIteration: int, searchAlgorithmClass: Type[SearchEngine],  **kwargs):
+                 transitionsPerIteration: int, **kwargs):
         """
         :param simulator: An instance of CARRISimulator
         :param init_time: float, time of initialization
@@ -19,8 +19,8 @@ class SearcEnginehBasedPlanner:
         self.maxPlanLength = transitionsPerIteration
 
         # Store the search algorithm as a reference, not an instance
-        searchEngineClass = kwargs.get('searchAlgorithm', PartialAssigner)
-        self.searchEngine = searchEngineClass(simulator, **kwargs)
+        searchAlgorithm = kwargs.get('searchAlgorithm', PartialAssigner)
+        self.searchEngine = searchAlgorithm(simulator, **kwargs)
 
     def generate_plan(self, state: State) -> List[List[Action]]:
         """
@@ -30,7 +30,9 @@ class SearcEnginehBasedPlanner:
 
         try:
             # Initialize the search algorithm here
-            plan = self.searchEngine.search(state, steps=round(self.maxPlanLength * 2.5), maxStates=self.maxPlanLength * 10)
+            plan = self.searchEngine.search(state, steps=round(self.maxPlanLength * 1.5),
+                                            maxStates=self.maxPlanLength * 10,
+                                            iterTime = self.iterTime - 5)
             return plan
 
         except Exception as e:

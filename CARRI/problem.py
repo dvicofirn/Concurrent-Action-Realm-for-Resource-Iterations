@@ -227,14 +227,14 @@ class Problem:
 
     def get_len_packages(self, state: State):
         count = 0
-        for item in self.packagesIndexes:
-            count += state.get_len(item)
+        for items in self.packagesIndexes:
+            count += state.get_len_items(items)
         return count
 
     def get_len_requests(self, state: State):
         count = 0
-        for item in self.requestsIndexes:
-            count += state.get_len(item)
+        for items in self.requestsIndexes:
+            count += state.get_len_items(items)
         return count
 
     def add_entity(self, state: State, entityIndex: int,  *params):
@@ -290,10 +290,3 @@ class Problem:
                 txt+= " {}. {}".format(i, keyName)
             txt += "\n  {}\n".format(state.items[index])
         return txt
-
-class Heuristic:
-    def __init__(self, problem: Problem):
-        self.problem = problem
-
-    def evaluate(self, state: State):
-        raise NotImplementedError("Must be implemented by subclasses")

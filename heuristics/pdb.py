@@ -1,4 +1,5 @@
-from worldProblem import Heuristic, State
+from CARRI import State
+from .heuristic import Heuristic
 
 class PatternDatabaseHeuristic(Heuristic):
     def __init__(self, pattern_db):

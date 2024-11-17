@@ -1,4 +1,5 @@
-from worldProblem import Heuristic, State
+from CARRI import State
+from .heuristic import Heuristic
 
 class OperatorCountingHeuristic(Heuristic):
     def __init__(self, operator_weights=1):

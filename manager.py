@@ -5,7 +5,7 @@ from search import PartialAssigner
 from CARRI import Simulator
 
 class Manager:
-    def __init__(self, simulator: Simulator, iterations, iterTime: int, transitionsPerIteration, **planner_kwargs):
+    def __init__(self, simulator: Simulator, iterations, iterTime: int, transitionsPerIteration, **kwargs):
         """
         :param problem: An instance of CARRIProblem
         :param simulator: An instance of CARRISimulator
@@ -15,19 +15,18 @@ class Manager:
         self.iterTime = iterTime
         self.business = Business(simulator, iterations)
         self.transitionsPerIteration = transitionsPerIteration
-        self.planner = SearcEnginehBasedPlanner(simulator, iterTime, transitionsPerIteration, PartialAssigner)
-        #self.planner = Planner(simulator, init_time, iter_time, transitions_per_iteration, **planner_kwargs)
+        searchAlgorithm = kwargs.get('searchAlgorithm', PartialAssigner)
+        self.planner = SearcEnginehBasedPlanner(simulator, iterTime,transitionsPerIteration, searchAlgorithm=searchAlgorithm)
+        #self.planner = Planner(simulator, init_time, iter_time, transitions_per_iteration, **kwargs)
 
     def run(self):
         print(f"Start")
         print(self.business)
         print("----------")
-        iterationCount = 1
         while self.business.canAdvanceIteration():
             self.execute_iteration()
             print(self.business)
             print("----------")
-            iterationCount += 1
         print("Executed plan with total cost of " + str(self.business.getCost()))
 
     def execute_iteration(self):

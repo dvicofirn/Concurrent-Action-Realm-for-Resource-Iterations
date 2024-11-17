@@ -1,4 +1,5 @@
-from worldProblem import Heuristic, State
+from CARRI import State
+from .heuristic import Heuristic
 
 class ManhattanDistanceHeuristic(Heuristic):
     def heurist(self, state: State) -> int:
