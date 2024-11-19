@@ -3,6 +3,8 @@ from planner import Planner
 from manager import Manager
 import time
 from search import PartialAssigner, IDAStarSearch
+
+
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
 DomainsDict = {0: "Trucks and Drones", 1: "Cars", 2: "MotorCycles and Letters",
@@ -23,6 +25,52 @@ def main():
     manager = Manager(simulator, iterations, 30, 10, )
     manager.run()
 
+    """
+    actions = simulator.generate_all_valid_actions_seperatly()
+    """
+    actions = simulator.generate_all_valid_actions_seperatly()
+
+    for _ in actions.keys():
+        for act in actions[_].values():
+            for a in act:
+                x = simulator.actionStringRepresentor.represent(a)
+                print(x)
+
+    actions = simulator.generate_all_valid_actions()
+    i = 0
+    for act in actions :
+        print('\n')
+        print(f'full reduced action {i}')
+        for a in act:
+            x = simulator.actionStringRepresentor.represent(a)
+            print(x)
+        i += 1
+
+    """
+    """
+    i = 0
+    succesors = simulator.generate_successor_states(simulator.current_state)
+    for next_state, action, cost in succesors:
+        print(i)
+        print(next_state)
+        i+= 1
+    """
+    """
+    i = 0
+    succesors = simulator.generate_successor_states(simulator.current_state)
+    for next_state, action, cost in succesors:
+        print(i)
+        print(next_state)
+        i+= 1
+    init_time = 5.0
+    iter_t = 5.0
+
+
+    planner = Planner(simulator, init_time, iter_t)
+    planner.run_iteration()
+    """
+    planner.run_iteration()
+    """
 
 def runMain():
     domainFile, problemFile = getDomainProblemFiles(0, 2)
@@ -73,12 +121,13 @@ def testMain():
     print(partial.vehicleTypes)
 
 def managerMain():
-    domainFile, problemFile = getDomainProblemFiles(0, 0)
+    domainFile, problemFile = getDomainProblemFiles(0, 1)
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                              FOLDER_PROBLEMS + "\\" + problemFile)
     print(simulator.problem.constants)
-    manager = Manager(simulator, iterations, 30, 10, searchAlgorithm=IDAStarSearch)
+    #manager = Manager(simulator, iterations, 30, 10, searchAlgorithm=IDAStarSearch)
+    manager = Manager(simulator, iterations, 30, 10, searchAlgorithm=PartialAssigner)
     manager.run()
 
 if __name__ == '__main__':

@@ -1,7 +1,6 @@
 import time
 import traceback
 from business import Business
-from genetic_planner import CARRIPlannerGA
 import concurrent.futures
 import time
 from planner import Planner, SearchEngineBasedPlanner, GeneticPlanner
@@ -21,10 +20,10 @@ class Manager:
         self.iterTime = iterTime
         self.business = Business(simulator, iterations)
         self.transitionsPerIteration = transitionsPerIteration
-        #self.planner = Planner(simulator, init_time, iter_time, transitions_per_iteration, **planner_kwargs)
-        self.planner = GeneticPlanner(simulator, iterTime, transitionsPerIteration, PartialAssigner)
-        #self.planner = SearchEngineBasedPlanner(simulator, iterTime, transitionsPerIteration, PartialAssigner)
-        #self.planner = RoutingPlanner(simulator, iterTime, transitionsPerIteration, PartialAssigner)
+
+        searchAlgorithm = kwargs.get('searchAlgorithm', PartialAssigner)
+        self.planner = GeneticPlanner(simulator, iterTime, transitionsPerIteration, searchAlgorithm)
+
         self.total_plan = []
 
 
@@ -32,7 +31,7 @@ class Manager:
     def run(self):
 
         total_time = time.time()
-
+        iterationCount = 1      
         print(f"Start")
         print(self.business)
         print("----------")
@@ -43,6 +42,8 @@ class Manager:
             print(f"current {self.business.getState()}")
             print(f"current score {self.business.getCost()}")
             print("----------")
+            self.print_plan()
+            iterationCount += 1
         print("Executed plan with total cost of " + str(self.business.getCost()))
 
 

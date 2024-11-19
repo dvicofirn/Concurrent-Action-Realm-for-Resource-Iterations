@@ -51,19 +51,85 @@ class GeneticPlanner(SearchEngineBasedPlanner):
         self.generations = generations
         self.prev_state_chrom = self.simulator.current_state
         self.plan_sequence = []
+        self.population = []
+        self.elite_size = max(1, self.population_size * 30 // 100) 
+        self.selected_size = self.population_size // 2
+        self.best_sol = None
+        self.best_fitness = (-1) * np.inf
+        self.flag_h = kwargs.get('flag_h', True)
+        self.restart_counter = 0
 
-    def initialize_population(self, initial_state):
+    def initialize_population(self, initial_state, **kwargs):
         self.prev_state_chrom = initial_state
-        population = list(self.searchEngine.successors_genetic(initial_state, self.planning_horizon, self.population_size, True))      
+
+        horizon = kwargs.get('horizon',  self.planning_horizon)
+        size = kwargs.get('size',  self.population_size)
+
+        if isinstance(self.searchEngine, PartialAssigner):
+            if self.flag_h:
+                search_results = self.searchEngine.produce_paths_heuristic(initial_state, horizon, size)
+            else:
+                search_results = self.searchEngine.produce_paths(initial_state, horizon, size)
+        else:
+            try:
+            # Initialize the search algorithm here
+                search_results = self.searchEngine.search(initial_state, steps=round(self.maxPlanLength * 1.5),
+                                                maxStates=self.maxPlanLength * 10,
+                                                iterTime = self.iterTime - 5)
+            except Exception as e:
+                logging.error(f"Error during planning: {e}", exc_info=True)
+
+
+        population = list(self.successors_genetic(initial_state, search_results, self.flag_h))  
         return population
 
+    def successors_genetic(self, state, search_results, flag_h, steps=1, max_states=1500):
+        """
+        Generate successors for the current state by using PartialAssigner's vehicle splitting
+        and decompose the results to provide transitions, costs, and states for each step.
+        """
+        
+        decomposed_successors = []
 
+        for succsesor in search_results:
+            states_tuples, transitions, costs = succsesor[:3]
+            init_state, new_state = states_tuples
+            current_state = state.__copy__()
+            stepwise_results = []
+
+            for i, transition in enumerate(transitions):
+                succeeded = True
+
+                # Apply the transition to the current state
+                for action in transition:
+                    try:
+                        if action.reValidate(self.searchEngine.problem, current_state):
+                            action.apply(self.searchEngine.problem, current_state)
+                        else:
+                            succeeded = False
+                            break
+                    except Exception:
+                        succeeded = False
+                        break
+
+                if succeeded:
+                    # Append the transition, cost, and state after applying this transition
+                    transition_cost = costs[i] if i < len(costs) else 0
+                    stepwise_results.append((transition, transition_cost, current_state.__copy__()))
+                else:
+                    # If any transition fails to apply, skip further processing
+                    break
+
+            if len(stepwise_results) == len(transitions):
+                # If all transitions succeeded, add the full sequence to decomposed_successors
+                decomposed_successors.append(stepwise_results)
+        return decomposed_successors
+
+    '''
     def fitness_function(self, chromosome):
         """Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting."""
 
         score = (-1) * chromosome[-1][1]
-
-        #print("___________")
         for actions, _, state in chromosome:
             countVehicles, countNotVehicles, vehiclelist = self.simulator.problem.countsPackagesOfEntities(state) 
             for i, action in enumerate(actions):
@@ -72,57 +138,114 @@ class GeneticPlanner(SearchEngineBasedPlanner):
                         if  countNotVehicles > 0 or vehiclelist[i]:
                             score -= 20* countNotVehicles
                     except:
-                        x = 1
+                        x = 1 #(continue)
                 elif action.baseAction == 'Pick':
                     score += 300 
-                    #print('Pick')
-                    '''
-                        if tuple(action.params) not in package_picks:
-                            package_picks.add(tuple(action.params))
-                            score += 300   
-                        else:
-                            score -= 100
-                    '''
                 elif action.baseAction == 'Deliver':
                     score += 200
-                    #print('Deliver')
-
-        #print(score)
         return score
+    '''
     
+
+    def fitness_function(self, chromosome, winner=False):
+        """
+        Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting.
+        """
+
+        total_cost = chromosome[-1][1]
+        total_picks = 0
+        total_delivers = 0
+        total_waits = 0
+        plan_length = len(chromosome)
+        action_availability_bonus = 0
+        picked_packages = set()
+        duplicate_pick_penalty = 0
+
+        # Save the current simulator state to restore it later
+        prev = self.simulator.current_state.__copy__()
+
+        for transition, _, state in chromosome:
+            # Set the simulator's current state to the state's copy
+            self.simulator.current_state = state.__copy__()
+
+            # Generate all valid transitions (list of transitions)
+            valid_transitions = self.simulator.generate_all_valid_actions()
+
+            # Flatten actions in all valid transitions for analysis
+            available_actions = [action for trans in valid_transitions for action in trans]
+
+            available_pick = any(act.baseAction == 'Pick' for act in available_actions)
+            available_deliver = any(act.baseAction == 'Deliver' for act in available_actions)
+            action_has_pick = any(act.baseAction == 'Pick' for act in transition)
+            action_has_deliver = any(act.baseAction == 'Deliver' for act in transition)
+
+            # Action availability bonus or penalty
+            if available_pick:
+                if action_has_pick:
+                    action_availability_bonus += 100  # Bonus for picking when possible
+                else:
+                    action_availability_bonus -= 50   # Penalty for not picking when possible
+
+            if available_deliver:
+                if action_has_deliver:
+                    action_availability_bonus += 100  # Bonus for delivering when possible
+
+                else:
+                    action_availability_bonus -= 50   # Penalty for not delivering when possible
+
+
+            for action in transition:
+                if action.baseAction == 'Pick':
+                    package_id = action.params[1]
+                    if package_id in picked_packages:
+                        duplicate_pick_penalty += 10000  # Heavy penalty for duplicate picks
+
+                    else:
+                        picked_packages.add(package_id)
+                        total_picks += 1
+
+                elif action.baseAction == 'Deliver':
+                    total_delivers += 1
+
+                elif action.baseAction == 'Wait':
+                    total_waits += 1
+
+        # Restore the simulator's state
+        self.simulator.current_state = prev
+
+        # Compute fitness
+        fitness = (
+            -total_cost
+            + 300 * total_picks
+            + 500 * total_delivers
+            - 10 * total_waits
+            #+ action_availability_bonus
+            - duplicate_pick_penalty
+        )
+
+        if winner:
+            print("Fitness Components:")
+            print(f"Total Cost: {total_cost}")
+            print(f"Total Picks: {total_picks}")
+            print(f"Total Delivers: {total_delivers}")
+            print(f"Total Waits: {total_waits}")
+            print(f"Plan Length: {plan_length}")
+            print(f"Action Availability Bonus: {action_availability_bonus}")
+            print(f"Duplicate Pick Penalty: {duplicate_pick_penalty}")
+            print(f"Calculated Fitness: {fitness}")
+            print("----------")
+        return fitness
 
     def print_picks(self, chromosome):
         """Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting."""
-
-        score = (-1) * chromosome[-1][1]
         a = []
-        #print("___________")
         for actions, _, state in chromosome:
-            countVehicles, countNotVehicles, vehiclelist = self.simulator.problem.countsPackagesOfEntities(state) 
             for i, action in enumerate(actions):
-                if action.baseAction == 'Wait':
-                    try:
-                        if  countNotVehicles > 0 or vehiclelist[i]:
-                            score -= 20* countNotVehicles
-                    except:
-                        x = 1
-                elif action.baseAction == 'Pick':
-                    score += 300 
+                if action.baseAction == 'Pick':
                     a.append('Pick')
-                    #print('Pick')
-                    '''
-                        if tuple(action.params) not in package_picks:
-                            package_picks.add(tuple(action.params))
-                            score += 300   
-                        else:
-                            score -= 100
-                    '''
-                elif action.baseAction == 'Deliver':
-                    score += 200
-                    a.append('Deliver')
-                    #print('Deliver')
 
-        a.append(score)
+                elif action.baseAction == 'Deliver':
+                    a.append('Deliver')
         print(a)
     
     def valid_child(self, child):
@@ -167,10 +290,10 @@ class GeneticPlanner(SearchEngineBasedPlanner):
         parent_state = parent[crossover_point][2].__copy__()
 
         rest_of_child_candidates = list(
-            self.searchEngine.successors_genetic(
+            self.initialize_population(
                 parent_state, 
-                self.planning_horizon - crossover_point, 
-                5
+                horizon=self.planning_horizon - crossover_point, 
+                size=5
             )
         )
 
@@ -196,63 +319,85 @@ class GeneticPlanner(SearchEngineBasedPlanner):
             selected.append(population[index - 1])
 
         return selected
+    
+    def tournament_selection(self, population, fitness_scores, k, tournament_size=3):
+        """
+        Selects individuals for reproduction using tournament selection.
+        """
+        selected = []
+        for _ in range(k):
+            participants = random.sample(list(zip(population, fitness_scores)), tournament_size)
+            winner = max(participants, key=lambda x: x[1])
+            selected.append(winner[0])
+        return selected
+
             
     def run_ga(self, initial_state):
-        population = self.initialize_population(initial_state)
-        for generation in range(1, self.generations + 1):
-            print(generation)
-            # Adjusted elite size to 30% of the population size
-            elite_size = max(1, self.population_size * 30 // 100)
-            
-            # Select the elites based on fitness
-            elites = sorted(population, key=self.fitness_function, reverse=True)[:elite_size]
-            
-            # Every two generations, extend the population with new random individuals
-            if generation % 2 == 0:
-                population.extend(self.initialize_population(self.simulator.current_state)[:self.population_size // 2])
 
-            # Calculate fitness scores in parallel
+        if len(self.population) == 0 :
+            population = self.initialize_population(initial_state)
+        
+        #if self.generations % 3 == 0:
+        #    population.extend(self.initialize_population(self.simulator.current_state)[:self.population_size // 2])
 
-            fitness_scores = []
-            for c in population:
-                fitness_scores.append(self.fitness_function(c))
 
-            # Normalize fitness scores to avoid negatives
-            try:
-                min_score = min(fitness_scores)
-            except ValueError:
-                print("Error: Population is empty.")
-                return
-            
+
+        # Evaluate fitness
+        
+        fitness_scores = [self.fitness_function(c) for c in population]
+        '''
+        try:
+            min_score = min(fitness_scores)
             if min_score <= 0:
                 fitness_scores = [score - min_score + 1 for score in fitness_scores]
+                total_fitness = sum(fitness_scores)
+                fitness_scores = [score / total_fitness for score in fitness_scores]
+        except ValueError:
+            print("Error: Population is empty.")
+            return
+        '''
 
-            total_fitness = sum(fitness_scores)
-            fitness_scores = [score / total_fitness for score in fitness_scores]
+        fitnees_val = max(fitness_scores)
+        best = population[fitness_scores.index(fitnees_val)]
+        
+        if fitnees_val > self.best_fitness:
+            print("_____current_winner____")
+            self.print_picks(best)
+            self.fitness_function(best, True)
+            self.best_fitness = fitnees_val
+            self.best_sol = best
+            self.plan_sequence = [joint_action for joint_action,_,_ in best]
 
-            # Select 70% of the population for reproduction: 55% unmutated and 15% mutated
-            selected_size = self.population_size * 70 // 100
-            selected_population = self.stochastic_universal_sampling(population, fitness_scores, selected_size)
+            self.restart_counter = 0
+        else:
+            self.restart_counter += 1
 
-            # Apply mutation to 15% of the total population
-            start = time.time()
-            num_to_mutate = self.population_size * 15 // 100
-            population_to_mutate = random.sample(selected_population, num_to_mutate)
-            mutated_population = self.crossover_mutation(population_to_mutate, num_to_mutate)
-            #print("took mutation:", time.time() - start)
+        #_, _, state  = best[-1]
+        #self.simulator.current_state = state.__copy__()
 
-            # Assemble the new population: elites, mutated, and remaining unmutated selected individuals
-            unmutated_population = [ind for ind in selected_population if ind not in population_to_mutate][:self.population_size - elite_size - num_to_mutate]
-            population = elites + unmutated_population + mutated_population
+        if self.restart_counter > 5:
+            self.population = []
+            self.restart_counter = 0
+            print('restarting population....')
+            return 
 
-        # Select the best individual and update the simulator’s state
-        best = max(population, key=self.fitness_function)
-        print("_____winner____")
-        self.print_picks(best)
-        _, _, state  = best[-1]
-        self.simulator.current_state = state.__copy__()
-        self.plan_sequence.extend([joint_action for joint_action,_,_ in best])
 
+        # Selection
+        selected_population = self.tournament_selection(population, fitness_scores, self.population_size // 2)
+        #elites = sorted(population, key=self.fitness_function, reverse=True)[:self.elite_size]
+            
+        num_offspring = self.population_size - len(selected_population)
+        offspring = self.crossover_mutation(selected_population, num_offspring)
+
+        # New population
+        population = selected_population + offspring
+
+        # Elitism
+        if self.best_sol not in population:
+            population.append(self.best_sol)
+
+        population = sorted(population, key=self.fitness_function, reverse=True)[:self.population_size]
+          
 
     @override
     def generate_plan(self, state)-> List[List['Action']]:
@@ -261,14 +406,18 @@ class GeneticPlanner(SearchEngineBasedPlanner):
         start_time =  time.time()
         self.plan_sequence = []
         self.simulator.current_state = state.__copy__()
-        iteration = 0
+        self.generations = 0
         self.fitness_cache = {}
-        
-        #while  time.time() - start_time < self.iterTime - 0.5:
+        self.population = []
+        self.best_fitness = (-1) * np.inf
+        self.best_sol = None
+        self.restart_counter = 0
+
+        while  time.time() - start_time < self.iterTime - 5:
         #for iteration in range(max_iterations):
-        print(f"Planning Step : {iteration}")
-        self.run_ga(self.simulator.current_state)
-        iteration+= 1
+            print(f"Planning Step : {self.generations}")
+            self.run_ga(self.simulator.current_state)
+            self.generations+= 1
 
         return self.plan_sequence
 
