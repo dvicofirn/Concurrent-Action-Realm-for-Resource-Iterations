@@ -1,4 +1,5 @@
 import time
+from multiprocessing import Process, Manager as MPManager
 import traceback
 from planner.planner import Planner  #, RoutingPlanner
 from business import Business
@@ -32,7 +33,11 @@ class Manager:
         print(self.business)
         print("----------")
         while self.business.canAdvanceIteration():
-            self.execute_iteration()
+            try:
+                self.execute_iteration()
+            except Exception as e:
+                print(e)
+                break
             print(self.business)
             print("----------")
 
@@ -46,16 +51,37 @@ class Manager:
         print('Plan :')
 
         self.print_plan()
-    def execute_iteration(self):
-        plan = []
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(self.planner.generate_plan, self.business.getState())
-            try:
-                plan = future.result(timeout=self.iterTime)
-            except concurrent.futures.TimeoutError:
-                future.cancel()
 
-        #plan = self.planner.plan_sequence
+    def planner_process(self, state, return_dict):
+        self.planner.generate_plan(state, return_dict)
+
+    def execute_iteration(self):
+        # Create a Manager to handle shared data between processes
+        plan_manager = MPManager()
+        return_dict = plan_manager.dict()
+        return_dict['plan'] = []
+
+        # Define the planner process function
+
+
+        # Start the planner process
+        p = Process(target=self.planner_process, args=(self.business.getState(), return_dict))
+        p.start()
+
+        # Wait for the process to finish within the time limit
+        p.join(self.iterTime)
+
+        # Terminate the process if it's still running
+        if p.is_alive():
+            p.terminate()
+            p.join()
+
+        # Retrieve the plan from the shared dictionary
+        plan = return_dict['plan']
+
+        #plan = self.planner.getPlan()
+        if len(plan) < self.transitionsPerIteration:
+            raise Exception("Not enough transitions")
 
         self.totalPlan.extend(plan[:self.transitionsPerIteration])
         # if len(plan) < self.transitionsPerIteration:

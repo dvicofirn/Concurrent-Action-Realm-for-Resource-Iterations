@@ -3,7 +3,7 @@ import random
 import numpy as np
 import time
 
-class GeneticPlanner(SearchEnginehBasedPlanner):
+class GeneticPlanner(SearchEngineBasedPlanner):
     def __init__(self, simulator, iterTime: int, transitionsPerIteration: int, **kwargs):
 
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
@@ -355,10 +355,9 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
 
         population = sorted(population, key=self.fitness_function, reverse=True)[:self.population_size]
 
-    def generate_plan(self, state) -> List[List[Action]]:
+    def _generate_plan(self, state):
         """Main planning loop with the GA integrated."""
 
-        start_time = time.time()
         self.planSequence = []
         self.simulator.current_state = state.__copy__()
         self.generations = 0
@@ -368,10 +367,9 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
         self.best_sol = None
         self.restart_counter = 0
 
-        while time.time() - start_time < self.iterTime - 5:
+        while True:
             # for iteration in range(max_iterations):
             print(f"Planning Step : {self.generations}")
             self.run_ga(self.simulator.current_state)
             self.generations += 1
-
-        return self.planSequence
+            self.returnDict['plan'] = self.planSequence

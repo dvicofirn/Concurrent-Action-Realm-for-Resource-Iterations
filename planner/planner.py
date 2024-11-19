@@ -1,12 +1,4 @@
-import time
-import random
-import logging
-from overrides import override
-import numpy as np
 from CARRI import Action, Simulator, State
-from heuristics import *
-from search import *
-import logging
 from typing import List
 
 
@@ -21,10 +13,9 @@ class Planner:
         self.iterTime = iterTime
         self.maxPlanLength = transitionsPerIteration
 
-    def generate_plan(self, state: State) -> List[List[Action]]:
+    def generate_plan(self, state: State, return_dict):
         """
         Generate a plan within the time limit using the provided search algorithm and heuristic (if needed).
-        :return: A list of transition actions the plan (sequence of actions).
         """
         raise NotImplementedError("Must be implemented by subclasses")
 

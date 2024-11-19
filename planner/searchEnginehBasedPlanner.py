@@ -1,32 +1,32 @@
 from planner import Planner
-from search import PartialAssigner
+from search import PartialAssigner, IDAStarSearch
 from CARRI import Simulator, State, Action
+import time
 from typing import List
 import logging
-class SearchEnginehBasedPlanner(Planner):
 
+class SearchEngineBasedPlanner(Planner):
     def __init__(self, simulator: Simulator, iterTime: int, transitionsPerIteration: int, **kwargs):
-        """
-        :param simulator: An instance of CARRISimulator
-        :param iterTime: float, time allowed for each iteration
-        :param transitionsPerIteration: int, maximum plan length per iteration
-        """
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
-        # Store the search algorithm as a reference, not an instance
-        searchAlgorithm = kwargs.get('searchAlgorithm', PartialAssigner)
+        # Use the provided search algorithm (default is IDAStarSearch)
+        searchAlgorithm = kwargs.get('searchAlgorithm', IDAStarSearch)
         self.searchEngine = searchAlgorithm(simulator, **kwargs)
 
-    def generate_plan(self, state: State) -> List[List[Action]]:
-        """
-        Generate a plan within the time limit using the provided search algorithm and heuristic.
-        :return: A list representing the plan (sequence of actions).
-        """
-        try:
-            # Initialize the search algorithm here
-            plan = self.searchEngine.search(state, steps=round(self.maxPlanLength * 1.5),
-                                            maxStates=self.maxPlanLength * 10,
-                                            iterTime = self.iterTime - 5)
-            return plan
+    def generate_plan(self, state: State, returnDict):
+        self.startGenerateTime = time.time()
+        # Generate a default plan with 'Wait' actions
+        returnDict['plan'] = self._generate_default_plan(state)
+        self.returnDict = returnDict
+        self._search(state)
 
+    def _generate_plan(self, state: State):
+        try:
+            # Start generating the plan using the search engine
+            plan = self.searchEngine.search(state, steps=self.maxPlanLength)
+            self.returnDict['plan'] = plan  # Update the plan if successful
         except Exception as e:
             logging.error(f"Error during planning: {e}", exc_info=True)
+            # Keep the default plan if an error occurs
+
+    def _generate_default_plan(self, state: State) -> List[List[Action]]:
+        return PartialAssigner(self.simulator).search(state, steps=self.maxPlanLength)

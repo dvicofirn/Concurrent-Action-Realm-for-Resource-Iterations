@@ -1,5 +1,5 @@
 from CARRI.Parser.parser import Parser
-from planner import SearchEnginehBasedPlanner, GeneticPlanner
+from planner import SearchEngineBasedPlanner, GeneticPlanner
 from manager import Manager
 import time
 from search import PartialAssigner, IDAStarSearch
@@ -117,12 +117,12 @@ def testMain():
     print(partial.vehicleTypes)
 
 def managerMain():
-    domainFile, problemFile = getDomainProblemFiles(0, 0)
+    domainFile, problemFile = getDomainProblemFiles(0, 2)
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                              FOLDER_PROBLEMS + "\\" + problemFile)
     print(simulator.problem.constants)
-    manager = Manager(simulator, iterations, 30, 10, planner=GeneticPlanner, searchAlgorithm=PartialAssigner)
+    manager = Manager(simulator, iterations, 10, 10, planner=GeneticPlanner, searchAlgorithm=PartialAssigner)
     manager.run()
 
 def managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, **kwargs):
@@ -132,7 +132,7 @@ def managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, 
                                          FOLDER_PROBLEMS + "\\" + problemFile)
     log = [-1 for _ in range(len(iterations))]
     searchAlgorithm = kwargs.get('searchAlgorithm', IDAStarSearch)
-    manager = Manager(simulator, iterations, iterTime, transitionsPerIteration, planner=SearchEnginehBasedPlanner, searchAlgorithm=IDAStarSearch)
+    manager = Manager(simulator, iterations, iterTime, transitionsPerIteration, planner=SearchEngineBasedPlanner, searchAlgorithm=IDAStarSearch)
     manager.logRun(log)
     return log
 

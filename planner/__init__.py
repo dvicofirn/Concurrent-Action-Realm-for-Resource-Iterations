@@ -1,3 +1,3 @@
 from .planner import Planner
-from .searchEnginehBasedPlanner import SearchEnginehBasedPlanner
+from .searchEnginehBasedPlanner import SearchEngineBasedPlanner
 from .geneticPlanner import GeneticPlanner
