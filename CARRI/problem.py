@@ -186,14 +186,17 @@ class Problem:
         """
         countVehicles = 0
         countNotVehicles = 0
+        vehiclelist = {}
         for packIndex in self.packagesIndexes:
             keyIndex = self.entityBaseItemsKeysPosition[packIndex]
             for entityId in state.get_items_ids(packIndex):
                 if self.entitiesReversed[state.get_item_value(packIndex, keyIndex, entityId)][1] == "Vehicle":
                     countVehicles += 1
+                    vehiclelist[entityId] = True
                 else:
                     countNotVehicles += 1
-        return countVehicles, countNotVehicles
+                    vehiclelist[entityId] = False
+        return countVehicles, countNotVehicles, vehiclelist
 
     def get_entity_ids(self, state: State, entityIndex: int) -> Iterable[int]:
         if self.ranges[entityIndex] is not None:

@@ -1,3 +1,4 @@
+from copy import copy
 from CARRI.action import ActionProducer, ActionStringRepresentor, ActionGenerator, Action, EnvStep, Step
 from CARRI.problem import Problem
 from CARRI.state import State
@@ -17,13 +18,21 @@ class Simulator:
         self.current_state = problem.copyState(problem.initState)
         self.vehicle_keys = self.problem.vehicleEntities
 
-    #Todo: manage copying better.
     def __copy__(self):
-        def __copy__(self):
-            # Collect all instance attributes
-            attributes = vars(self).copy()
-            # Create a new Problem instance using the copied attributes as kwargs
-            return Problem(**attributes)
+        # Create a new Simulator instance with shallow copies where appropriate
+        new_simulator = type(self)(
+            problem=self.problem.__copy__(),  # Assuming Problem has its own __copy__ method
+            actionGenerators=self.action_generators.copy(),  # Shallow copy of the list
+            envSteps=self.envSteps.copy(),  # Shallow copy of the list
+            iterStep=self.iterStep,  # Assuming Step is immutable or can be shared
+            entities=self.entities.copy()  # Shallow copy of the dict
+        )
+        # Assign other attributes that should not be deeply copied
+        new_simulator.ActionProducer = self.ActionProducer  # Assuming ActionProducer is stateless
+        new_simulator.actionStringRepresentor = self.actionStringRepresentor
+        new_simulator.current_state = self.current_state.__copy__()  # Shallow copy of State
+        new_simulator.vehicle_keys = copy(self.vehicle_keys)  # Shallow copy if it's a list or similar
+        return new_simulator
 
     def get_state(self):
         return self.problem.copyState(self.current_state)
@@ -112,8 +121,9 @@ class Simulator:
 
     def validate_Transition(self, state, transition):
         state = state.__copy__()
-        for action in transition:
+        for j, action in enumerate(transition):
             if not action.validate(self.problem, state):
+                print('action ', j)
                 return False
             action.apply(self.problem, state)
         return True
