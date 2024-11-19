@@ -1,99 +1,65 @@
-# GeneticPlanner class for solving the vehicle routing problem using a genetic algorithm.
 import collections
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import lru_cache
 import time
-from typing import Tuple
-from CARRI.simulator import Simulator
-from CARRI.problem import Problem
 import numpy as np
-from typing import List, Tuple
-from CARRI.parser import Translator
-
+from copy import copy, deepcopy
 import random
 
+from search.partialAssigner import PartialAssigner
 
 class CARRIPlannerGA:
-    def __init__(self, simulator, population_size=20, planning_horizon=3, generations=15):
+    def __init__(self, simulator, population_size=20, planning_horizon=5, generations=10):
         self.simulator = simulator
         self.population_size = population_size
         self.planning_horizon = planning_horizon
         self.generations = generations
+        self.partial_assigner = PartialAssigner(self.simulator) 
         self.prev_state_chrom = self.simulator.current_state
         self.plan_sequence = []
+        self.fitness_cache = {}  # Cache for storing fitness results
+        self.onEntityIndexes = self.simulator.problem.get_onEntity_indexes()
 
     def initialize_population(self, initial_state):
-        """Initializes a population of chromosomes with valid action sequences from generate_successors."""
+        """Initializes a population with action selection based on estimated fitness impact."""
         self.prev_state_chrom = initial_state
-        population = []
-        for _ in range(self.population_size):
-            chromosome = []
-            state = initial_state.copy()
-
-            for _ in range(self.planning_horizon):
-                successors = list(self.simulator.generate_successors(state))
-                if not successors:
-                    break  # No further actions available
-                # Choose a random valid joint action and update the state
-                #next_state, joint_action, cost = random.choice(successors)
-
-                '''
-                for i, a in enumerate(joint_action):
-                    print(f"{_}/{i} . {self.simulator.actionStringRepresentor.represent(a)}")
-                print("\n")
-                '''
-
-                # Filter to prioritize pick or deliver actions if available
-                task_successors = [
-                    (next_state, joint_action, cost) for next_state, joint_action, cost in successors
-                    if any('Pick' in action.name or 'Deliver' in action.name for action in joint_action)
-                ]
-                
-                # Choose a task-oriented action if available, otherwise fallback to random choice
-                if task_successors:
-                    next_state, joint_action, cost = random.choice(task_successors)
-                else:
-                    next_state, joint_action, cost = random.choice(successors)
-                
-                chromosome.append((joint_action, cost, next_state))  # Store action and its cost
-                state = next_state.copy()  # Update state for next time step
-
-            #if self.simulator.valid_sequence(chromosome, state):
-               # population.append(chromosome)
-            population.append(chromosome)
+        
+        start = time.time()
+        population = list(self.partial_assigner.successors_genetic(initial_state, self.planning_horizon, self.population_size))      
+        #print("took :", time.time() - start )
         return population
-
 
     def fitness_function(self, chromosome):
         """Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting."""
+
         total_cost = sum(cost for _, cost, _ in chromosome)
-        
+
         collision_penalty = 0
         pick_reward = 0
         deliver_reward = 0
         waiting_penalty = 0
         fuel_penalty = 0
+        total_cost = 0
+        actions = chromosome[0]
+        _ = chromosome[1]
+        state = chromosome[2]
 
         for actions, _, state in chromosome:
             package_picks = set()
             for i, action in enumerate(actions):
-                if 'Wait' in action.name:
+                if action.baseAction == 'Wait':
                     # Check if there are packages to pick up or if the vehicle is carrying something
-                    if self.has_pending_packages(state) or self.is_vehicle_loaded(state, i):
-                        waiting_penalty += 20  # Adjust the penalty value as needed
+                    if self.has_pending_packages(state) or self.is_vehicle_loaded(state, i, action):
+                        waiting_penalty += 50  # Adjust the penalty value as needed
 
-                if 'Fuel' in action.name:
-                    if self.fuel_level(state, i):
-                        fuel_penalty += 30
-                    else:
-                        fuel_penalty -= 100
-
-                if 'Pick' in action.name:
+                if action.baseAction == 'Pick':
                     if tuple(action.params) not in package_picks:
                         pick_reward += 300
                         package_picks.add(tuple(action.params))
                     else:
                         collision_penalty += 100
 
-                if'Deliver' in action.name:
+                if action.baseAction == 'Deliver':
                     deliver_reward += 200
 
         # Fitness formula: reward task completion, penalize cost, collisions, and unnecessary waiting
@@ -101,55 +67,56 @@ class CARRIPlannerGA:
         return score
     
     def has_pending_packages(self, state):
-        for pack in state.items[0].values():
-            if pack[2]== False:
+        """
+        Checks if there are any packages in the state that are not yet delivered.
+        
+        :param state: The current state of the problem.
+        :return: True if there are pending packages, False otherwise.
+        """
+        item_index, property_index = self.onEntityIndexes
+        # Check if any package is not delivered
+        x = state.items[item_index]
+        for pack in state.items[item_index].values():
+            if pack[property_index] == 0:
                 return True
-        return False 
+        return False
     
-    def is_vehicle_loaded(self, state, index):
-        return state.variables[2][index] > 0
+    def is_vehicle_loaded(self, state, index, action):
+        inner_index , enititytype = self.indextype(index)
+
+        for key, val in self.simulator.entities.items():
+            if val == (enititytype, 'Vehicle'):
+                vehicle_name = key.lower()
+
+        cap_key = []
+        for key in self.simulator.problem.varPositions.keys():
+            if 'Cap' in key and vehicle_name in key:
+                cap_key.append(key)
+
+        for k in cap_key:
+            cap_index = self.simulator.problem.varPositions[k]
+            if state.variables[cap_index][inner_index] > 0:
+                return True
+
+        return False
     
-    def fuel_level(self, state, index):
-        return state.variables[1][index] > 2
+    def indextype(self, index):
+        relevant_ranges = []
+        for EntityIndex in self.simulator.vehicle_keys:
+            curr_range = self.simulator.problem.ranges[EntityIndex]
+            if curr_range is not None:
+                relevant_ranges.extend(curr_range)
 
-    def check_for_collisions(self, chromosome):
-        """Penalizes chromosomes where multiple drones attempt to pick the same package at the same time."""
-        penalty = 0
-        for joint_action, _, _ in chromosome:
-            package_picks = set()
-            for action in joint_action:
-                # Check if the action is a "pick" and track package targets
-                if  "Pick" in action.name:
-                    pars = str(action.params)
-                    if pars in package_picks:
-                        # Penalize if another drone is already picking this package
-                        penalty += 10
-                    else:
-                        package_picks.add(pars)
-        return penalty
+        enititytype = None
+        length = 0
+        for EntityIndex in self.simulator.vehicle_keys:
+            curr_range = self.simulator.problem.ranges[EntityIndex]
+            length += len(curr_range) if curr_range is not None else 0
+            if index < length:
+                enititytype = EntityIndex
+                break
 
-    def mutation_helper(self, child, replace_index):
-        if replace_index == 0:
-            prev_state = self.prev_state_chrom
-        else:
-            prev_state = child[replace_index - 1][2]
-
-        succ = self.simulator.generate_successors(prev_state)
-        succ = list(collections.deque(succ))
-        new_state, joint_action, cost = random.choice(succ)
-        #apply -> get new state 
-        # is it the same state?
-        # yes - valid ? 
-        # need different mutation - more safisticated
-        while new_state != child[replace_index][2]:
-            succ.remove((new_state, joint_action, cost))
-            if len(succ) == 0:
-                return child[replace_index]
-            new_state, joint_action, cost = random.choice(succ)
-            
-
-        #child[replace_index] = (joint_action, cost, new_state)
-        return (joint_action, cost, new_state)
+        return relevant_ranges[index], enititytype
 
 
     def valid_child(self, child):
@@ -165,133 +132,105 @@ class CARRIPlannerGA:
         self.simulator.current_state = inner_state
         return valid
     
-    def valid_parent_split(self, crossover_point, parent1, parent2):
-        child1 = parent1[:crossover_point] + parent2[crossover_point:]
-        child2 = parent2[:crossover_point] + parent1[crossover_point:]
+    def crossover_mutation(self, selected_population):
+        # Modified Crossover: Sample one parent and regenerate the rest of the list concurrently
+        num_to_generate = self.population_size - len(selected_population)
+        parents = random.choices(selected_population, k=num_to_generate)
+        crossover_points = random.choices(range(1, self.planning_horizon), k=num_to_generate)
 
-        return self.valid_child(child1) and self.valid_child(child2)
+        new_children = []
+        with ThreadPoolExecutor() as executor:
+            # Submit tasks in larger batches to reduce overhead
+            futures = [executor.submit(self.generate_child, copy(parent), crossover_point) for parent, crossover_point in zip(parents, crossover_points)]
+
+            for future in as_completed(futures):
+                child = future.result()
+                if child is not None:
+                    new_children.append(child)
+
+        selected_population.extend(new_children)
+        return selected_population
+
+
+    def generate_child(self, parent, crossover_point):
+        # Use a new instance of PartialAssigner and deepcopy the simulator for thread safety
+        start = time.time()
+        partial_assigner = PartialAssigner(deepcopy(self.simulator))
+        #print('took deepcopy: ' , time.time() - start)
+        child = parent[:crossover_point]
+        rest_of_child_candidates = list(partial_assigner.successors_genetic(self.simulator.problem.copyState(parent[crossover_point][2]), self.planning_horizon - crossover_point, 5))
+        
+        # Filter out invalid candidates early to reduce workload
+        try:
+            rest_of_child = random.choice(rest_of_child_candidates)
+        except:
+            return None
+        child.extend(rest_of_child)
+
+        return child if self.valid_child(child) else None
+    
+    def stochastic_universal_sampling(self, population, fitness_scores, k):
+        pointers = np.linspace(0, sum(fitness_scores), k)
+        fitness_sum = 0
+        selected = []
+        index = 0
+
+        for pointer in pointers:
+            while fitness_sum < pointer:
+                fitness_sum += fitness_scores[index]
+                index += 1
+            selected.append(population[index - 1])
+
+        return selected
 
     def run_ga(self, initial_state):
-        """Runs the GA to optimize action sequences over the planning horizon."""
         population = self.initialize_population(initial_state)
-
-        for generation in range(self.generations):
-            # Periodically reintroduce diversity
+        for generation in range(1, self.generations + 1):
+            # Elitism: Preserve the best chromosomes before creating the new population
+            elite_size = max(1, self.population_size // 3)  # Preserve top 10% as elites
+            start = time.time()
+            elites = sorted(population, key=self.fitness_function, reverse=True)[:elite_size]
+            #print("took elit:", time.time() - start )
             if generation % 5 == 0:
-                new_random_chromosomes = self.initialize_population(self.simulator.current_state)
-                population.extend(new_random_chromosomes[:self.population_size // 2])
+                population.extend(self.initialize_population(self.simulator.current_state)[:self.population_size // 2])
 
-            fitness_scores = [self.fitness_function(chromosome) for chromosome in population]
-            
-            # Adjust scores to make them all positive for selection, if necessary
+            start = time.time()
+            # Evaluate fitness concurrently
+            with ThreadPoolExecutor() as executor:
+                fitness_scores = list(executor.map(self.fitness_function, population))
+
             min_score = min(fitness_scores)
             if min_score <= 0:
-                fitness_scores = [score - min_score + 1 for score in fitness_scores]  # Shift all scores to be positive
+                fitness_scores = [score - min_score + 1 for score in fitness_scores]
 
-            # Ensure weights are non-zero for selection
-            if sum(fitness_scores) == 0:
-                fitness_scores = [1] * len(fitness_scores)  # Default to uniform weights if all are zero
+            total_fitness = sum(fitness_scores)
+            fitness_scores = [score / total_fitness for score in fitness_scores]
 
-
-            selected_population = random.choices(population, weights=fitness_scores, k=self.population_size // 2)
-            new_population = []
-
-            while len(new_population) < self.population_size:
-                parent1, parent2 = random.sample(selected_population, 2)
-                # Crossover: Swap segments of action sequences
-
-                #TODO: check validity
-                crossover_point = random.randint(1, self.planning_horizon - 1)
-
-                while not self.valid_parent_split(crossover_point, parent1, parent2): #state comprassion
-                    parent1, parent2 = random.sample(selected_population, 2)
-
-                
-                #print('valid parent 1 : ', self.valid_child(parent1))
-                #print('valid parent 2 : ', self.valid_child(parent2))
-
-                child1 = parent1[:crossover_point] + parent2[crossover_point:]
-                child2 = parent2[:crossover_point] + parent1[crossover_point:]
-
-                #print('valid child 1 : ', self.valid_child(child1))
-                #print('valid child 2 : ', self.valid_child(child2))
-
-
-                # Mutation: Modify a random gene (action sequence) in each child
-                if random.random() < 0.3:  # 10% mutation rate
-                    replace_index = random.randint(0, len(child1) - 1)
-                    child1[replace_index] = self.mutation_helper(child1, replace_index)
-
-                    #print('valid child 1 mutation: ', self.valid_child(child1))
-
-                if random.random() < 0.3:
-                    replace_index = random.randint(0, len(child2) - 1)
-                    child2[replace_index] = self.mutation_helper(child2, replace_index)
-
-                    #print('valid child 2 mutation: ', self.valid_child(child2))
-
-                if self.valid_child(child1):
-                    new_population.extend([child1])
-                if self.valid_child(child2):
-                    new_population.extend([child2])
-
-            population = new_population
-
-        # Select the best solution
-        best_chromosome = max(population, key=self.fitness_function)
-        # Execute the best action sequence
-        """
-        print("_________best chromozone_____________")
-        for _, val in enumerate(best_chromosome):
-            act, cost, state = val
-            for i, a in enumerate(act):
-                print(f"{_}/{i} . {self.simulator.actionStringRepresentor.represent(a)}")
-
-            print("\n")
-        """
-
-        joint_action, _, state = best_chromosome[0]
-        #self.simulator.advance_state(joint_action, state)
+            #print("took fitness:", time.time() - start )
+            start = time.time()
+            selected_population = self.stochastic_universal_sampling(population, fitness_scores, self.population_size // 2)
+            #print("took selected:", time.time() - start )
+            start = time.time()
+            population = elites + self.crossover_mutation(selected_population)  # Include elites in new population
+            #print("took mutation:", time.time() - start )
+            
+        
+        joint_action, _, state = max(population, key=self.fitness_function)[0]
         self.simulator.current_state = state.copy()
-
         self.plan_sequence.append(joint_action)
 
-        action_str = []
-        for i, a in enumerate(joint_action):
-            action_str.append(self.simulator.actionStringRepresentor.represent(a))
-
-        #print('selected action: ', action_str)
-        #print('new_state simulator:', self.simulator.current_state)
-        #print('\n')
-        x = 1
-
-
-    def plan(self, initial_state, iter_time,start_time, max_iterations=100,):
+    def plan(self, initial_state, iter_time,start_time):
         """Main planning loop with the GA integrated."""
 
         self.plan_sequence = []
         self.simulator.current_state = initial_state.copy()
         iteration = 0
+        self.fitness_cache = {}
         
         while time.time() - start_time < iter_time:
         #for iteration in range(max_iterations):
-            #print(f"Iteration {iteration}: Planning Step")
+            print(f"Planning Step : {iteration}")
             self.run_ga(self.simulator.current_state)
             iteration+= 1
 
         return self.plan_sequence
-
-'''
-# Example usage
-FOLDER_DOMAINS = "Examples\\Domains"
-FOLDER_PROBLEMS = "Examples\\Problems"
-DomainsProblemsDict = {"Trucks and Drones": ("Trucks and Drones 1",),
-                        "Cars": ("Cars 1",),}
-
-translator = Translator()
-simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
-                                                FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
-planner = CARRIPlannerGA(simulator)
-start_time = time.time()
-planner.plan(planner.simulator.current_state, 3, start_time)
-'''
