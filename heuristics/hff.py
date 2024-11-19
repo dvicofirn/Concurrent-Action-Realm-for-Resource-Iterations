@@ -1,4 +1,5 @@
-from CARRI.problem import State, Heuristic
+from CARRI import State
+from .heuristic import Heuristic
 
 class HFFHeuristic(Heuristic):
     def heurist(self, state: State) -> int:

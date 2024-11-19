@@ -2,6 +2,8 @@ Domain MotorCycles and Letters
 Start Domain:
 Entities:
 Location (Location), MotorCycle (Vehicle), Letter (Package), Person (Request)
+End Entities	
+
 Variables:
 const locAdj MULTY - Location (adjacency)
 const highRoute INT - Location
@@ -95,8 +97,8 @@ IterStep:
 		End Case
 	End All
 	Repeat (count < 3):
-		MotorCycle add: (0, 4)
 		count : count + 1
+		MotorCycle add: (0, 4)
 	End Repeat
 End IterStep
 

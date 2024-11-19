@@ -1,8 +1,66 @@
 from typing import Callable, List, Tuple
-from CARRI.problem import State
-from CARRI.action import Step
+import time
+from .searchEngine import SearchEngine
+from heuristics import AllCountHeuristic
+from CARRI import Simulator, Problem, State, Step, EnvStep, Action
+import time
+from typing import List
 
-def ida_star(initial_state: State, goal_test: Callable[[State], bool],
+class IDAStarSearch(SearchEngine):
+    def __init__(self, simulator: Simulator, **kwargs):
+        super().__init__(simulator, **kwargs)
+        self.heuristic = kwargs.get("heuristic", AllCountHeuristic(simulator.problem))
+
+    def search(self, state: State, **kwargs) -> List[List[Action]]:
+        steps = kwargs.get('steps', 10)
+        iterTime = kwargs.get('iterTime', steps * 5)
+        start_time = time.time()
+        bound = float('inf')  # Set initial bound to infinity
+        path = []
+        self.best_path = None
+        self.max_steps = steps
+
+        while True:
+            result = self._search(state, path, 0, bound, start_time, iterTime)
+            if isinstance(result, list):
+                return result
+            if (time.time() - start_time) >= iterTime:
+                # Time limit exceeded, return the best path found so far
+                if self.best_path:
+                    return self.best_path
+                else:
+                    return []  # No plan found
+            bound = result
+
+    def _search(self, state, path: List[List[Action]], g: float, bound: float, start_time: float, iterTime: float):
+        if (time.time() - start_time) >= iterTime:
+            return float('inf')
+        if len(path) >= self.max_steps:
+            # Plan length constraint met
+            if not self.best_path or g < self.best_cost:
+                self.best_path = path.copy()
+                self.best_cost = g
+            return g
+        f = g + self.heuristic.evaluate(state)
+        if f > bound:
+            return f
+        min_cost = float('inf')
+        successors = self.simulator.generate_successors(state)
+        if not successors:
+            # No successors, possibly a dead-end
+            return f
+        for successor_state, actions, cost in successors:
+            path.append(actions)
+            t = self._search(successor_state, path, g + cost, bound, start_time, iterTime)
+            if isinstance(t, float):
+                if t < min_cost:
+                    min_cost = t
+            path.pop()
+        return min_cost
+
+
+
+def ida_star_old(initial_state: State, goal_test: Callable[[State], bool],
              successors: Callable[[State], List[Tuple[State, Step, int]]],
              heuristic: Callable[[State], float]) -> List[Step]:
     def search(path, g, bound):

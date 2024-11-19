@@ -32,7 +32,9 @@ class SearchEngineBasedPlanner:
         """
         try:
             # Initialize the search algorithm here
-            plan = self.searchEngine.search(state, steps=round(self.maxPlanLength * 2.5), maxStates=self.maxPlanLength * 10)
+            plan = self.searchEngine.search(state, steps=round(self.maxPlanLength * 1.5),
+                                            maxStates=self.maxPlanLength * 10,
+                                            iterTime = self.iterTime - 5)
             return plan
 
         except Exception as e:

@@ -1,4 +1,5 @@
-from CARRI.problem import Problem, State, Heuristic
+from CARRI.problem import Problem, State
+from .heuristic import Heuristic
 
 class BatteryAwareHeuristic(Heuristic):
     def heurist(self, state: State) -> int:

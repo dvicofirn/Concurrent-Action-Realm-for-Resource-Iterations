@@ -36,7 +36,6 @@ class State:
         # Pay attention: item -> entity -> key Package[pack][type]
         return self.items[entityIndex][index][keyIndex]
 
-
     def set_variable_value(self, varIndex, index, value):
         self.variables[varIndex][index] = value
 
@@ -47,7 +46,7 @@ class State:
     def get_items_ids(self, entityIndex) -> Iterable[int]:
         return tuple(self.items[entityIndex].keys())
 
-    def get_len(self, entityIndex) -> int:
+    def get_len_items(self, entityIndex) -> int:
         return len(self.items[entityIndex])
 
     def add_entity_list(self, entityIndex, maxId, *params):

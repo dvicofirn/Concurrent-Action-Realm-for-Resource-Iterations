@@ -8,7 +8,6 @@ Variables:
 #Right now no use for entity in brackets
 const locType INT - Location #Related to Location entity, is constant therefore tuple, and expected having #integers
 const locAdj MULTY - Location (adjacency) #Have Set - meaning tuple of Sets. Sets will have integers.
-## var locCap INT (Location) Will not use this variable for now 
 
 var droneLoc INT - Drone (location) #Variable, meaning it is a list
 var droneCap INT - Drone
@@ -106,14 +105,13 @@ End Action
 
 DroneBoard: id - Drone, trk - Truck
 Precs:
-	((droneLoc id = truckLoc trk) and (droneBoard id = entity Location)) or ((droneLoc id = trk) and (droneBoard id = entity Truck))
+	droneBoard id = entity Location
+	droneLoc id = truckLoc trk
 Confs:
-truckDroneCap trk < 4
-(truckPackCap trk < 8) or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
+	truckDroneCap trk < 4
+	(truckPackCap trk < 8) or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
 Effects:
-	Case (droneBoard id = entity Location):
-		truckDroneCap trk : truckDroneCap trk + 1
-	End Case
+	truckDroneCap trk : truckDroneCap trk + 1
 	droneLoc id : trk
 	droneBoard id : entity Truck
 	Case (droneCharge id < 8):
@@ -133,28 +131,44 @@ Cost:
 2
 End Action
 
-DroneExitBoard: id - Drone, trk - Truck
+DroneStayBoard: id - Drone
+Precs:
+	droneBoard id = entity Truck
+Effects:
+	Case (droneCharge id < 8):
+		droneCharge id : droneCharge id + 3
+	Else:
+		droneCharge id : 10
+	End Case
+Cost:
+	2
+End Action
+
+DroneExitBoard: id - Drone
 Precs:
 droneBoard id = entity Truck
-droneLoc id = trk
-not (locType(truckLoc trk) = 2)
+not (locType(truckLoc (droneLoc id)) = 2)
 Effects:
-	droneLoc id : truckLoc trk
+	truckDroneCap (droneLoc id) : truckDroneCap (droneLoc id) - 1
+	droneLoc id : truckLoc (droneLoc id)
 	droneBoard id : entity Location
-	truckDroneCap trk : truckDroneCap trk - 1
 Cost:
 1
 End Action
 
-DroneExitBoardWithPack: id - Drone, trk - Truck, pack - Package (DroneExitBoard) #This is an example of addition to existing action
+DroneExitBoardWithPack: id - Drone, pack - Package (DroneExitBoard) #This is an example of addition to existing action
 Precs Add:
-	Package loc pack = trk
+	Package loc pack = droneLoc id
 Confs: #Could also implement as Confs Add
 	Package onEntity pack = entity Truck #Other drone might want to take it. It's fine to not re check package location
-Effects Add:
-	Package onEntity pack : entity Drone
+Effects:
+	truckDroneCap (droneLoc id) : truckDroneCap (droneLoc id) - 1
+	truckPackCap (droneLoc id) : truckPackCap (droneLoc id) - 1
+	droneLoc id : truckLoc (droneLoc id)
+	droneBoard id : entity Location
 	Package loc pack : id
-	truckPackCap trk : truckPackCap trk - 1
+	Package onEntity pack : entity Drone
+	
 End Action
 
 TruckWait: id - Truck (Wait)

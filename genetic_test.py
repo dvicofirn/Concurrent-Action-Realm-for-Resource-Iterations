@@ -2,7 +2,7 @@
 
 from CARRI.simulator import Simulator
 from CARRI.problem import Problem
-from CARRI.translator import Translator
+from CARRI.parser import Translator
 from genetic_planner import GeneticPlanner
 
 def main():
@@ -12,8 +12,8 @@ def main():
                             "Cars": ("Cars 1",),}
 
     translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
-                                                 FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
+    simulator, iterations = translator.parse(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
+                                             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
 
     population_size = 50
     generations = 100

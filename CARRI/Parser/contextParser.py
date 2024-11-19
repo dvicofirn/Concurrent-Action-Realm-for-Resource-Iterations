@@ -1,5 +1,5 @@
 from CARRI.expression import *
-from CARRI.expressionParser import ExpressionParser
+from CARRI.Parser.expressionParser import ExpressionParser
 
 class ContextParser:
     def __init__(self, parameters, paramExpressions, parsedEntities):

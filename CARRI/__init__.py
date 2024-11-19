@@ -1,4 +1,4 @@
 from .simulator import Simulator
-from .problem import Problem, State
-from .action import Action
+from .problem import Problem
 from .state import State
+from .action import Step, EnvStep, Action

@@ -36,7 +36,7 @@ truckLoc:
 #Because there is no defined quantity, create as much
 #as logical.
 Package:
-0, 0, Location # type: 0, loc: 0, onEntity: 0
+0, 0, Location # type: 0, loc: 0, onEntity: Location
 1, 1, Location
 0, 2, Location
 Request:

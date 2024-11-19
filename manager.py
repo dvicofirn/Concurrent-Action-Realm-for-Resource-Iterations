@@ -4,13 +4,13 @@ from business import Business
 from genetic_planner import CARRIPlannerGA
 import concurrent.futures
 import time
-from planner import Planner, SearchEngineBasedPlanner, GeneticPlanner, RoutingPlanner
+from planner import Planner, SearchEngineBasedPlanner, GeneticPlanner
 from business import Business
 from search import PartialAssigner
 from CARRI import Simulator
 
 class Manager:
-    def __init__(self, simulator: Simulator, iterations, iterTime: int, transitionsPerIteration, **planner_kwargs):
+    def __init__(self, simulator: Simulator, iterations, iterTime: int, transitionsPerIteration, **kwargs):
         """
         :param Simulator: Simulator object with problem object in it.
         :param Iterations: List of iterations, with objects to add in each one of them.
@@ -34,10 +34,8 @@ class Manager:
         total_time = time.time()
 
         print(f"Start")
-        print(f"current {self.business.getState()}")
-        print(f"current score {self.business.getCost()}")
+        print(self.business)
         print("----------")
-        iterationCount = 1
         while self.business.canAdvanceIteration():
             self.execute_iteration()
             #self.execute_iteration_gen()
@@ -45,7 +43,6 @@ class Manager:
             print(f"current {self.business.getState()}")
             print(f"current score {self.business.getCost()}")
             print("----------")
-            iterationCount += 1
         print("Executed plan with total cost of " + str(self.business.getCost()))
 
 

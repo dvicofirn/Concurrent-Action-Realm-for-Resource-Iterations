@@ -1,6 +1,8 @@
-from CARRI.problem import Heuristic
+from CARRI import State
+from .heuristic import Heuristic
+
 class action_based_delivery_heuristic(Heuristic):
-    def evaluate(self, state) -> float:
+    def evaluate(self, state: State) -> float:
         """
         Heuristic estimating the minimum number of actions required to deliver all undelivered packages
         in a discrete environment. Focuses on counting actions rather than physical distances.
