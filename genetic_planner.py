@@ -3,7 +3,9 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from functools import lru_cache
 import time
 import numpy as np
-from copy import copy, deepcopy
+from typing import List, Tuple
+from CARRI.parser import Translator
+
 import random
 
 from search.partialAssigner import PartialAssigner

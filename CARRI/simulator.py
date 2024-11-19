@@ -123,7 +123,7 @@ class Simulator:
         state = state.__copy__()
         for j, action in enumerate(transition):
             if not action.validate(self.problem, state):
-                print('action ', j)
+                print('in validate_Transition action ', j)
                 return False
             action.apply(self.problem, state)
         return True
