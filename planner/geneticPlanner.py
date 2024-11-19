@@ -1,58 +1,17 @@
-import time
+from .searchEnginehBasedPlanner import *
 import random
-import logging
-from typing import List, Type
-from overrides import override
 import numpy as np
-from CARRI import Action, Simulator, Problem, State
-from heuristics import *
-from search import *
-import logging
-from typing import List, Type
-
-class SearchEnginehBasedPlanner:
-    def __init__(self, simulator: Simulator, iterTime: int,
-                 transitionsPerIteration: int, **kwargs):
-        """
-        :param simulator: An instance of CARRISimulator
-        :param iterTime: float, time allowed for each iteration
-        :param transitionsPerIteration: int, maximum plan length per iteration
-        """
-        self.simulator = simulator
-        self.iterTime = iterTime
-        self.maxPlanLength = transitionsPerIteration
-
-        # Store the search algorithm as a reference, not an instance
-        searchAlgorithm = kwargs.get('searchAlgorithm', PartialAssigner)
-        self.searchEngine = searchAlgorithm(simulator, **kwargs)
-
-    def generate_plan(self, state: State) -> List[List[Action]]:
-        """
-        Generate a plan within the time limit using the provided search algorithm and heuristic.
-        :return: A list representing the plan (sequence of actions).
-        """
-
-        try:
-            # Initialize the search algorithm here
-            plan = self.searchEngine.search(state, steps=round(self.maxPlanLength * 1.5),
-                                            maxStates=self.maxPlanLength * 10,
-                                            iterTime = self.iterTime - 5)
-            return plan
-
-        except Exception as e:
-            logging.error(f"Error during planning: {e}", exc_info=True)
-
+import time
 
 class GeneticPlanner(SearchEnginehBasedPlanner):
-    def __init__(self, simulator, iterTime: int, transitionsPerIteration: int, searchAlgorithmClass: Type['SearchEngine'],
-                  population_size=20, generations=3, **kwargs):
+    def __init__(self, simulator, iterTime: int, transitionsPerIteration: int, **kwargs):
 
-        super().__init__(simulator, iterTime, transitionsPerIteration, searchAlgorithmClass, **kwargs)
-        self.population_size = population_size
+        super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
+        self.population_size = kwargs.get('population_size', 20)
         self.planning_horizon = transitionsPerIteration
-        self.generations = generations
+        self.generations = kwargs.get('generations', 3)
         self.prev_state_chrom = self.simulator.current_state
-        self.plan_sequence = []
+        self.planSequence = []
         self.population = []
         self.elite_size = max(1, self.population_size * 30 // 100)
         self.selected_size = self.population_size // 2
@@ -62,10 +21,12 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
         self.restart_counter = 0
 
     def initialize_population(self, initial_state, **kwargs):
+        populationTime = time.time()
+        print("start population")
         self.prev_state_chrom = initial_state
 
-        horizon = kwargs.get('horizon',  self.planning_horizon)
-        size = kwargs.get('size',  self.population_size)
+        horizon = kwargs.get('horizon', self.planning_horizon)
+        size = kwargs.get('size', self.population_size)
 
         if isinstance(self.searchEngine, PartialAssigner):
             if self.flag_h:
@@ -74,15 +35,15 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
                 search_results = self.searchEngine.produce_paths(initial_state, horizon, size)
         else:
             try:
-            # Initialize the search algorithm here
+                # Initialize the search algorithm here
                 search_results = self.searchEngine.search(initial_state, steps=round(self.maxPlanLength * 1.5),
-                                                maxStates=self.maxPlanLength * 10,
-                                                iterTime = self.iterTime - 5)
+                                                          maxStates=self.maxPlanLength * 10,
+                                                          iterTime=self.iterTime - 5)
             except Exception as e:
                 logging.error(f"Error during planning: {e}", exc_info=True)
 
-
         population = list(self.successors_genetic(initial_state, search_results, self.flag_h))
+        print("return population:", time.time() - populationTime)
         return population
 
     def successors_genetic(self, state, search_results, flag_h, steps=1, max_states=1500):
@@ -93,8 +54,8 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
 
         decomposed_successors = []
 
-        for succsesor in search_results:
-            states_tuples, transitions, costs = succsesor[:3]
+        for successor in search_results:
+            states_tuples, transitions, costs = successor[:3]
             init_state, new_state = states_tuples
             current_state = state.__copy__()
             stepwise_results = []
@@ -132,8 +93,6 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
         """Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting."""
 
         score = (-1) * chromosome[-1][1]
-
-        #print("___________")
         for actions, _, state in chromosome:
             countVehicles, countNotVehicles, vehiclelist = self.simulator.problem.countsPackagesOfEntities(state) 
             for i, action in enumerate(actions):
@@ -150,12 +109,12 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
         return score
     '''
 
-
     def fitness_function(self, chromosome, winner=False):
         """
         Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting.
         """
-
+        fitnessTime = time.time()
+        print("start fitness")
         total_cost = chromosome[-1][1]
         total_picks = 0
         total_delivers = 0
@@ -188,15 +147,14 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
                 if action_has_pick:
                     action_availability_bonus += 100  # Bonus for picking when possible
                 else:
-                    action_availability_bonus -= 50   # Penalty for not picking when possible
+                    action_availability_bonus -= 50  # Penalty for not picking when possible
 
             if available_deliver:
                 if action_has_deliver:
                     action_availability_bonus += 100  # Bonus for delivering when possible
 
                 else:
-                    action_availability_bonus -= 50   # Penalty for not delivering when possible
-
+                    action_availability_bonus -= 50  # Penalty for not delivering when possible
 
             for action in transition:
                 if action.baseAction == 'Pick':
@@ -219,12 +177,12 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
 
         # Compute fitness
         fitness = (
-            -total_cost
-            + 300 * total_picks
-            + 500 * total_delivers
-            - 10 * total_waits
-            #+ action_availability_bonus
-            - duplicate_pick_penalty
+                -total_cost
+                + 300 * total_picks
+                + 500 * total_delivers
+                - 10 * total_waits
+                # + action_availability_bonus
+                - duplicate_pick_penalty
         )
 
         if winner:
@@ -238,6 +196,7 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
             print(f"Duplicate Pick Penalty: {duplicate_pick_penalty}")
             print(f"Calculated Fitness: {fitness}")
             print("----------")
+        print("return fitness:", time.time() - fitnessTime)
         return fitness
 
     def print_picks(self, chromosome):
@@ -251,7 +210,7 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
                 elif action.baseAction == 'Deliver':
                     a.append('Deliver')
         print(a)
-    
+
     def valid_child(self, child):
         """Validates the child plan by simulating transitions."""
         inner_state = self.simulator.current_state.__copy__()
@@ -263,11 +222,10 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
         )
         self.simulator.current_state = inner_state
         return result
-    
 
     def crossover_mutation(self, selected_population, num_to_mutate):
         """Performs crossover and mutation to generate new children for the population without using threads."""
-        #num_to_generate = self.population_size - len(selected_population)
+        # num_to_generate = self.population_size - len(selected_population)
         if num_to_mutate <= 0:
             return selected_population
 
@@ -302,10 +260,10 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
         )
 
         # Early filtering of invalid candidates
-        #valid_candidates = [candidate for candidate in rest_of_child_candidates if self.valid_child(child + candidate)]
+        # valid_candidates = [candidate for candidate in rest_of_child_candidates if self.valid_child(child + candidate)]
 
         if not rest_of_child_candidates:
-           return None
+            return None
 
         child.extend(random.choice(rest_of_child_candidates))
         return child
@@ -335,19 +293,15 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
             selected.append(winner[0])
         return selected
 
-
     def run_ga(self, initial_state):
 
-        if len(self.population) == 0 :
+        if len(self.population) == 0:
             population = self.initialize_population(initial_state)
 
-        #if self.generations % 3 == 0:
+        # if self.generations % 3 == 0:
         #    population.extend(self.initialize_population(self.simulator.current_state)[:self.population_size // 2])
 
-
-
         # Evaluate fitness
-
         fitness_scores = [self.fitness_function(c) for c in population]
         '''
         try:
@@ -370,14 +324,14 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
             self.fitness_function(best, True)
             self.best_fitness = fitnees_val
             self.best_sol = best
-            self.plan_sequence = [joint_action for joint_action,_,_ in best]
+            self.planSequence = [joint_action for joint_action, _, _ in best]
 
             self.restart_counter = 0
         else:
             self.restart_counter += 1
 
-        #_, _, state  = best[-1]
-        #self.simulator.current_state = state.__copy__()
+        # _, _, state  = best[-1]
+        # self.simulator.current_state = state.__copy__()
 
         if self.restart_counter > 5:
             self.population = []
@@ -385,10 +339,9 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
             print('restarting population....')
             return
 
-
-        # Selection
+            # Selection
         selected_population = self.tournament_selection(population, fitness_scores, self.population_size // 2)
-        #elites = sorted(population, key=self.fitness_function, reverse=True)[:self.elite_size]
+        # elites = sorted(population, key=self.fitness_function, reverse=True)[:self.elite_size]
 
         num_offspring = self.population_size - len(selected_population)
         offspring = self.crossover_mutation(selected_population, num_offspring)
@@ -402,13 +355,11 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
 
         population = sorted(population, key=self.fitness_function, reverse=True)[:self.population_size]
 
-
-    @override
-    def generate_plan(self, state)-> List[List['Action']]:
+    def generate_plan(self, state) -> List[List[Action]]:
         """Main planning loop with the GA integrated."""
 
-        start_time =  time.time()
-        self.plan_sequence = []
+        start_time = time.time()
+        self.planSequence = []
         self.simulator.current_state = state.__copy__()
         self.generations = 0
         self.fitness_cache = {}
@@ -417,73 +368,10 @@ class GeneticPlanner(SearchEnginehBasedPlanner):
         self.best_sol = None
         self.restart_counter = 0
 
-        while  time.time() - start_time < self.iterTime - 5:
-        #for iteration in range(max_iterations):
+        while time.time() - start_time < self.iterTime - 5:
+            # for iteration in range(max_iterations):
             print(f"Planning Step : {self.generations}")
             self.run_ga(self.simulator.current_state)
-            self.generations+= 1
+            self.generations += 1
 
-        return self.plan_sequence
-
-
-
-class Planner:
-    def __init__(self, simulator, iter_t, transitions_per_iteration, **kwargs):
-        """
-        :param simulator: An instance of CARRISimulator
-        :param init_time: float, time of initialization
-        :param iter_t: float, time allowed for each iteration
-        """
-        self.simulator = simulator
-        self.iter_t = iter_t
-        # Allow search algorithm and heuristic to be passed for flexibility
-
-        self.heuristic = kwargs.get('heuristic', RequestCountHeuristic(self.simulator.problem))
-        # Store the search algorithm as a reference, not an instance
-        self.search_algorithm_class = kwargs.get('search_algorithm', a_star_search)
-        
-        self.max_plan_length = transitions_per_iteration
-        self.plan = None
-
-    def init(self):
-        return 
-
-    def generate_plan(self):
-        """
-        Generate a plan within the time limit using the provided search algorithm and heuristic.
-        :return: A list representing the plan (sequence of actions).
-        """
-        start_time = time.time()
-        plan = []
-
-        try:
-            # Initialize the search algorithm here
-            search = self.search_algorithm_class(self.simulator, self.heuristic, self.iter_t)
-            print(search)
-            return search
-        
-        except Exception as e:
-            logging.error(f"Error during planning: {e}", exc_info=True)
-
-    def run_iteration(self, init_state):
-        """
-        Execute a planning iteration.
-        :return: None
-        """
-        try:
-            self.simulator.current_state = init_state
-            plan = self.generate_plan()
-        except Exception as e:
-            print(e)
-            logging.error("An error occurred during planning:", exc_info=True)  # Logs the full stack trace
-        if not plan:
-            logging.warning("No valid plan was generated.")
-        else:
-            for action in plan:
-                try:
-                    self.simulator.advance_state(action)
-                except ValueError as e:
-                    logging.warning(f"Failed to apply action {action}: {e}")
-                    break
-        
-        return plan
+        return self.planSequence

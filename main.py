@@ -1,5 +1,5 @@
 from CARRI.Parser.parser import Parser
-from planner import Planner
+from planner import SearchEnginehBasedPlanner, GeneticPlanner
 from manager import Manager
 import time
 from search import PartialAssigner, IDAStarSearch
@@ -20,12 +20,55 @@ def main():
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
-    translator = Translator()
-    simulator, iterations = translator.translate(FOLDER_DOMAINS + "\\" + instance + ".CARRI",
-            FOLDER_PROBLEMS + "\\" + DomainsProblemsDict[instance][0] + ".CARRI")
     manager = Manager(simulator, iterations, 30, 10, )
     manager.run()
 
+    """
+    actions = simulator.generate_all_valid_actions_seperatly()
+    """
+    actions = simulator.generate_all_valid_actions_seperatly()
+
+    for _ in actions.keys():
+        for act in actions[_].values():
+            for a in act:
+                x = simulator.actionStringRepresentor.represent(a)
+                print(x)
+
+    actions = simulator.generate_all_valid_actions()
+    i = 0
+    for act in actions :
+        print('\n')
+        print(f'full reduced action {i}')
+        for a in act:
+            x = simulator.actionStringRepresentor.represent(a)
+            print(x)
+        i += 1
+
+    """
+    """
+    i = 0
+    succesors = simulator.generate_successor_states(simulator.current_state)
+    for next_state, action, cost in succesors:
+        print(i)
+        print(next_state)
+        i+= 1
+    """
+    """
+    i = 0
+    succesors = simulator.generate_successor_states(simulator.current_state)
+    for next_state, action, cost in succesors:
+        print(i)
+        print(next_state)
+        i+= 1
+    init_time = 5.0
+    iter_t = 5.0
+
+
+    planner = Planner(simulator, init_time, iter_t)
+    planner.run_iteration()
+    """
+    planner.run_iteration()
+    """
 
 def runMain():
     domainFile, problemFile = getDomainProblemFiles(0, 2)
@@ -44,10 +87,10 @@ def runMain():
         cost = 0
         invalid = False
         for transition in transitions:
-            """print(state)
+            print(state)
             for action in transition:
                 print(simulator.actionStringRepresentor.represent(action), end=", ")
-            print()"""
+            print()
             if not simulator.validate_Transition(state, transition):
                 print(f"Problem, end Instance of {i}")
                 invalid = True
@@ -64,8 +107,6 @@ def runMain():
         print("---")
     print(end - start)
 
-
-
 def testMain():
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + "Trucks and Drones.CARRI",
@@ -81,8 +122,22 @@ def managerMain():
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                              FOLDER_PROBLEMS + "\\" + problemFile)
     print(simulator.problem.constants)
-    manager = Manager(simulator, iterations, 30, 10, searchAlgorithm=IDAStarSearch)
+    manager = Manager(simulator, iterations, 30, 10, planner=GeneticPlanner, searchAlgorithm=PartialAssigner)
     manager.run()
+
+def managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, **kwargs):
+    domainFile, problemFile = getDomainProblemFiles(domainIndex, problemIndex)
+    parser = Parser()
+    simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
+                                         FOLDER_PROBLEMS + "\\" + problemFile)
+    log = [-1 for _ in range(len(iterations))]
+    searchAlgorithm = kwargs.get('searchAlgorithm', IDAStarSearch)
+    manager = Manager(simulator, iterations, iterTime, transitionsPerIteration, planner=SearchEnginehBasedPlanner, searchAlgorithm=IDAStarSearch)
+    manager.logRun(log)
+    return log
+
+def logsRun():
+    pass
 
 if __name__ == '__main__':
     managerMain()

@@ -25,13 +25,6 @@ class Business:
     def getIteration(self) -> int:
         return self.iteration
 
-    def canAdvance(self):
-        #return self.iteration < len(self.iterationsList)
-        #package_type = set([x[1] for x in self.state.items[0].values()])
-        #request_type = set([x[0] for x in self.state.items[1].values()])
-
-        return len(package_type.intersection(request_type)) !=0
-
     def canAdvanceIteration(self) -> bool:
         return self.iteration < len(self.iterationsList)
 
