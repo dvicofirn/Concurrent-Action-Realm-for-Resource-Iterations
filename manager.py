@@ -61,9 +61,6 @@ class Manager:
         return_dict = plan_manager.dict()
         return_dict['plan'] = []
 
-        # Define the planner process function
-
-
         # Start the planner process
         p = Process(target=self.planner_process, args=(self.business.getState(), return_dict))
         p.start()
