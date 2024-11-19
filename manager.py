@@ -1,4 +1,5 @@
 import time
+import psutil
 from multiprocessing import Process, Manager as MPManager
 import traceback
 from planner.planner import Planner  #, RoutingPlanner
@@ -70,9 +71,12 @@ class Manager:
 
         # Terminate the process if it's still running
         if p.is_alive():
-            p.terminate()
+            # Terminate the planner subprocess and all its child processes
+            parent = psutil.Process(p.pid)
+            for child in parent.children(recursive=True):
+                child.terminate()
+            parent.terminate()
             p.join()
-
         # Retrieve the plan from the shared dictionary
         plan = return_dict['plan']
 

@@ -122,7 +122,7 @@ def managerMain():
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                              FOLDER_PROBLEMS + "\\" + problemFile)
     print(simulator.problem.constants)
-    manager = Manager(simulator, iterations, 10, 10, planner=GeneticPlanner, searchAlgorithm=PartialAssigner)
+    manager = Manager(simulator, iterations, 10, 10, planner=SearchEngineBasedPlanner, searchAlgorithm=IDAStarSearch)
     manager.run()
 
 def managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, **kwargs):
