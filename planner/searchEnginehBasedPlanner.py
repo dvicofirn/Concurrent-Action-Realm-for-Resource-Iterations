@@ -17,7 +17,7 @@ class SearchEngineBasedPlanner(Planner):
         # Generate a default plan with 'Wait' actions
         returnDict['plan'] = self._generate_default_plan(state)
         self.returnDict = returnDict
-        self._search(state)
+        self._generate_plan(state)
 
     def _generate_plan(self, state: State):
         try:
