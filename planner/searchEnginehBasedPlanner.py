@@ -6,7 +6,7 @@ from typing import List
 import logging
 
 class SearchEngineBasedPlanner(Planner):
-    def __init__(self, simulator: Simulator, iterTime: int, transitionsPerIteration: int, **kwargs):
+    def __init__(self, simulator: Simulator, iterTime: float, transitionsPerIteration: int, **kwargs):
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
         # Use the provided search algorithm (default is IDAStarSearch)
         searchAlgorithm = kwargs.get('searchAlgorithm', IDAStarSearch)

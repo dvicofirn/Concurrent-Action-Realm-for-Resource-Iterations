@@ -176,6 +176,11 @@ class PartialAssigner(SearchEngine):
         return searchQueue
 
     def search(self, state: State, **kwargs) -> List[List[Action]]:
+        paths = []
         steps = kwargs.get('steps', 5)
         maxStates = kwargs.get('maxStates', 10)
-        return self.produce_paths(state, steps, maxStates)[0][1]
+        multiplication = kwargs.get('multiplication', 1.25)
+        while not paths:
+            paths = self.produce_paths(state, steps, maxStates)
+            maxStates = round(maxStates * multiplication)
+        return paths[0][1]

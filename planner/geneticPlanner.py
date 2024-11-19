@@ -4,7 +4,7 @@ import numpy as np
 import time
 
 class GeneticPlanner(SearchEngineBasedPlanner):
-    def __init__(self, simulator, iterTime: int, transitionsPerIteration: int, **kwargs):
+    def __init__(self, simulator, iterTime: float, transitionsPerIteration: int, **kwargs):
 
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
         self.population_size = kwargs.get('population_size', 20)

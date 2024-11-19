@@ -3,7 +3,7 @@ from typing import List
 
 
 class Planner:
-    def __init__(self, simulator: Simulator, iterTime: int, transitionsPerIteration: int, **kwargs):
+    def __init__(self, simulator: Simulator, iterTime: float, transitionsPerIteration: int, **kwargs):
         """
         :param simulator: An instance of CARRISimulator
         :param iterTime: float, time allowed for each iteration

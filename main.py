@@ -60,11 +60,10 @@ def main():
         print(i)
         print(next_state)
         i+= 1
-    init_time = 5.0
     iter_t = 5.0
 
 
-    planner = Planner(simulator, init_time, iter_t)
+    planner = SearchEngineBasedPlanner(simulator, iter_t, 10)
     planner.run_iteration()
     """
     planner.run_iteration()
@@ -123,6 +122,19 @@ def managerMain():
                                              FOLDER_PROBLEMS + "\\" + problemFile)
     print(simulator.problem.constants)
     manager = Manager(simulator, iterations, 10, 10, planner=SearchEngineBasedPlanner, searchAlgorithm=IDAStarSearch)
+    manager.run()
+def doubleRunnerMain():
+    domainFile, problemFile = getDomainProblemFiles(0, 2)
+    parser = Parser()
+    simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
+                                         FOLDER_PROBLEMS + "\\" + problemFile)
+    print(simulator.problem.constants)
+
+    print("----------run 1----------")
+    manager = Manager(simulator, iterations, 10, 10, planner=SearchEngineBasedPlanner, searchAlgorithm=IDAStarSearch)
+    manager.run()
+    print("----------run 2----------")
+    manager = Manager(simulator, iterations, 10, 10, planner=GeneticPlanner, searchAlgorithm=PartialAssigner)
     manager.run()
 
 def managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, **kwargs):
