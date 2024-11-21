@@ -264,7 +264,7 @@ class Simulator:
             cost += action.get_cost(self.problem, state)
         return state, cost
 
-    def apply_full_Transition(self, state, cost, transition):
+    def apply_full_transition(self, state, cost, transition):
         for action in transition:
             action.apply(self.problem, state)
             cost += action.get_cost(self.problem, state)

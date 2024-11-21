@@ -47,7 +47,7 @@ class Business:
                     f"\nState: {self.simulator.current_state}"
                     f"\nTransition: {[self.simulator.actionStringRepresentor.represent(action) for action in transition]}"
                 )
-            state, cost = self.simulator.apply_full_Transition(state, cost, transition)
+            state, cost = self.simulator.apply_full_transition(state, cost, transition)
 
         currentIterationItems = self.iterationsList[self.iteration]
 

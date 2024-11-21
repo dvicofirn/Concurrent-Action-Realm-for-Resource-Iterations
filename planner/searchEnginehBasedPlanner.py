@@ -11,22 +11,21 @@ class SearchEngineBasedPlanner(Planner):
         # Use the provided search algorithm (default is IDAStarSearch)
         searchAlgorithm = kwargs.get('searchAlgorithm', IDAStarSearch)
         self.searchEngine = searchAlgorithm(simulator, **kwargs)
+        self.partialAssigner = PartialAssigner(simulator, **kwargs)
 
     def generate_plan(self, state: State, returnDict):
         self.startGenerateTime = time.time()
         # Generate a default plan with 'Wait' actions
-        returnDict['plan'] = self._generate_default_plan(state)
+        plan, cost = self.partialAssigner.provideTransitionsAndCost(state, steps=self.maxPlanLength)
+        returnDict['plan'] = plan
         self.returnDict = returnDict
+        self.initCost = cost
         self._generate_plan(state)
 
     def _generate_plan(self, state: State):
-        try:
-            # Start generating the plan using the search engine
-            plan = self.searchEngine.search(state, steps=self.maxPlanLength)
-            self.returnDict['plan'] = plan  # Update the plan if successful
-        except Exception as e:
-            logging.error(f"Error during planning: {e}", exc_info=True)
-            # Keep the default plan if an error occurs
-
-    def _generate_default_plan(self, state: State) -> List[List[Action]]:
-        return PartialAssigner(self.simulator).search(state, steps=self.maxPlanLength)
+        self.searchEngine.search(
+            state,
+            steps=self.maxPlanLength,
+            plan_dict=self.returnDict,  # Pass the plan dictionary directly
+            partial_assigner=self.partialAssigner
+        )

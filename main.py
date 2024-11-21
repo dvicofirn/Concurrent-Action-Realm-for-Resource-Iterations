@@ -1,8 +1,9 @@
 from CARRI.Parser.parser import Parser
 from planner import SearchEngineBasedPlanner, GeneticPlanner
+from search import PartialAssigner, IDAStarSearch, UCTSearchEngine
+from heuristics import MoreCountHeuristic
 from manager import Manager
 import time
-from search import PartialAssigner, IDAStarSearch
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
 DomainsDict = {0: "Trucks and Drones", 1: "Cars", 2: "MotorCycles and Letters",
@@ -116,12 +117,12 @@ def testMain():
     print(partial.vehicleTypes)
 
 def managerMain():
-    domainFile, problemFile = getDomainProblemFiles(0, 2)
+    domainFile, problemFile = getDomainProblemFiles(0, 0)
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                              FOLDER_PROBLEMS + "\\" + problemFile)
     print(simulator.problem.constants)
-    manager = Manager(simulator, iterations, 10, 10, planner=SearchEngineBasedPlanner, searchAlgorithm=IDAStarSearch)
+    manager = Manager(simulator, iterations, 60, 10, planner=SearchEngineBasedPlanner, searchAlgorithm=IDAStarSearch, heuristic=MoreCountHeuristic)
     manager.run()
 def doubleRunnerMain():
     domainFile, problemFile = getDomainProblemFiles(0, 2)

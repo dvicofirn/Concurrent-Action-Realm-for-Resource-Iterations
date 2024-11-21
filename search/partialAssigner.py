@@ -184,3 +184,14 @@ class PartialAssigner(SearchEngine):
             paths = self.produce_paths(state, steps, maxStates)
             maxStates = round(maxStates * multiplication)
         return paths[0][1]
+
+    def provideTransitionsAndCost(self, state: State, **kwargs) -> Tuple[List[List[Action]], int]:
+        paths = []
+        steps = kwargs.get('steps', 5)
+        maxStates = kwargs.get('maxStates', 10)
+        multiplication = kwargs.get('multiplication', 1.25)
+        while not paths:
+            paths = self.produce_paths(state, steps, maxStates)
+            maxStates = round(maxStates * multiplication)
+        path = paths[0]
+        return (path[1], sum(path[2]) + sum(path[3]))
