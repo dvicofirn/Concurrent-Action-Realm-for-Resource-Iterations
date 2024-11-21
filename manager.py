@@ -28,7 +28,7 @@ class Manager:
         #self.planner = GeneticPlanner(simulator, iterTime, transitionsPerIteration, PartialAssigner)
         self.totalPlan = []
 
-    def run(self):
+    def run(self, printPlan=False):
         startTime = time.time()
         print(f"Start")
         print(self.business)
@@ -45,13 +45,40 @@ class Manager:
         pick_count, deliver_count = self.count_pick_deliver()
 
         print('\nTotal Planning and Execution time : ', time.time() - startTime)
-        print("Executed plan with total cost of " + str(self.business.cost))
+        print("Executed plan with total cost of " + str(self.business.getCost()))
         print('Total Plan Length:', len(self.totalPlan))
         print("Total 'Pick' count:", pick_count)
         print("Total 'Deliver' count:", deliver_count)
         print('Plan :')
 
-        self.print_plan()
+        if printPlan:
+            self.print_plan()
+
+    def logRun(self):
+        costs = []
+        times = []
+        pickCounts = []
+        deliverCounts = []
+        completeRun = True
+        startTime = time.time()
+        while self.business.canAdvanceIteration():
+            try:
+                self.execute_iteration()
+            except Exception as e:
+                completeRun = False
+                break
+            costs.append(self.business.getCost())
+            times.append(time.time() - startTime)
+            pickCount, deliverCount = self.count_pick_deliver()
+            pickCounts.append(pickCount)
+            deliverCounts.append(deliverCount)
+
+        return {'total plan length': len(self.totalPlan),
+                'run success': completeRun,
+                'costs': costs,
+                'time measures': times,
+                'pick counts': pickCounts,
+                'deliver counts': deliverCounts}
 
     def planner_process(self, state, return_dict):
         self.planner.generate_plan(state, return_dict)
@@ -108,6 +135,3 @@ class Manager:
                 elif action.baseAction == "Deliver":
                     deliver_count += 1
         return pick_count, deliver_count
-
-
-
