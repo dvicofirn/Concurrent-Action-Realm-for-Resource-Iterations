@@ -1,9 +1,10 @@
-from .searchEnginehBasedPlanner import *
+from .planner import *
+import logging
 import random
 import numpy as np
 import time
 
-class GeneticPlanner(SearchEngineBasedPlanner):
+class GeneticPlanner(AssigningPlanner):
     def __init__(self, simulator, iterTime: float, transitionsPerIteration: int, **kwargs):
 
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
@@ -21,29 +22,20 @@ class GeneticPlanner(SearchEngineBasedPlanner):
         self.restart_counter = 0
 
     def initialize_population(self, initial_state, **kwargs):
-        populationTime = time.time()
-        print("start population")
+        #populationTime = time.time()
+        #print("start population")
         self.prev_state_chrom = initial_state
 
         horizon = kwargs.get('horizon', self.planning_horizon)
         size = kwargs.get('size', self.population_size)
 
-        if isinstance(self.searchEngine, PartialAssigner):
-            if self.flag_h:
-                search_results = self.searchEngine.produce_paths_heuristic(initial_state, horizon, size)
-            else:
-                search_results = self.searchEngine.produce_paths(initial_state, horizon, size)
+        if self.flag_h:
+            search_results = self.partialAssigner.produce_paths_heuristic(initial_state, horizon, size)
         else:
-            try:
-                # Initialize the search algorithm here
-                search_results = self.searchEngine.search(initial_state, steps=round(self.maxPlanLength * 1.5),
-                                                          maxStates=self.maxPlanLength * 10,
-                                                          iterTime=self.iterTime - 5)
-            except Exception as e:
-                logging.error(f"Error during planning: {e}", exc_info=True)
+            search_results = self.partialAssigner.produce_paths(initial_state, horizon, size)
 
         population = list(self.successors_genetic(initial_state, search_results, self.flag_h))
-        print("return population:", time.time() - populationTime)
+        #print("return population:", time.time() - populationTime)
         return population
 
     def successors_genetic(self, state, search_results, flag_h, steps=1, max_states=1500):
@@ -66,8 +58,8 @@ class GeneticPlanner(SearchEngineBasedPlanner):
                 # Apply the transition to the current state
                 for action in transition:
                     try:
-                        if action.reValidate(self.searchEngine.problem, current_state):
-                            action.apply(self.searchEngine.problem, current_state)
+                        if action.reValidate(self.partialAssigner.problem, current_state):
+                            action.apply(self.partialAssigner.problem, current_state)
                         else:
                             succeeded = False
                             break
@@ -113,8 +105,8 @@ class GeneticPlanner(SearchEngineBasedPlanner):
         """
         Evaluates fitness based on task completion, cost, collision avoidance, and unnecessary waiting.
         """
-        fitnessTime = time.time()
-        print("start fitness")
+        #fitnessTime = time.time()
+        #print("start fitness")
         total_cost = chromosome[-1][1]
         total_picks = 0
         total_delivers = 0
@@ -196,7 +188,7 @@ class GeneticPlanner(SearchEngineBasedPlanner):
             print(f"Duplicate Pick Penalty: {duplicate_pick_penalty}")
             print(f"Calculated Fitness: {fitness}")
             print("----------")
-        print("return fitness:", time.time() - fitnessTime)
+        #print("return fitness:", time.time() - fitnessTime)
         return fitness
 
     def print_picks(self, chromosome):
@@ -355,9 +347,8 @@ class GeneticPlanner(SearchEngineBasedPlanner):
 
         population = sorted(population, key=self.fitness_function, reverse=True)[:self.population_size]
 
-    def _generate_plan(self, state):
+    def _generate_plan(self, state: State):
         """Main planning loop with the GA integrated."""
-
         self.planSequence = []
         self.simulator.current_state = state.__copy__()
         self.generations = 0

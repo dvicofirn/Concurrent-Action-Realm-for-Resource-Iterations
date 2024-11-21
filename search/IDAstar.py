@@ -1,4 +1,4 @@
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Dict
 import time
 from .searchEngine import SearchEngine
 from heuristics import AllCountHeuristic
@@ -19,9 +19,9 @@ class IDAStarSearch(SearchEngine):
         self.max_steps = None
         self.plan_dict = None
 
-    def search(self, state: State, **kwargs):
+    def search(self, state: State, plan_dict: Dict, **kwargs):
         self.max_steps = kwargs.get('steps', 10)
-        self.plan_dict = kwargs.get('plan_dict', None)
+        self.plan_dict = plan_dict
 
         # Initialize the bound with heuristic value
         bound = self.heuristic.evaluate(state)

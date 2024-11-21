@@ -4,31 +4,32 @@ from CARRI import Simulator, State
 import random
 from typing import List, Tuple
 
+class Node:
+    def __init__(self, state, parent=None, action=None, g=0):
+        self.state = state
+        self.parent = parent
+        self.action = action  # List of actions that led to this node from parent
+        self.children = []
+        self.visits = 0
+        self.total_cost = 0
+        self.g = g  # Accumulated cost from root to this node
+        self.untried_actions = None  # Actions not yet tried from this node
+
 class UCTSearchEngine(SearchEngine):
-    class Node:
-        def __init__(self, state, parent=None, action=None, g=0):
-            self.state = state
-            self.parent = parent
-            self.action = action  # List of actions that led to this node from parent
-            self.children = []
-            self.visits = 0
-            self.total_cost = 0
-            self.g = g  # Accumulated cost from root to this node
-            self.untried_actions = None  # Actions not yet tried from this node
 
     def __init__(self, simulator: Simulator, **kwargs):
         super().__init__(simulator, **kwargs)
         self.max_steps = kwargs.get('steps', 10)
         self.plan_dict = None
-        self.partial_assigner = kwargs.get('partial_assigner', PartialAssigner(simulator, **kwargs))
+        self.partialAssigner = kwargs.get('partial_assigner', PartialAssigner(simulator, **kwargs))
         self.root_node = None
         self.best_plan = None
         self.best_avg_cost = float('inf')
 
-    def search(self, state: State, **kwargs):
+    def search(self, state: State, plan_dict, **kwargs):
         self.max_steps = kwargs.get('steps', 10)
-        self.plan_dict = kwargs.get('plan_dict', None)
-        self.root_node = self.Node(state)
+        self.plan_dict = plan_dict
+        self.root_node = Node(state)
         self.node_map = {self.state_key(state): self.root_node}
 
         while True:
@@ -52,7 +53,7 @@ class UCTSearchEngine(SearchEngine):
         self.backup(path, total_cost)
         return full_plan, total_cost, avg_cost
 
-    def tree_policy(self) -> Tuple[List['UCTSearchEngine.Node'], 'UCTSearchEngine.Node']:
+    def tree_policy(self) -> Tuple[List[Node], Node]:
         node = self.root_node
         path = [node]
         while True:
@@ -65,7 +66,7 @@ class UCTSearchEngine(SearchEngine):
             if node.untried_actions:
                 # Expand a new child with an untried action
                 actions, action_cost, next_state = node.untried_actions.pop()
-                child_node = self.Node(next_state, parent=node, action=actions, g=node.g + action_cost)
+                child_node = Node(next_state, parent=node, action=actions, g=node.g + action_cost)
                 node.children.append(child_node)
                 path.append(child_node)
                 node = child_node
@@ -80,7 +81,7 @@ class UCTSearchEngine(SearchEngine):
     def get_untried_actions(self, node):
         # Use partialAssigner to generate possible actions from this node
         # Generate a few possible next steps
-        paths = self.partial_assigner.produce_paths(node.state, steps=1, maxStates=10)
+        paths = self.partialAssigner.produce_paths(node.state, steps=1, maxStates=10)
         untried_actions = []
         for path in paths:
             # Each path is a tuple: ([state2[0], state], [transitions], [costs per action], [env costs per action])
@@ -90,7 +91,7 @@ class UCTSearchEngine(SearchEngine):
             untried_actions.append((actions, action_cost, next_state))
         return untried_actions
 
-    def best_child(self, node) -> 'UCTSearchEngine.Node':
+    def best_child(self, node) -> Node:
         # Select the child with the lowest average cost per visit
         best_avg_cost = float('inf')
         best_child = None
@@ -108,16 +109,16 @@ class UCTSearchEngine(SearchEngine):
 
     def rollout(self, node) -> Tuple[List[List[Action]], float]:
         # Perform a simulation from the given node using partialAssigner
-        plan, cost = self.partial_assigner.provideTransitionsAndCost(node.state, steps=self.max_steps)
+        plan, cost = self.partialAssigner.provideTransitionsAndCost(node.state, steps=self.max_steps)
         return plan, cost
 
-    def backup(self, path: List['UCTSearchEngine.Node'], total_cost: float):
+    def backup(self, path: List[Node], total_cost: float):
         # Update the visit count and total cost along the path
         for node in path:
             node.visits += 1
             node.total_cost += total_cost
 
-    def construct_full_plan(self, path: List['UCTSearchEngine.Node'], rollout_plan: List[List[Action]]) -> List[List[Action]]:
+    def construct_full_plan(self, path: List[Node], rollout_plan: List[List[Action]]) -> List[List[Action]]:
         # Build the full plan starting from the root node
         full_plan = []
         for node in path[1:]:  # Skip the root node

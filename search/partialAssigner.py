@@ -4,9 +4,9 @@ from collections import deque
 from .searchEngine import SearchEngine
 from CARRI import Simulator, State, Action
 
-class PartialAssigner(SearchEngine):
+class PartialAssigner:
     def __init__(self, simulator: Simulator, **kwargs):
-        super().__init__(simulator, **kwargs)
+        self.simulator = simulator
         self.problem = simulator.problem
         self.vehicleTypes = self.problem.vehicleEntities
         self.lenVehicleTypes = len(self.vehicleTypes)
