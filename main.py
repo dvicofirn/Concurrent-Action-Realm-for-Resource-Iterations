@@ -122,7 +122,7 @@ def managerMain():
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                              FOLDER_PROBLEMS + "\\" + problemFile)
     print(simulator.problem.constants)
-    manager = Manager(simulator, iterations, 60, 10, planner=SearchEngineBasedPlanner, searchAlgorithm=IDAStarSearch, heuristic=MoreCountHeuristic)
+    manager = Manager(simulator, iterations, 60, 10, planner=SearchEngineBasedPlanner, searchAlgorithm=UCTSearchEngine, heuristic=MoreCountHeuristic)
     manager.run()
 def doubleRunnerMain():
     domainFile, problemFile = getDomainProblemFiles(0, 2)
