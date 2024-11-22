@@ -11,7 +11,7 @@ class GeneticPlanner(AssigningPlanner):
 
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
         self.population_size = kwargs.get('population_size', 20)
-        self.planning_horizon = transitionsPerIteration * 3 // 2 #TODO : 1.5  - לבדוק עד כמה משמעותי על הבעיה הגדולה
+        self.planning_horizon = transitionsPerIteration 
         self.generations = kwargs.get('generations', 3)
         self.prev_state_chrom = self.simulator.current_state
         self.planSequence = []
