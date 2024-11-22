@@ -292,9 +292,8 @@ class Problem:
         return self.itemKeysPositions[on_key]
 
 
-    def get_adj_dict(self):
-        adj_names = self.get_adjacency_names()[0]
-        return self.constants[adj_names]
+    def get_consts(self):
+        return self.constants.values()
     
     def get_locations(self, state):
         locs = []
@@ -302,6 +301,13 @@ class Problem:
             if 'loc' in name.lower():
                 locs.append(state.variables[index])
         return locs
+    
+    def get_vehicle_types(self):
+        types = []
+        for _, vals in self.entities.items():
+            if vals[1] == 'Vehicle':
+                types.append(vals[0])
+        return types
 
     def copyState(self, state):
         return copy(state)
