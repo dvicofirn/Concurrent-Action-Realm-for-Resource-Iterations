@@ -6,6 +6,7 @@ from .EnforcedHillClimbing import enforced_hill_climbing
 from .GBFS import greedy_best_first_search
 from .IDAstar import ida_star_old, IDAStarSearch
 from .UCTSearchEngine import UCTSearchEngine
+from .greedySearchEngine import GreedySearchEngine
 from .LazyAstar import lazy_a_star_search
 from .LazyGreedy import lazy_greedy
 from .RationalLazyAstar import rational_lazy_a_star

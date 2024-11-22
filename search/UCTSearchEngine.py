@@ -2,6 +2,7 @@ from .searchEngine import *
 from .partialAssigner import PartialAssigner
 from CARRI import Simulator, State
 import random
+import math
 from typing import List, Tuple
 
 class Node:
@@ -19,42 +20,47 @@ class UCTSearchEngine(SearchEngine):
 
     def __init__(self, simulator: Simulator, **kwargs):
         super().__init__(simulator, **kwargs)
-        self.max_steps = kwargs.get('steps', 10)
-        self.plan_dict = None
-        self.partialAssigner = kwargs.get('partial_assigner', PartialAssigner(simulator, **kwargs))
-        self.root_node = None
-        self.best_plan = None
+        self.maxSteps = kwargs.get('steps', 10)
+        self.partialAssigner = kwargs.get('partialAssigner', PartialAssigner(simulator, **kwargs))
+        self.rootNode = None
+        self.bestPlan = None
         self.best_avg_cost = float('inf')
+        self.exploration_constant = kwargs.get('exploration_constant', 1.0)
 
-    def search(self, state: State, plan_dict, **kwargs):
-        self.max_steps = kwargs.get('steps', 10)
-        self.plan_dict = plan_dict
-        self.root_node = Node(state)
-        self.node_map = {self.state_key(state): self.root_node}
+    def search(self, state: State, planDict: Dict, **kwargs):
+        self.rootNode = Node(state)
+        self.planDict = planDict
+        self.node_map = {self.state_key(state): self.rootNode}
 
         while True:
             # Perform one iteration of the UCT search
             full_plan, total_cost, avg_cost = self.uct_search()
-            if full_plan:
+            if full_plan and total_cost is not None:
                 if avg_cost < self.best_avg_cost:
                     self.best_avg_cost = avg_cost
-                    self.best_plan = full_plan
-                    if self.plan_dict is not None:
-                        self.plan_dict['plan'] = self.best_plan
+                    self.bestPlan = full_plan
+                    if self.planDict is not None:
+                        self.planDict['plan'] = self.bestPlan
             # The search runs continuously until the planner is terminated externally
 
     def uct_search(self) -> Tuple[List[List[Action]], float, float]:
         path, node = self.tree_policy()
+        if node is None:
+            # No more nodes to explore
+            return None, None, float('inf')
         rollout_plan, rollout_cost = self.rollout(node)
         total_cost = node.g + rollout_cost
         full_plan = self.construct_full_plan(path, rollout_plan)
         total_steps = len(full_plan)
-        avg_cost = total_cost / total_steps
+        if total_steps == 0:
+            avg_cost = float('inf')
+        else:
+            avg_cost = total_cost / total_steps
         self.backup(path, total_cost)
         return full_plan, total_cost, avg_cost
 
     def tree_policy(self) -> Tuple[List[Node], Node]:
-        node = self.root_node
+        node = self.rootNode
         path = [node]
         while True:
             if node.visits == 0:
@@ -74,7 +80,8 @@ class UCTSearchEngine(SearchEngine):
                 # All actions tried, select the best child to explore further
                 node = self.best_child(node)
                 if node is None:
-                    break  # No more nodes to explore
+                    # No more nodes to explore
+                    return path, node
                 path.append(node)
         return path, node
 
@@ -83,6 +90,8 @@ class UCTSearchEngine(SearchEngine):
         # Generate a few possible next steps
         paths = self.partialAssigner.produce_paths(node.state, steps=1, maxStates=10)
         untried_actions = []
+        if not paths:
+            return untried_actions
         for path in paths:
             # Each path is a tuple: ([state2[0], state], [transitions], [costs per action], [env costs per action])
             next_state = path[0][1]  # The resulting state after the action
@@ -92,15 +101,18 @@ class UCTSearchEngine(SearchEngine):
         return untried_actions
 
     def best_child(self, node) -> Node:
-        # Select the child with the lowest average cost per visit
-        best_avg_cost = float('inf')
+        # Select the child using UCB formula
+        best_value = -float('inf')
         best_child = None
+        c = self.exploration_constant  # Exploration constant
         for child in node.children:
             if child.visits == 0:
                 continue  # Skip unvisited children
-            avg_cost = child.total_cost / child.visits
-            if avg_cost < best_avg_cost:
-                best_avg_cost = avg_cost
+            exploitation = - (child.total_cost / child.visits)
+            exploration = c * math.sqrt(math.log(node.visits) / child.visits)
+            ucb_value = exploitation + exploration
+            if ucb_value > best_value:
+                best_value = ucb_value
                 best_child = child
         # If all children have zero visits, select one at random to encourage exploration
         if best_child is None and node.children:
@@ -109,14 +121,16 @@ class UCTSearchEngine(SearchEngine):
 
     def rollout(self, node) -> Tuple[List[List[Action]], float]:
         # Perform a simulation from the given node using partialAssigner
-        plan, cost = self.partialAssigner.provideTransitionsAndCost(node.state, steps=self.max_steps)
+        plan, cost = self.partialAssigner.provideTransitionsAndCost(node.state, steps=self.maxSteps)
         return plan, cost
 
     def backup(self, path: List[Node], total_cost: float):
         # Update the visit count and total cost along the path
         for node in path:
             node.visits += 1
-            node.total_cost += total_cost
+            # Calculate the cost from this node to the end
+            node_cost = total_cost - node.g
+            node.total_cost += node_cost
 
     def construct_full_plan(self, path: List[Node], rollout_plan: List[List[Action]]) -> List[List[Action]]:
         # Build the full plan starting from the root node
@@ -129,6 +143,3 @@ class UCTSearchEngine(SearchEngine):
     def state_key(self, state: State) -> int:
         # Generate a unique key for the state (ensure State has __hash__ and __eq__ methods)
         return hash(state)
-
-
-

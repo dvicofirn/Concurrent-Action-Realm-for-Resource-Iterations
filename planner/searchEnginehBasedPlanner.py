@@ -6,14 +6,13 @@ class SearchEngineBasedPlanner(AssigningPlanner):
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
         # Use the provided search algorithm (default is UCTSearchEngine)
         searchAlgorithm = kwargs.get('searchAlgorithm', UCTSearchEngine)
-        self.searchEngine = searchAlgorithm(simulator, **kwargs)
+        self.searchEngine = searchAlgorithm(simulator, steps=self.maxPlanLength, iterTime=self.iterTime, partialAssigner=self.partialAssigner, **kwargs)
 
     def _generate_plan(self, state: State):
         self.searchEngine.search(
             state,
-            plan_dict=self.returnDict,  # Pass the plan dictionary directly
-            steps=self.maxPlanLength,
-            partial_assigner=self.partialAssigner,
-            startGenerateTime=self.startGenerateTime,
+            planDict=self.planDict,
+            startTime=self.startGenerateTime,
+            cost=self.initCost,
             **self.kwargs
         )

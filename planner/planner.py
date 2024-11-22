@@ -28,12 +28,12 @@ class AssigningPlanner(Planner):
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
         self.partialAssigner = PartialAssigner(simulator, **kwargs)
 
-    def generate_plan(self, state: State, returnDict: Dict):
+    def generate_plan(self, state: State, planDict: Dict):
         self.startGenerateTime = time.time()
         # Generate a default plan with 'Wait' actions
         plan, cost = self.partialAssigner.provideTransitionsAndCost(state, steps=self.maxPlanLength)
-        returnDict['plan'] = plan
-        self.returnDict = returnDict
+        planDict['plan'] = plan
+        self.planDict = planDict
         self.initCost = cost
         self._generate_plan(state)
 

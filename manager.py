@@ -2,11 +2,9 @@ import time
 import psutil
 from multiprocessing import Process, Manager as MPManager
 import traceback
-from planner.planner import Planner  #, RoutingPlanner
+from planner.planner import Planner
 from business import Business
 from CARRI import Simulator
-import concurrent.futures
-
 
 class Manager:
     def __init__(self, simulator: Simulator, iterations, iterTime: int, transitionsPerIteration, **kwargs):

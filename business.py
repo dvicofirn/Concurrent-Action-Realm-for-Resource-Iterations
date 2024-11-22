@@ -26,7 +26,7 @@ class Business:
         return self.iteration
 
     def canAdvanceIteration(self) -> bool:
-        return self.iteration < len(self.iterationsList)
+        return self.iteration <= len(self.iterationsList)
 
     def advanceIteration(self, plan: List[List[Action]]) -> None:
         """
@@ -49,10 +49,9 @@ class Business:
                 )
             state, cost = self.simulator.apply_full_transition(state, cost, transition)
 
-        currentIterationItems = self.iterationsList[self.iteration]
-
-
-        self.simulator.apply_iter_step(state, currentIterationItems)
+        if self.iteration < len(self.iterationsList):
+            currentIterationItems = self.iterationsList[self.iteration]
+            self.simulator.apply_iter_step(state, currentIterationItems)
 
         # Finalize
         self.state = state
