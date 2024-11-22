@@ -138,6 +138,17 @@ def doubleRunnerMain():
     manager = Manager(simulator, iterations, 10, 10, planner=GeneticPlanner, searchAlgorithm=PartialAssigner)
     manager.run()
 
+
+def geneticMain():
+    domainFile, problemFile = getDomainProblemFiles(0,2)
+    parser = Parser()
+    simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
+                                         FOLDER_PROBLEMS + "\\" + problemFile)
+    print(simulator.problem.constants)
+
+    manager = Manager(simulator, iterations, 45, 10, planner=GeneticPlanner, searchAlgorithm=PartialAssigner) # 45 seconds on all
+    manager.run()
+
 def managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, **kwargs):
     domainFile, problemFile = getDomainProblemFiles(domainIndex, problemIndex)
     parser = Parser()
@@ -145,12 +156,43 @@ def managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, 
                                          FOLDER_PROBLEMS + "\\" + problemFile)
     log = [-1 for _ in range(len(iterations))]
     searchAlgorithm = kwargs.get('searchAlgorithm', IDAStarSearch)
-    manager = Manager(simulator, iterations, iterTime, transitionsPerIteration, planner=SearchEngineBasedPlanner, searchAlgorithm=IDAStarSearch)
-    manager.logRun(log)
+    manager = Manager(simulator, iterations, iterTime, transitionsPerIteration, **kwargs)
+    log = manager.logRun()
+    domainName = DomainsDict[domainIndex]
+    ProblemName = DomainsProblemsDict[domainName][problemIndex]
+    log['domain name'] = domainName
+    log['problem name'] = ProblemName
+    log['iteration time'] = iterTime
+    log['transitions per iteration'] = transitionsPerIteration
+    log['planner name'] = kwargs.get('planner name', 'Genetic Planner')
+    log['search engine name'] = kwargs.get('search engine name', 'None')
+    log['heuristic name'] = kwargs.get('heuristic name', 'None')
     return log
 
-def logsRun():
-    pass
+def managerRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, **kwargs):
+    domainFile, problemFile = getDomainProblemFiles(domainIndex, problemIndex)
+    parser = Parser()
+    simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
+                                         FOLDER_PROBLEMS + "\\" + problemFile)
+    manager = Manager(simulator, iterations, iterTime, transitionsPerIteration, **kwargs)
+
+    manager.run()
+
+def runs():
+    managerRun(0, 0, 45, 10,  planner=GeneticPlanner)
+    managerRun(0, 1, 45, 10,  planner=GeneticPlanner)
+    managerRun(0, 2, 45, 10,  planner=GeneticPlanner)
+    managerRun(1, 0, 45, 10,  planner=GeneticPlanner)
+    managerRun(1, 1, 45, 10,  planner=GeneticPlanner)
+    managerRun(2, 0, 45, 10,  planner=GeneticPlanner)
+    managerRun(3, 0, 45, 10,  planner=GeneticPlanner)
+
+
+def logsRun(runData):
+    logs = []
+    for data in runData:
+        pass
 
 if __name__ == '__main__':
-    managerMain()
+    runs()
+    #geneticMain()

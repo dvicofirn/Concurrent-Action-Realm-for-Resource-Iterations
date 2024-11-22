@@ -292,6 +292,17 @@ class Problem:
         return self.itemKeysPositions[on_key]
 
 
+    def get_adj_dict(self):
+        adj_names = self.get_adjacency_names()[0]
+        return self.constants[adj_names]
+    
+    def get_locations(self, state):
+        locs = []
+        for name, index in self.varPositions.items():
+            if 'loc' in name.lower():
+                locs.append(state.variables[index])
+        return locs
+
     def copyState(self, state):
         return copy(state)
 
