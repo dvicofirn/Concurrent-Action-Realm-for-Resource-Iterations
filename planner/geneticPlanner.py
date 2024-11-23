@@ -222,7 +222,7 @@ class GeneticPlanner(AssigningPlanner):
         # Compute fitness
         unit = self.avg_cost
         fitness = (
-                - 20 * total_cost
+                - 5 * total_cost
                 + 3* unit * total_picks
                 + 8.5* unit * total_delivers
                 - unit * 0.2 * total_waits
