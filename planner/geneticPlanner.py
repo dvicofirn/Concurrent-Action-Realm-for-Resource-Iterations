@@ -16,7 +16,7 @@ class GeneticPlanner(AssigningPlanner):
         self.prev_state_chrom = self.simulator.current_state
         self.planSequence = []
         self.population = []
-        self.elite_size = max(1, self.population_size * 3  // 10)
+        self.elite_size = max(1, self.population_size * 3 // 10)
         self.selected_size = self.population_size // 2
         self.best_sol = None
         self.best_fitness = (-1) * np.inf
@@ -288,17 +288,6 @@ class GeneticPlanner(AssigningPlanner):
 
         return n_fitness / plan_length
 
-    def print_picks(self, chromosome):
-        a = []
-        for transitions in chromosome[1]:
-            for action in transitions:
-                if action.baseAction == 'Pick':
-                    a.append('Pick')
-
-                elif action.baseAction == 'Deliver':
-                    a.append('Deliver')
-        return a
-
     def valid_child(self, child):
         inner_state = self.simulator.current_state.__copy__()
         result = all(
@@ -448,7 +437,7 @@ class GeneticPlanner(AssigningPlanner):
             return
 
         # Selection
-        selected_population = self.tournament_selection(population, fitness_scores, max(1, self.population_size // 2))
+        selected_population = self.tournament_selection(population, fitness_scores, max(1, len(population) // 2))
 
         num_offspring = self.population_size - len(selected_population)
         offspring = self.crossover_mutation(selected_population, num_offspring)

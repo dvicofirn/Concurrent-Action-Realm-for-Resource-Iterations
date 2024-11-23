@@ -118,7 +118,7 @@ def testMain():
     print(partial.vehicleTypes)
 
 def managerMain():
-    domainFile, problemFile = getDomainProblemFiles(0, 2)
+    domainFile, problemFile = getDomainProblemFiles(1, 0)
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                              FOLDER_PROBLEMS + "\\" + problemFile)
@@ -126,7 +126,7 @@ def managerMain():
     manager = Manager(simulator, iterations, 60, 10, planner=GeneticPlanner, searchAlgorithm=UCTSearchEngine, heuristic=MoreCountHeuristic)
     manager.run()
 def doubleRunnerMain():
-    domainFile, problemFile = getDomainProblemFiles(0, 2)
+    domainFile, problemFile = getDomainProblemFiles(3, 0)
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                          FOLDER_PROBLEMS + "\\" + problemFile)
@@ -215,19 +215,17 @@ def run_pipeline(csvName, **kwargs):
         run_log(csvName, runData)
 
 def main():
-    run_pipeline('Logs\\results', repetition=2, iterTime=120, transitionsPerIteration=10,
-                    kwargs={'planner': SearchEngineBasedPlanner, 'planner name': "search based",
-                            "searchAlgorithm": UCTSearchEngine, "search engine name": "UCT"})
-    run_pipeline('Logs\\results', repetition=2, iterTime=120, transitionsPerIteration=10,
+    run_pipeline('Logs\\results', repetition=4, iterTime=120, transitionsPerIteration=10,
+                    kwargs={'planner': GeneticPlanner, 'planner name': "genetic"})
+    run_pipeline('Logs\\results', repetition=1, iterTime=120, transitionsPerIteration=10,
+                 kwargs={'planner': GeneticPlanner, 'planner name': "genetic"})
+
+    run_pipeline('Logs\\results', repetition=1, iterTime=120, transitionsPerIteration=10,
                  kwargs={'planner': SearchEngineBasedPlanner, 'planner name': "search based",
                          "searchAlgorithm": GreedySearchEngine, "search engine name": "Greedy"})
-
     run_pipeline('Logs\\results', repetition=1, iterTime=120, transitionsPerIteration=10,
                  kwargs={'planner': SearchEngineBasedPlanner, 'planner name': "search based",
                          "searchAlgorithm": UCTSearchEngine, "search engine name": "UCT"})
-    run_pipeline('Logs\\results', repetition=1, iterTime=120, transitionsPerIteration=10,
-                 kwargs={'planner': SearchEngineBasedPlanner, 'planner name': "search based",
-                         "searchAlgorithm": GreedySearchEngine, "search engine name": "Greedy"})
 
 if __name__ == '__main__':
-    managerMain()
+    main()
