@@ -292,6 +292,23 @@ class Problem:
         return self.itemKeysPositions[on_key]
 
 
+    def get_consts(self):
+        return self.constants.values()
+    
+    def get_locations(self, state):
+        locs = []
+        for name, index in self.varPositions.items():
+            if 'loc' in name.lower():
+                locs.append(state.variables[index])
+        return locs
+    
+    def get_vehicle_types(self):
+        types = []
+        for _, vals in self.entities.items():
+            if vals[1] == 'Vehicle':
+                types.append(vals[0])
+        return types
+
     def copyState(self, state):
         return copy(state)
 

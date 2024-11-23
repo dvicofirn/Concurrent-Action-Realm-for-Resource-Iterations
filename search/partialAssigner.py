@@ -116,12 +116,18 @@ class PartialAssigner:
 
 
 
-    def produce_paths_heuristic(self, initState: State, steps: int, maxStates: int):
+    def produce_paths_heuristic(self, initState: State, steps: int, maxStates: int, **kwargs):
+        seed_mutation = kwargs.get('seed_mutation', False)
         splits = self.split_vehicles(initState)
-        searchQueue = deque([([initState, None],
-                              [[] for _ in range(steps)],
-                              [0 for _ in range(steps)],
-                              [0 for _ in range(steps)], 0.0)])
+
+        if not seed_mutation:
+            searchQueue = deque([([initState, None],
+                                [[] for _ in range(steps)],
+                                [0 for _ in range(steps)],
+                                [0 for _ in range(steps)], 0.0)])
+        else:
+            searchQueue = deque(seed_mutation)
+
         currentStep = 0
         while currentStep < steps:
             stopStep = currentStep + min(random.randint(self.minAdvanceStep, self.maxAdvanceStep), steps - currentStep)
