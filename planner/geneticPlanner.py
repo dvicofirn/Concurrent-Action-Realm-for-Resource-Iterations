@@ -11,7 +11,7 @@ class GeneticPlanner(AssigningPlanner):
 
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
         self.population_size = kwargs.get('population_size', 20)
-        self.planning_horizon = transitionsPerIteration - 1
+        self.planning_horizon = max(2, transitionsPerIteration)
         self.transitionsPerIteration = transitionsPerIteration
         self.generations = kwargs.get('generations', 3)
         self.prev_state_chrom = self.simulator.current_state
@@ -281,15 +281,15 @@ class GeneticPlanner(AssigningPlanner):
         # Compute fitness
         unit = self.avg_cost
         fitness = (
-                - 5 * total_cost
+                - 2 * total_cost
                 + 3* unit * total_picks
                 + 8.5* unit * total_delivers
                 - unit * 0.2 * total_waits
                 - duplicate_pick_penalty
                 - unit * 0.01 * duplicate_locations_penalty
                 + unit * 0.02 * duplicate_locations_reward
-                + unit * 0.05 * special_loc_reward
-                - unit * 2 * sink_penalty
+                #+ unit * 0.05 * special_loc_reward
+                - unit * 0.5 * sink_penalty
         )
 
         try: n_fitness = fitness/ (100 * unit) 
@@ -310,7 +310,7 @@ class GeneticPlanner(AssigningPlanner):
             print(f"Calculated Fitness: {fitness}")
             print(f"Calculated Normelaized Fitness: {n_fitness}")
             print("----------")
-        return n_fitness
+        return n_fitness / plan_length
 
     def print_picks(self, chromosome):
         a = []
@@ -510,7 +510,7 @@ class GeneticPlanner(AssigningPlanner):
         self.best_fitness = (-1) * np.inf
         self.best_sol = None
         self.restart_counter = 0
-        self.planning_horizon = self.transitionsPerIteration
+        #self.planning_horizon = self.transitionsPerIteration
 
         while True:
             print(f"step : {self.generations}")
