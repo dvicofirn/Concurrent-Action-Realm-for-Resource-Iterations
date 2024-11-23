@@ -5,6 +5,7 @@ from heuristics import MoreCountHeuristic
 from manager import Manager
 import time
 import pandas as pd
+import csv
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
 DomainsDict = {0: "Trucks and Drones", 1: "Cars", 2: "MotorCycles and Letters",
@@ -304,8 +305,8 @@ def pipeline_run_0():
                     "planner name": "Search Based", "search engine name": "Greedy"}},
     ])
 
-def pipeline_run_1():
-    logs_run('1_ Trucks and Drones', [
+def pipeline_run_1(i):
+    logs_run(f'{i}_ Trucks and Drones', [
         {"repetition": 2,
          "domainIndex": 0,
          "problemIndex": 0,
@@ -336,7 +337,7 @@ def pipeline_run_1():
                     "planner name": "Search Based", "search engine name": "Greedy"}}
     ])
 
-    logs_run('1_ cars', [
+    logs_run(f'{i}_ cars', [
         {"repetition": 2,
          "domainIndex": 1,
          "problemIndex": 0,
@@ -352,5 +353,108 @@ def pipeline_run_1():
          "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
                     "planner name": "Search Based", "search engine name": "Greedy"}}
     ])
+def pipeline_run_2(i):
+    logs_run(f'{i}_ run 4 problems', [
+        {"repetition": 1,
+         "domainIndex": 0,
+         "problemIndex": 2,
+         "iterTime": 120,
+         "transitionsPerIteration": 10,
+         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
+                    "planner name": "Search Based", "search engine name": "UCT"}},
+        {"repetition": 1,
+         "domainIndex": 1,
+         "problemIndex": 1,
+         "iterTime": 120,
+         "transitionsPerIteration": 10,
+         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
+                    "planner name": "Search Based", "search engine name": "UCT"}},
+        {"repetition": 1,
+         "domainIndex": 2,
+         "problemIndex": 0,
+         "iterTime": 120,
+         "transitionsPerIteration": 10,
+         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
+                    "planner name": "Search Based", "search engine name": "UCT"}},
+        {"repetition": 1,
+         "domainIndex": 3,
+         "problemIndex": 0,
+         "iterTime": 120,
+         "transitionsPerIteration": 10,
+         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
+                    "planner name": "Search Based", "search engine name": "UCT"}},
+        {"repetition": 1,
+         "domainIndex": 0,
+         "problemIndex": 2,
+         "iterTime": 120,
+         "transitionsPerIteration": 10,
+         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
+                    "planner name": "Search Based", "search engine name": "Greedy"}},
+        {"repetition": 1,
+         "domainIndex": 1,
+         "problemIndex": 1,
+         "iterTime": 120,
+         "transitionsPerIteration": 10,
+         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
+                    "planner name": "Search Based", "search engine name": "Greedy"}},
+        {"repetition": 1,
+         "domainIndex": 2,
+         "problemIndex": 0,
+         "iterTime": 120,
+         "transitionsPerIteration": 10,
+         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
+                    "planner name": "Search Based", "search engine name": "Greedy"}},
+        {"repetition": 1,
+         "domainIndex": 3,
+         "problemIndex": 0,
+         "iterTime": 120,
+         "transitionsPerIteration": 10,
+         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
+                    "planner name": "Search Based", "search engine name": "Greedy"}}
+    ])
+
+
+def addRowToCsv(fileName, dictRow):
+    with open(fileName + ".csv", 'r') as csv_file:
+        reader = csv.DictReader(csv_file)
+        fieldnames = reader.fieldnames
+
+        # Append the new row to the CSV
+    with open(fileName + ".csv", 'a', newline='') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer.writerow(dictRow)
+
+def run_log(csvName, runData):
+    for i in range(runData["repetition"]):
+        domainIndex = runData["domainIndex"]
+        problemIndex = runData["problemIndex"]
+        iterTime = runData["iterTime"]
+        transitionsPerIteration = runData["transitionsPerIteration"]
+        kwargs = runData["kwargs"]
+        log = (managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, **kwargs))
+        addRowToCsv(csvName, log)
+        print(f'run #{i+1} of {log['domain name']}: {log['problem name']}')
+
+def run_pipeline(csvName, **kwargs):
+    data = [{'domainIndex': 0, 'problemIndex': 0},
+            {'domainIndex': 0, 'problemIndex': 1},
+            {'domainIndex': 0, 'problemIndex': 2},
+            {'domainIndex': 1, 'problemIndex': 0},
+            {'domainIndex': 1, 'problemIndex': 1},
+            {'domainIndex': 2, 'problemIndex': 0},
+            {'domainIndex': 3, 'problemIndex': 0},]
+
+    for runData in data:
+        runData['repetition'] = kwargs.get('repetition', 1)
+        runData['iterTime'] = kwargs.get('iterTime', 120)
+        runData['transitionsPerIteration'] = kwargs.get('transitionsPerIteration', 10)
+        runData['kwargs'] = kwargs.get('kwargs', {'planner': GeneticPlanner, 'planner name': "Genetic"})
+        run_log(csvName, runData)
+
+
+
+
 if __name__ == '__main__':
-    pipeline_run_1()
+    run_pipeline('Logs\\results', repetition=1, iterTime=3, transitionsPerIteration=1,
+                 kwargs={'planner': SearchEngineBasedPlanner, 'planner name': "search based",
+                         "searchAlgorithm": UCTSearchEngine, "search engine name": "UCT"})
