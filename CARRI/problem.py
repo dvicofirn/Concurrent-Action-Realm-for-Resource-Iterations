@@ -293,7 +293,8 @@ class Problem:
 
 
     def get_consts(self):
-        return self.constants.values()
+        x = self.constants
+        return list(x.values())
     
     def get_locations(self, state):
         locs = []
@@ -304,10 +305,13 @@ class Problem:
     
     def get_vehicle_types(self):
         types = []
-        for _, vals in self.entities.items():
-            if vals[1] == 'Vehicle':
-                types.append(vals[0])
-        return types
+        try:
+            for _, vals in self.entities.items():
+                if vals[1] == 'Vehicle':
+                    types.extend([vals[0]]*len(self.ranges[vals[0]]))
+            return types
+        except:
+            return [[0]*len(self.ranges[0])]
 
     def copyState(self, state):
         return copy(state)
