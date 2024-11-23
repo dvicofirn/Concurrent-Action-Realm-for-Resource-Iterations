@@ -4,7 +4,6 @@ from search import PartialAssigner, IDAStarSearch, UCTSearchEngine, GreedySearch
 from heuristics import MoreCountHeuristic
 from manager import Manager
 import time
-import pandas as pd
 import csv
 FOLDER_DOMAINS = "Examples\\Domains"
 FOLDER_PROBLEMS = "Examples\\Problems"
@@ -19,7 +18,7 @@ def getDomainProblemFiles(domain, problem):
     problemName = DomainsProblemsDict[domainName][problem]
     return domainName + ".CARRI", problemName + ".CARRI"
 
-def main():
+def previousMain():
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + "Cars.CARRI",
             FOLDER_PROBLEMS + "\\" + DomainsProblemsDict["Cars"][0] + ".CARRI")
@@ -119,12 +118,12 @@ def testMain():
     print(partial.vehicleTypes)
 
 def managerMain():
-    domainFile, problemFile = getDomainProblemFiles(0, 0)
+    domainFile, problemFile = getDomainProblemFiles(0, 2)
     parser = Parser()
     simulator, iterations = parser.parse(FOLDER_DOMAINS + "\\" + domainFile,
                                              FOLDER_PROBLEMS + "\\" + problemFile)
     print(simulator.problem.constants)
-    manager = Manager(simulator, iterations, 60, 10, planner=SearchEngineBasedPlanner, searchAlgorithm=UCTSearchEngine, heuristic=MoreCountHeuristic)
+    manager = Manager(simulator, iterations, 60, 10, planner=GeneticPlanner, searchAlgorithm=UCTSearchEngine, heuristic=MoreCountHeuristic)
     manager.run()
 def doubleRunnerMain():
     domainFile, problemFile = getDomainProblemFiles(0, 2)
@@ -177,243 +176,6 @@ def runs():
     managerRun(2, 0, 45, 10,  planner=GeneticPlanner)
     managerRun(3, 0, 45, 10,  planner=GeneticPlanner)
 
-
-def logs_run(name, runData, ):
-    logs = []
-    for essentials in runData:
-        for i in range(essentials["repetition"]):
-            domainIndex = essentials["domainIndex"]
-            problemIndex = essentials["problemIndex"]
-            iterTime = essentials["iterTime"]
-            transitionsPerIteration = essentials["transitionsPerIteration"]
-            kwargs = essentials["kwargs"]
-            log = (managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, **kwargs))
-            print(f'run #{i+1} of {log['domain name']}: {log['problem name']}')
-            logs.append(log)
-    pd.DataFrame(logs).to_csv(name + ".csv", index=False)
-
-def pipeline_run_0():
-    logs_run('0_ Trucks and Drones', [
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 1,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 2,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 1,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 2,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}}
-    ])
-
-    logs_run('0_ cars', [
-        {"repetition": 2,
-         "domainIndex": 1,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 2,
-         "domainIndex": 1,
-         "problemIndex": 1,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 2,
-         "domainIndex": 1,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-        {"repetition": 2,
-         "domainIndex": 1,
-         "problemIndex": 1,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-    ])
-
-    logs_run('0_ MotorCycles and Letters', [
-        {"repetition": 2,
-         "domainIndex": 2,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-
-        {"repetition": 2,
-         "domainIndex": 2,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-    ])
-
-    logs_run('0_ Rail System Factory', [
-        {"repetition": 2,
-         "domainIndex": 3,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-
-        {"repetition": 2,
-         "domainIndex": 3,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-    ])
-
-def pipeline_run_1(i):
-    logs_run(f'{i}_ Trucks and Drones', [
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 1,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-        {"repetition": 2,
-         "domainIndex": 0,
-         "problemIndex": 1,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}}
-    ])
-
-    logs_run(f'{i}_ cars', [
-        {"repetition": 2,
-         "domainIndex": 1,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 2,
-         "domainIndex": 1,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}}
-    ])
-def pipeline_run_2(i):
-    logs_run(f'{i}_ run 4 problems', [
-        {"repetition": 1,
-         "domainIndex": 0,
-         "problemIndex": 2,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 1,
-         "domainIndex": 1,
-         "problemIndex": 1,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 1,
-         "domainIndex": 2,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 1,
-         "domainIndex": 3,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": UCTSearchEngine,
-                    "planner name": "Search Based", "search engine name": "UCT"}},
-        {"repetition": 1,
-         "domainIndex": 0,
-         "problemIndex": 2,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-        {"repetition": 1,
-         "domainIndex": 1,
-         "problemIndex": 1,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-        {"repetition": 1,
-         "domainIndex": 2,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}},
-        {"repetition": 1,
-         "domainIndex": 3,
-         "problemIndex": 0,
-         "iterTime": 120,
-         "transitionsPerIteration": 10,
-         "kwargs": {"planner": SearchEngineBasedPlanner, "searchAlgorithm": GreedySearchEngine,
-                    "planner name": "Search Based", "search engine name": "Greedy"}}
-    ])
-
-
 def addRowToCsv(fileName, dictRow):
     with open(fileName + ".csv", 'r') as csv_file:
         reader = csv.DictReader(csv_file)
@@ -433,7 +195,8 @@ def run_log(csvName, runData):
         kwargs = runData["kwargs"]
         log = (managerLogRun(domainIndex, problemIndex, iterTime, transitionsPerIteration, **kwargs))
         addRowToCsv(csvName, log)
-        print(f'run #{i+1} of {log['domain name']}: {log['problem name']}')
+        print(f'run #{i+1} of {log['domain name']}: {log['problem name']}'
+              f'\nUsing {log["planner name"]}, with {log["search engine name"]} - {log["heuristic name"]}')
 
 def run_pipeline(csvName, **kwargs):
     data = [{'domainIndex': 0, 'problemIndex': 0},
@@ -451,10 +214,20 @@ def run_pipeline(csvName, **kwargs):
         runData['kwargs'] = kwargs.get('kwargs', {'planner': GeneticPlanner, 'planner name': "Genetic"})
         run_log(csvName, runData)
 
+def main():
+    run_pipeline('Logs\\results', repetition=2, iterTime=120, transitionsPerIteration=10,
+                    kwargs={'planner': SearchEngineBasedPlanner, 'planner name': "search based",
+                            "searchAlgorithm": UCTSearchEngine, "search engine name": "UCT"})
+    run_pipeline('Logs\\results', repetition=2, iterTime=120, transitionsPerIteration=10,
+                 kwargs={'planner': SearchEngineBasedPlanner, 'planner name': "search based",
+                         "searchAlgorithm": GreedySearchEngine, "search engine name": "Greedy"})
 
-
-
-if __name__ == '__main__':
-    run_pipeline('Logs\\results', repetition=1, iterTime=3, transitionsPerIteration=1,
+    run_pipeline('Logs\\results', repetition=1, iterTime=120, transitionsPerIteration=10,
                  kwargs={'planner': SearchEngineBasedPlanner, 'planner name': "search based",
                          "searchAlgorithm": UCTSearchEngine, "search engine name": "UCT"})
+    run_pipeline('Logs\\results', repetition=1, iterTime=120, transitionsPerIteration=10,
+                 kwargs={'planner': SearchEngineBasedPlanner, 'planner name': "search based",
+                         "searchAlgorithm": GreedySearchEngine, "search engine name": "Greedy"})
+
+if __name__ == '__main__':
+    managerMain()
