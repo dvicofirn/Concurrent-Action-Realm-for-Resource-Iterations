@@ -1,11 +1,10 @@
 from .planner import *
-import logging
 import random
 import numpy as np
-import time
 from collections import Counter
 from collections import defaultdict
-import multiprocessing as mp
+
+
 class GeneticPlanner(AssigningPlanner):
     def __init__(self, simulator, iterTime: float, transitionsPerIteration: int, **kwargs):
 
@@ -17,7 +16,7 @@ class GeneticPlanner(AssigningPlanner):
         self.prev_state_chrom = self.simulator.current_state
         self.planSequence = []
         self.population = []
-        self.elite_size = max(1, self.population_size * 30  // 100)
+        self.elite_size = max(1, self.population_size * 3  // 10)
         self.selected_size = self.population_size // 2
         self.best_sol = None
         self.best_fitness = (-1) * np.inf
@@ -28,12 +27,8 @@ class GeneticPlanner(AssigningPlanner):
         try:
             self.loc_type, adjacency_tuple = self.simulator.problem.get_consts()
             # Compute type-based distances and sinks
-            type_distances , self.type_sinks = self.compute_type_based_distances(self.loc_type, adjacency_tuple, set(self.vehicle_types))
-
-            # Print results
-            for v_type in  set(self.vehicle_types):
-                print(f"Type {v_type} Combined Sinks: {self.type_sinks[v_type]}")
-            x = 1
+            type_distances , self.type_sinks = self.compute_type_based_distances(self.loc_type, adjacency_tuple,
+            																	 set(self.vehicle_types))
 
         except:
             self.type_sinks = {}
@@ -86,59 +81,58 @@ class GeneticPlanner(AssigningPlanner):
         return sinks
 
     def compute_all_pairs_shortest_distances(self, adjacency_tuple):
-            num_nodes = len(adjacency_tuple)
-            
-            if num_nodes == 0:
-                return {}, set()  # Return an empty dictionary and no sinks
-            
-            first_entry = adjacency_tuple[0]
-            is_weighted = isinstance(first_entry, dict)
-            
-            # Initialize distance matrix
-            distance = defaultdict(lambda: defaultdict(lambda: float('inf')))
-            outgoing_edges = {node: 0 for node in range(num_nodes)}  # Track outgoing edges
-            
-            for from_node in range(num_nodes):
-                distance[from_node][from_node] = 0  # Distance to self is zero
-                neighbors = adjacency_tuple[from_node]
-                
-                if is_weighted:
-                    for to_node, weight in neighbors.items():
-                        distance[from_node][to_node] = weight
-                        outgoing_edges[from_node] += 1
-                else:
-                    for to_node in neighbors:
-                        distance[from_node][to_node] = 1  # Unweighted edge has weight 1
-                        outgoing_edges[from_node] += 1
-            
-            # Apply Floyd-Warshall Algorithm
-            for k in range(num_nodes):
-                for i in range(num_nodes):
-                    # Skip if there's no path from i to k
-                    if distance[i][k] == float('inf'):
-                        continue
-                    for j in range(num_nodes):
-                        # Skip if there's no path from k to j
-                        if distance[k][j] == float('inf'):
-                            continue
-                        if distance[i][j] > distance[i][k] + distance[k][j]:
-                            distance[i][j] = distance[i][k] + distance[k][j]
-            
-            # Identify sinks (nodes with no outgoing edges)
-            sinks = {node for node, out_degree in outgoing_edges.items() if out_degree == 0}
-            
-            # Construct the result dictionary
-            distance_dict = {}
-            for from_node in range(num_nodes):
-                for to_node in range(num_nodes):
-                    dist = distance[from_node][to_node]
-                    if dist != float('inf'):
-                        distance_dict[(from_node, to_node)] = dist
-                    else:
-                        distance_dict[(from_node, to_node)] = None  # or use sys.maxsize or another indicator
-            
-            return distance_dict, sinks
+        num_nodes = len(adjacency_tuple)
 
+        if num_nodes == 0:
+            return {}, set()  # Return an empty dictionary and no sinks
+
+        first_entry = adjacency_tuple[0]
+        is_weighted = isinstance(first_entry, dict)
+
+        # Initialize distance matrix
+        distance = defaultdict(lambda: defaultdict(lambda: float('inf')))
+        outgoing_edges = {node: 0 for node in range(num_nodes)}  # Track outgoing edges
+
+        for from_node in range(num_nodes):
+            distance[from_node][from_node] = 0  # Distance to self is zero
+            neighbors = adjacency_tuple[from_node]
+
+            if is_weighted:
+                for to_node, weight in neighbors.items():
+                    distance[from_node][to_node] = weight
+                    outgoing_edges[from_node] += 1
+            else:
+                for to_node in neighbors:
+                    distance[from_node][to_node] = 1  # Unweighted edge has weight 1
+                    outgoing_edges[from_node] += 1
+
+        # Apply Floyd-Warshall Algorithm
+        for k in range(num_nodes):
+            for i in range(num_nodes):
+                # Skip if there's no path from i to k
+                if distance[i][k] == float('inf'):
+                    continue
+                for j in range(num_nodes):
+                    # Skip if there's no path from k to j
+                    if distance[k][j] == float('inf'):
+                        continue
+                    if distance[i][j] > distance[i][k] + distance[k][j]:
+                        distance[i][j] = distance[i][k] + distance[k][j]
+
+        # Identify sinks (nodes with no outgoing edges)
+        sinks = {node for node, out_degree in outgoing_edges.items() if out_degree == 0}
+
+        # Construct the result dictionary
+        distance_dict = {}
+        for from_node in range(num_nodes):
+            for to_node in range(num_nodes):
+                dist = distance[from_node][to_node]
+                if dist != float('inf'):
+                    distance_dict[(from_node, to_node)] = dist
+                else:
+                    distance_dict[(from_node, to_node)] = None  # or use sys.maxsize or another indicator
+
+        return distance_dict, sinks
 
 
     def compute_type_based_distances(self, locType, adjacency_tuple, vehicle_types):
@@ -187,11 +181,12 @@ class GeneticPlanner(AssigningPlanner):
         self.prev_state_chrom = initial_state
         horizon = kwargs.get('horizon', self.planning_horizon)
         size = kwargs.get('size', self.population_size)
-
-        population = self.partialAssigner.produce_paths_heuristic(initial_state, horizon, size)
-        self.avg_cost = sum([sum(chromosome[2]) + sum(chromosome[3]) for chromosome in population]) / self.population_size
+        population =[]
+        while not population:
+            population = self.partialAssigner.produce_paths_heuristic(initial_state, horizon, size)
+        self.avg_cost = sum(
+            [sum(chromosome[2]) + sum(chromosome[3]) for chromosome in population]) / len(population)
         return population
-
 
     def fitness_function(self, chromosome, winner=False):
         total_cost = sum(chromosome[2]) + sum(chromosome[3])
@@ -222,12 +217,10 @@ class GeneticPlanner(AssigningPlanner):
                     total_waits += 1
                 
                 elif action.baseAction == 'Travel':
-                    #print(f"{vehicle_idx}.{self.simulator.actionStringRepresentor.represent(action)}")
                     if len(self.type_sinks.values()) == 0 :
                         continue
                     destinations = [action.params[j].value for j in range(len(action.params))]
                     vehicle_type =self.vehicle_types[vehicle_idx]
-                    #print(f'dest: {destinations}, type: {vehicle_type}')
  
                     for destination in destinations:
                         if destination in self.type_sinks.get(vehicle_type):
@@ -279,37 +272,20 @@ class GeneticPlanner(AssigningPlanner):
 
 
         # Compute fitness
-        unit = self.avg_cost
+        unit = total_cost
         fitness = (
-                - 2 * total_cost
+                - total_cost
                 + 3* unit * total_picks
-                + 8.5* unit * total_delivers
-                - unit * 0.2 * total_waits
+                + 8* unit * total_delivers
+                - unit * 0.01 * total_waits
                 - duplicate_pick_penalty
                 - unit * 0.01 * duplicate_locations_penalty
-                + unit * 0.02 * duplicate_locations_reward
-                #+ unit * 0.05 * special_loc_reward
                 - unit * 0.5 * sink_penalty
         )
 
         try: n_fitness = fitness/ (100 * unit) 
         except: n_fitness = (-1) *np.inf
 
-        if winner:
-            print("Fitness Components:")
-            print(f"Total Cost: {total_cost}")
-            print(f"Total Picks: {3* unit * total_picks}")
-            print(f"Total Delivers: {8.5* unit * total_delivers}")
-            print(f"Total Waits: {unit * 0.1 * total_waits}")
-            print(f"Plan Length: {plan_length}")
-            print(f"Duplicate Pick Penalty: {duplicate_pick_penalty}")
-            print(f"Duplicate Loction Penalty: {unit * 0.01 * duplicate_locations_penalty}")
-            print(f"Duplicate Loction Reward: {unit * 0.02 * duplicate_locations_reward}")
-            print(f"Special Loction Reward: {unit * 0.05 * special_loc_reward}")
-            print(f"Sink Penalty: {unit * 0.5 * sink_penalty}")
-            print(f"Calculated Fitness: {fitness}")
-            print(f"Calculated Normelaized Fitness: {n_fitness}")
-            print("----------")
         return n_fitness / plan_length
 
     def print_picks(self, chromosome):
@@ -321,7 +297,6 @@ class GeneticPlanner(AssigningPlanner):
 
                 elif action.baseAction == 'Deliver':
                     a.append('Deliver')
-        #print(a)
         return a
 
     def valid_child(self, child):
@@ -453,27 +428,15 @@ class GeneticPlanner(AssigningPlanner):
 
         # Evaluate fitness
         fitness_scores = [self.fitness_function(c) for c in population]
-        try:
-            fitnees_val = max(fitness_scores)
-        except ValueError:
-            print("Error: Population is empty.")
-            return
-        
+        fitnees_val = max(fitness_scores)
 
         threshold = 5
         best = population[fitness_scores.index(fitnees_val)]
 
         if fitnees_val > self.best_fitness:
-            print("_____current_winner____")
-            picks = self.print_picks(best)
-            print(picks)
-            if len(picks) == 0:
-                threshold = 2
-            self.fitness_function(best, True)
             self.best_fitness = fitnees_val
             self.best_sol = best
             self.planSequence = best[1]
-
             self.restart_counter = 0
         else:
             self.restart_counter += 1
@@ -482,13 +445,10 @@ class GeneticPlanner(AssigningPlanner):
             self.population = []
             self.restart_counter = 0
             self.planning_horizon += 1
-            print('restarting population....')
             return
 
         # Selection
-        selected_population = self.tournament_selection(population, fitness_scores, self.population_size // 2)
-            #selected_population = self.stochastic_universal_sampling(population, fitness_scores, self.population_size // 2)
-
+        selected_population = self.tournament_selection(population, fitness_scores, max(1, self.population_size // 2))
 
         num_offspring = self.population_size - len(selected_population)
         offspring = self.crossover_mutation(selected_population, num_offspring)
@@ -513,7 +473,6 @@ class GeneticPlanner(AssigningPlanner):
         #self.planning_horizon = self.transitionsPerIteration
 
         while True:
-            print(f"step : {self.generations}")
             self.run_ga(self.simulator.current_state)
             self.generations += 1
-            self.returnDict['plan'] = self.planSequence
+            self.planDict['plan'] = self.planSequence
