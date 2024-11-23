@@ -29,76 +29,131 @@ class GeneticPlanner(AssigningPlanner):
             self.loc_type, adjacency_tuple = self.simulator.problem.get_consts()
             # Compute type-based distances and sinks
             type_distances , self.type_sinks = self.compute_type_based_distances(self.loc_type, adjacency_tuple, set(self.vehicle_types))
-            for v_type, _ in type_distances.items():
-                print(f"Sink Locations for Vehicle Type {v_type}: {self.type_sinks[v_type]}")
+
+            # Print results
+            for v_type in  set(self.vehicle_types):
+                print(f"Type {v_type} Combined Sinks: {self.type_sinks[v_type]}")
+            x = 1
+
         except:
             self.type_sinks = {}
             self.loc_type = []
 
-    def compute_all_pairs_shortest_distances(self, adjacency_tuple):
-        num_nodes = len(adjacency_tuple)
-        
-        if num_nodes == 0:
-            return {}, set()  # Return an empty dictionary and no sinks
-        
-        first_entry = adjacency_tuple[0]
-        is_weighted = isinstance(first_entry, dict)
-        
-        # Initialize distance matrix
-        distance = defaultdict(lambda: defaultdict(lambda: float('inf')))
-        outgoing_edges = {node: 0 for node in range(num_nodes)}  # Track outgoing edges
-        
-        for from_node in range(num_nodes):
-            distance[from_node][from_node] = 0  # Distance to self is zero
-            neighbors = adjacency_tuple[from_node]
-            
-            if is_weighted:
-                for to_node, weight in neighbors.items():
-                    distance[from_node][to_node] = weight
-                    outgoing_edges[from_node] += 1
-            else:
-                for to_node in neighbors:
-                    distance[from_node][to_node] = 1  # Unweighted edge has weight 1
-                    outgoing_edges[from_node] += 1
-        
-        # Apply Floyd-Warshall Algorithm
-        for k in range(num_nodes):
-            for i in range(num_nodes):
-                # Skip if there's no path from i to k
-                if distance[i][k] == float('inf'):
-                    continue
-                for j in range(num_nodes):
-                    # Skip if there's no path from k to j
-                    if distance[k][j] == float('inf'):
+    def detect_dynamic_sinks(self, loc_type, adjacency_tuple, vehicle_types):
+        """
+        Identify sinks for each vehicle type dynamically by analyzing reachability.
+        :param loc_type: Tuple defining the type of each location.
+        :param adjacency_tuple: Adjacency list representation of the graph.
+        :param vehicle_types: List of vehicle types.
+        :return: Dictionary {vehicle_type: set(sink_locations)}
+        """
+        num_locations = len(adjacency_tuple)
+        sinks = {v_type: set() for v_type in vehicle_types}
+
+        for v_type in vehicle_types:
+            accessible_nodes = {i for i, t in enumerate(loc_type) if t == 0 or t == v_type}
+
+            for start_loc in range(num_locations):
+                if start_loc not in accessible_nodes:
+                    continue  # Skip locations not accessible to the current vehicle type
+
+                visited = set()
+                stack = [start_loc]
+                is_sink = True
+
+                while stack:
+                    current = stack.pop()
+                    if current in visited:
                         continue
-                    if distance[i][j] > distance[i][k] + distance[k][j]:
-                        distance[i][j] = distance[i][k] + distance[k][j]
-        
-        # Identify sinks (nodes with no outgoing edges)
-        sinks = {node for node, out_degree in outgoing_edges.items() if out_degree == 0}
-        
-        # Construct the result dictionary
-        distance_dict = {}
-        for from_node in range(num_nodes):
-            for to_node in range(num_nodes):
-                dist = distance[from_node][to_node]
-                if dist != float('inf'):
-                    distance_dict[(from_node, to_node)] = dist
+                    visited.add(current)
+
+                    neighbors = adjacency_tuple[current]
+                    if isinstance(neighbors, dict):  # Weighted graph
+                        neighbors = neighbors.keys()
+
+                    valid_neighbors = [
+                        n for n in neighbors if n in accessible_nodes and n not in visited
+                    ]
+
+                    if valid_neighbors:
+                        is_sink = False  # Found a valid exit, not a sink
+                        break
+                    stack.extend(valid_neighbors)
+
+                if is_sink:
+                    sinks[v_type].add(start_loc)
+
+        return sinks
+
+    def compute_all_pairs_shortest_distances(self, adjacency_tuple):
+            num_nodes = len(adjacency_tuple)
+            
+            if num_nodes == 0:
+                return {}, set()  # Return an empty dictionary and no sinks
+            
+            first_entry = adjacency_tuple[0]
+            is_weighted = isinstance(first_entry, dict)
+            
+            # Initialize distance matrix
+            distance = defaultdict(lambda: defaultdict(lambda: float('inf')))
+            outgoing_edges = {node: 0 for node in range(num_nodes)}  # Track outgoing edges
+            
+            for from_node in range(num_nodes):
+                distance[from_node][from_node] = 0  # Distance to self is zero
+                neighbors = adjacency_tuple[from_node]
+                
+                if is_weighted:
+                    for to_node, weight in neighbors.items():
+                        distance[from_node][to_node] = weight
+                        outgoing_edges[from_node] += 1
                 else:
-                    distance_dict[(from_node, to_node)] = None  # or use sys.maxsize or another indicator
-        
-        return distance_dict, sinks
+                    for to_node in neighbors:
+                        distance[from_node][to_node] = 1  # Unweighted edge has weight 1
+                        outgoing_edges[from_node] += 1
+            
+            # Apply Floyd-Warshall Algorithm
+            for k in range(num_nodes):
+                for i in range(num_nodes):
+                    # Skip if there's no path from i to k
+                    if distance[i][k] == float('inf'):
+                        continue
+                    for j in range(num_nodes):
+                        # Skip if there's no path from k to j
+                        if distance[k][j] == float('inf'):
+                            continue
+                        if distance[i][j] > distance[i][k] + distance[k][j]:
+                            distance[i][j] = distance[i][k] + distance[k][j]
+            
+            # Identify sinks (nodes with no outgoing edges)
+            sinks = {node for node, out_degree in outgoing_edges.items() if out_degree == 0}
+            
+            # Construct the result dictionary
+            distance_dict = {}
+            for from_node in range(num_nodes):
+                for to_node in range(num_nodes):
+                    dist = distance[from_node][to_node]
+                    if dist != float('inf'):
+                        distance_dict[(from_node, to_node)] = dist
+                    else:
+                        distance_dict[(from_node, to_node)] = None  # or use sys.maxsize or another indicator
+            
+            return distance_dict, sinks
+
+
 
     def compute_type_based_distances(self, locType, adjacency_tuple, vehicle_types):
         type_distance_dicts = {}
         type_sinks = {}
 
         num_nodes = len(adjacency_tuple)
-        
+
+        # Dynamic sinks detection
+        dynamic_sinks = self.detect_dynamic_sinks(locType, adjacency_tuple, vehicle_types)
+
         for v_type in vehicle_types:
             # Determine accessible nodes: type 0 and the current vehicle type
             accessible_nodes = {node for node, t in enumerate(locType) if t == 0 or t == v_type}
-            
+
             # Create a filtered adjacency tuple for the current vehicle type
             filtered_adjacency = []
             for from_node in range(num_nodes):
@@ -113,15 +168,19 @@ class GeneticPlanner(AssigningPlanner):
                     # Unweighted graph
                     filtered_neighbors = {to_node for to_node in neighbors if to_node in accessible_nodes}
                 filtered_adjacency.append(filtered_neighbors)
-            
-            # Compute all pair shortest distances and sinks for the filtered adjacency
-            distance_dict, sinks = self.compute_all_pairs_shortest_distances(filtered_adjacency)
-            
+
+            # Compute all pair shortest distances and static sinks for the filtered adjacency
+            distance_dict, static_sinks = self.compute_all_pairs_shortest_distances(filtered_adjacency)
+
+            # Merge static and dynamic sinks
+            combined_sinks = static_sinks.union(dynamic_sinks[v_type])
+
             # Store in the result dictionaries
             type_distance_dicts[v_type] = distance_dict
-            type_sinks[v_type] = sinks
-        
+            type_sinks[v_type] = combined_sinks
+
         return type_distance_dicts, type_sinks
+
 
 
     def initialize_population(self, initial_state, **kwargs):
