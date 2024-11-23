@@ -11,7 +11,8 @@ class GeneticPlanner(AssigningPlanner):
 
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
         self.population_size = kwargs.get('population_size', 20)
-        self.planning_horizon = transitionsPerIteration 
+        self.planning_horizon = transitionsPerIteration - 1
+        self.transitionsPerIteration = transitionsPerIteration
         self.generations = kwargs.get('generations', 3)
         self.prev_state_chrom = self.simulator.current_state
         self.planSequence = []
@@ -21,8 +22,106 @@ class GeneticPlanner(AssigningPlanner):
         self.best_sol = None
         self.best_fitness = (-1) * np.inf
         self.restart_counter = 0
-        self.loc_type, _ = self.simulator.problem.get_consts()
+        self.avg_cost = 0
+        self.vehicle_types = self.simulator.problem.get_vehicle_types()
 
+        try:
+            self.loc_type, adjacency_tuple = self.simulator.problem.get_consts()
+            # Compute type-based distances and sinks
+            type_distances , self.type_sinks = self.compute_type_based_distances(self.loc_type, adjacency_tuple, set(self.vehicle_types))
+            for v_type, _ in type_distances.items():
+                print(f"Sink Locations for Vehicle Type {v_type}: {self.type_sinks[v_type]}")
+        except:
+            self.type_sinks = {}
+            self.loc_type = []
+
+    def compute_all_pairs_shortest_distances(self, adjacency_tuple):
+        num_nodes = len(adjacency_tuple)
+        
+        if num_nodes == 0:
+            return {}, set()  # Return an empty dictionary and no sinks
+        
+        first_entry = adjacency_tuple[0]
+        is_weighted = isinstance(first_entry, dict)
+        
+        # Initialize distance matrix
+        distance = defaultdict(lambda: defaultdict(lambda: float('inf')))
+        outgoing_edges = {node: 0 for node in range(num_nodes)}  # Track outgoing edges
+        
+        for from_node in range(num_nodes):
+            distance[from_node][from_node] = 0  # Distance to self is zero
+            neighbors = adjacency_tuple[from_node]
+            
+            if is_weighted:
+                for to_node, weight in neighbors.items():
+                    distance[from_node][to_node] = weight
+                    outgoing_edges[from_node] += 1
+            else:
+                for to_node in neighbors:
+                    distance[from_node][to_node] = 1  # Unweighted edge has weight 1
+                    outgoing_edges[from_node] += 1
+        
+        # Apply Floyd-Warshall Algorithm
+        for k in range(num_nodes):
+            for i in range(num_nodes):
+                # Skip if there's no path from i to k
+                if distance[i][k] == float('inf'):
+                    continue
+                for j in range(num_nodes):
+                    # Skip if there's no path from k to j
+                    if distance[k][j] == float('inf'):
+                        continue
+                    if distance[i][j] > distance[i][k] + distance[k][j]:
+                        distance[i][j] = distance[i][k] + distance[k][j]
+        
+        # Identify sinks (nodes with no outgoing edges)
+        sinks = {node for node, out_degree in outgoing_edges.items() if out_degree == 0}
+        
+        # Construct the result dictionary
+        distance_dict = {}
+        for from_node in range(num_nodes):
+            for to_node in range(num_nodes):
+                dist = distance[from_node][to_node]
+                if dist != float('inf'):
+                    distance_dict[(from_node, to_node)] = dist
+                else:
+                    distance_dict[(from_node, to_node)] = None  # or use sys.maxsize or another indicator
+        
+        return distance_dict, sinks
+
+    def compute_type_based_distances(self, locType, adjacency_tuple, vehicle_types):
+        type_distance_dicts = {}
+        type_sinks = {}
+
+        num_nodes = len(adjacency_tuple)
+        
+        for v_type in vehicle_types:
+            # Determine accessible nodes: type 0 and the current vehicle type
+            accessible_nodes = {node for node, t in enumerate(locType) if t == 0 or t == v_type}
+            
+            # Create a filtered adjacency tuple for the current vehicle type
+            filtered_adjacency = []
+            for from_node in range(num_nodes):
+                if from_node not in accessible_nodes:
+                    filtered_adjacency.append({})
+                    continue  # Skip inaccessible nodes
+                neighbors = adjacency_tuple[from_node]
+                if isinstance(neighbors, dict):
+                    # Weighted graph
+                    filtered_neighbors = {to_node: weight for to_node, weight in neighbors.items() if to_node in accessible_nodes}
+                else:
+                    # Unweighted graph
+                    filtered_neighbors = {to_node for to_node in neighbors if to_node in accessible_nodes}
+                filtered_adjacency.append(filtered_neighbors)
+            
+            # Compute all pair shortest distances and sinks for the filtered adjacency
+            distance_dict, sinks = self.compute_all_pairs_shortest_distances(filtered_adjacency)
+            
+            # Store in the result dictionaries
+            type_distance_dicts[v_type] = distance_dict
+            type_sinks[v_type] = sinks
+        
+        return type_distance_dicts, type_sinks
 
 
     def initialize_population(self, initial_state, **kwargs):
@@ -31,6 +130,7 @@ class GeneticPlanner(AssigningPlanner):
         size = kwargs.get('size', self.population_size)
 
         population = self.partialAssigner.produce_paths_heuristic(initial_state, horizon, size)
+        self.avg_cost = sum([sum(chromosome[2]) + sum(chromosome[3]) for chromosome in population]) / self.population_size
         return population
 
 
@@ -43,10 +143,10 @@ class GeneticPlanner(AssigningPlanner):
         picked_packages = set()
         duplicate_pick_penalty = 0
         special_loc_reward = 0
+        sink_penalty = 0
 
-
-        for transition in chromosome[1]:
-            for action in transition:
+        for step_idx, transition in enumerate(chromosome[1]):
+            for vehicle_idx, action in enumerate(transition):
                 if action.baseAction == 'Pick':
                     package_id = action.params[1]
                     if package_id in picked_packages:
@@ -61,7 +161,18 @@ class GeneticPlanner(AssigningPlanner):
 
                 elif action.baseAction == 'Wait':
                     total_waits += 1
-
+                
+                elif action.baseAction == 'Travel':
+                    #print(f"{vehicle_idx}.{self.simulator.actionStringRepresentor.represent(action)}")
+                    if len(self.type_sinks.values()) == 0 :
+                        continue
+                    destinations = [action.params[j].value for j in range(len(action.params))]
+                    vehicle_type =self.vehicle_types[vehicle_idx]
+                    #print(f'dest: {destinations}, type: {vehicle_type}')
+ 
+                    for destination in destinations:
+                        if destination in self.type_sinks.get(vehicle_type):
+                            sink_penalty += 1
 
         locations = self.simulator.problem.get_locations(chromosome[0][0])
         #within
@@ -101,40 +212,46 @@ class GeneticPlanner(AssigningPlanner):
                 if type == key:
                     special_dict[key].append(i)
 
-        for j, vehicle_loc in enumerate(locations):
-            dict_loc = special_dict[j+1]
-            special_loc_reward += len(set(vehicle_loc).intersection(set(dict_loc)))
-                
+        if len(special_dict) > 0 :
+            for j, vehicle_loc in enumerate(locations):
+                dict_loc = special_dict[j+1]
+                special_loc_reward += len(set(vehicle_loc).intersection(set(dict_loc)))
+                    
 
-        #scailing
-        unit = total_cost
 
         # Compute fitness
+        unit = self.avg_cost
         fitness = (
-                -total_cost
+                - 20 * total_cost
                 + 3* unit * total_picks
-                + 7.5* unit * total_delivers
-                - unit * 0.1 * total_waits
+                + 8.5* unit * total_delivers
+                - unit * 0.2 * total_waits
                 - duplicate_pick_penalty
-                - unit * 0.02 * duplicate_locations_penalty
-                + unit * 0.01 * duplicate_locations_reward
+                - unit * 0.01 * duplicate_locations_penalty
+                + unit * 0.02 * duplicate_locations_reward
                 + unit * 0.05 * special_loc_reward
+                - unit * 2 * sink_penalty
         )
+
+        try: n_fitness = fitness/ (100 * unit) 
+        except: n_fitness = (-1) *np.inf
 
         if winner:
             print("Fitness Components:")
             print(f"Total Cost: {total_cost}")
-            print(f"Total Picks: {total_picks}")
-            print(f"Total Delivers: {total_delivers}")
-            print(f"Total Waits: {total_waits}")
+            print(f"Total Picks: {3* unit * total_picks}")
+            print(f"Total Delivers: {8.5* unit * total_delivers}")
+            print(f"Total Waits: {unit * 0.1 * total_waits}")
             print(f"Plan Length: {plan_length}")
             print(f"Duplicate Pick Penalty: {duplicate_pick_penalty}")
-            print(f"Duplicate Loction Penalty: {duplicate_locations_penalty}")
-            print(f"Duplicate Loction Reward: {duplicate_locations_reward}")
-            print(f"Special Loction Reward: {special_loc_reward}")
+            print(f"Duplicate Loction Penalty: {unit * 0.01 * duplicate_locations_penalty}")
+            print(f"Duplicate Loction Reward: {unit * 0.02 * duplicate_locations_reward}")
+            print(f"Special Loction Reward: {unit * 0.05 * special_loc_reward}")
+            print(f"Sink Penalty: {unit * 0.5 * sink_penalty}")
             print(f"Calculated Fitness: {fitness}")
+            print(f"Calculated Normelaized Fitness: {n_fitness}")
             print("----------")
-        return fitness
+        return n_fitness
 
     def print_picks(self, chromosome):
         a = []
@@ -305,14 +422,13 @@ class GeneticPlanner(AssigningPlanner):
         if self.restart_counter > threshold:
             self.population = []
             self.restart_counter = 0
+            self.planning_horizon += 1
             print('restarting population....')
             return
 
         # Selection
-        if random.random() < 0.5:
-            selected_population = self.tournament_selection(population, fitness_scores, self.population_size // 2)
-        else:
-            selected_population = self.stochastic_universal_sampling(population, fitness_scores, self.population_size // 2)
+        selected_population = self.tournament_selection(population, fitness_scores, self.population_size // 2)
+            #selected_population = self.stochastic_universal_sampling(population, fitness_scores, self.population_size // 2)
 
 
         num_offspring = self.population_size - len(selected_population)
@@ -335,6 +451,7 @@ class GeneticPlanner(AssigningPlanner):
         self.best_fitness = (-1) * np.inf
         self.best_sol = None
         self.restart_counter = 0
+        self.planning_horizon = self.transitionsPerIteration
 
         while True:
             print(f"step : {self.generations}")
