@@ -4,10 +4,8 @@ import numpy as np
 from collections import Counter
 from collections import defaultdict
 
-
 class GeneticPlanner(AssigningPlanner):
     def __init__(self, simulator, iterTime: float, transitionsPerIteration: int, **kwargs):
-
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
         self.population_size = kwargs.get('population_size', 20)
         self.planning_horizon = max(2, transitionsPerIteration)
@@ -27,9 +25,9 @@ class GeneticPlanner(AssigningPlanner):
         try:
             self.loc_type, adjacency_tuple = self.simulator.problem.get_consts()
             # Compute type-based distances and sinks
-            type_distances , self.type_sinks = self.compute_type_based_distances(self.loc_type, adjacency_tuple,
-            																	 set(self.vehicle_types))
-
+            type_distances, self.type_sinks = self.compute_type_based_distances(
+                self.loc_type, adjacency_tuple, set(self.vehicle_types)
+            )
         except:
             self.type_sinks = {}
             self.loc_type = []
@@ -37,10 +35,6 @@ class GeneticPlanner(AssigningPlanner):
     def detect_dynamic_sinks(self, loc_type, adjacency_tuple, vehicle_types):
         """
         Identify sinks for each vehicle type dynamically by analyzing reachability.
-        :param loc_type: Tuple defining the type of each location.
-        :param adjacency_tuple: Adjacency list representation of the graph.
-        :param vehicle_types: List of vehicle types.
-        :return: Dictionary {vehicle_type: set(sink_locations)}
         """
         num_locations = len(adjacency_tuple)
         sinks = {v_type: set() for v_type in vehicle_types}
@@ -134,7 +128,6 @@ class GeneticPlanner(AssigningPlanner):
 
         return distance_dict, sinks
 
-
     def compute_type_based_distances(self, locType, adjacency_tuple, vehicle_types):
         type_distance_dicts = {}
         type_sinks = {}
@@ -175,17 +168,16 @@ class GeneticPlanner(AssigningPlanner):
 
         return type_distance_dicts, type_sinks
 
-
-
     def initialize_population(self, initial_state, **kwargs):
         self.prev_state_chrom = initial_state
         horizon = kwargs.get('horizon', self.planning_horizon)
         size = kwargs.get('size', self.population_size)
-        population =[]
+        population = []
         while not population:
             population = self.partialAssigner.produce_paths_heuristic(initial_state, horizon, size)
         self.avg_cost = sum(
-            [sum(chromosome[2]) + sum(chromosome[3]) for chromosome in population]) / len(population)
+            [sum(chromosome[2]) + sum(chromosome[3]) for chromosome in population]
+        ) / len(population)
         return population
 
     def fitness_function(self, chromosome, winner=False):
@@ -205,29 +197,24 @@ class GeneticPlanner(AssigningPlanner):
                     package_id = action.params[1]
                     if package_id in picked_packages:
                         duplicate_pick_penalty += 10000  # Heavy penalty for duplicate picks
-
                     else:
                         picked_packages.add(package_id)
                         total_picks += 1
-
                 elif action.baseAction == 'Deliver':
                     total_delivers += 1
-
                 elif action.baseAction == 'Wait':
                     total_waits += 1
-                
                 elif action.baseAction == 'Travel':
-                    if len(self.type_sinks.values()) == 0 :
+                    if len(self.type_sinks.values()) == 0:
                         continue
                     destinations = [action.params[j].value for j in range(len(action.params))]
-                    vehicle_type =self.vehicle_types[vehicle_idx]
- 
+                    vehicle_type = self.vehicle_types[vehicle_idx]
                     for destination in destinations:
                         if destination in self.type_sinks.get(vehicle_type):
                             sink_penalty += 1
 
         locations = self.simulator.problem.get_locations(chromosome[0][0])
-        #within
+        # Within routes
         same_loc = []
         for location in locations:
             frequency = Counter(location)
@@ -235,56 +222,55 @@ class GeneticPlanner(AssigningPlanner):
             same_loc.append(duplicates * len(location))
         duplicate_locations_penalty = sum(same_loc)
 
-        #intra
+        # Between routes
         all_len = sum([len(x) for x in locations])
         duplicate_locations_reward = 0
         if len(locations) > 1:
-                location_route_map = {}
-                for route_idx, route in enumerate(locations):
-                    unique_locs = set(route)
-                    for loc in unique_locs:
-                        if loc in location_route_map:
-                            location_route_map[loc].add(route_idx)
-                        else:
-                            location_route_map[loc] = {route_idx}
-        
-                for loc, route_indices in location_route_map.items():
-                    if len(route_indices) > 1:
-                        # Total occurrences across all routes
-                        total_occurrences = sum(route.count(loc) for route in locations)
-                        reward = total_occurrences * all_len
-                        duplicate_locations_reward += reward
+            location_route_map = {}
+            for route_idx, route in enumerate(locations):
+                unique_locs = set(route)
+                for loc in unique_locs:
+                    if loc in location_route_map:
+                        location_route_map[loc].add(route_idx)
+                    else:
+                        location_route_map[loc] = {route_idx}
+            for loc, route_indices in location_route_map.items():
+                if len(route_indices) > 1:
+                    # Total occurrences across all routes
+                    total_occurrences = sum(route.count(loc) for route in locations)
+                    reward = total_occurrences * all_len
+                    duplicate_locations_reward += reward
 
-        #special location 
+        # Special locations
         special_dict = {}
         keys = [special for special in self.loc_type if special != 0]
-        special_dict = {key : [] for key in keys}
+        special_dict = {key: [] for key in keys}
         for key in keys:
             for i, type in enumerate(self.loc_type):
                 if type == key:
                     special_dict[key].append(i)
 
-        if len(special_dict) > 0 :
+        if len(special_dict) > 0:
             for j, vehicle_loc in enumerate(locations):
                 dict_loc = special_dict[j+1]
                 special_loc_reward += len(set(vehicle_loc).intersection(set(dict_loc)))
-                    
-
 
         # Compute fitness
         unit = total_cost
         fitness = (
-                - total_cost
-                + 3* unit * total_picks
-                + 8* unit * total_delivers
-                - unit * 0.01 * total_waits
-                - duplicate_pick_penalty
-                - unit * 0.01 * duplicate_locations_penalty
-                - unit * 0.5 * sink_penalty
+            - total_cost
+            + 3 * unit * total_picks
+            + 8 * unit * total_delivers
+            - unit * 0.01 * total_waits
+            - duplicate_pick_penalty
+            - unit * 0.01 * duplicate_locations_penalty
+            - unit * 0.5 * sink_penalty
         )
 
-        try: n_fitness = fitness/ (100 * unit) 
-        except: n_fitness = (-1) *np.inf
+        try:
+            n_fitness = fitness / (100 * unit)
+        except:
+            n_fitness = (-1) * np.inf
 
         return n_fitness / plan_length
 
@@ -322,16 +308,15 @@ class GeneticPlanner(AssigningPlanner):
         seq = parent[1]
         child = seq[:crossover_point]
 
-        #create_intermidiate state
+        # Create intermediate state
         seq_initial_state = self.create_intermidiate_state(seq, crossover_point)
         if seq_initial_state is None:
             return None
-        
+
         seed_mutation = [[seq_initial_state, seq_initial_state],
-                         child, 
+                         child,
                          parent[2][:crossover_point],
                          parent[3][:crossover_point]]
-
 
         rest_of_child_candidates = list(
             self.initialize_population(
@@ -344,29 +329,27 @@ class GeneticPlanner(AssigningPlanner):
         if not rest_of_child_candidates:
             return None
 
-        #TODO change to max heuristic value - make sure is different from parent
         chosen = random.choice(rest_of_child_candidates)
 
-        # join
+        # Join sequences
         child.extend(chosen[1])
         costs = parent[2][:crossover_point]
         add_costs = [costs[-1] + chosen[2][0]]
         if len(chosen[2]) > 1:
-            for i in range(1,len(chosen[2])):
+            for i in range(1, len(chosen[2])):
                 add_costs.append(costs[-1] + chosen[2][i])
-            
+
         costs.extend(add_costs)
         new_chromosone = [[chosen[0][0], chosen[0][0]],
-                          child, 
+                          child,
                           costs,
-                          parent[3]] 
-        
+                          parent[3]]
+
         return new_chromosone
-    
 
     def create_intermidiate_state(self, seq, crossover_point):
         state = self.simulator.current_state.__copy__()
-        invalid =False
+        invalid = False
         for i in range(crossover_point):
             for action in seq[i]:
                 try:
@@ -378,7 +361,6 @@ class GeneticPlanner(AssigningPlanner):
                 except Exception as e:
                     invalid = True
                     break
-        
         if invalid:
             return None
 
@@ -409,9 +391,7 @@ class GeneticPlanner(AssigningPlanner):
             selected.append(winner[0])
         return selected
 
-
     def run_ga(self, initial_state):
-
         if len(self.population) == 0:
             population = self.initialize_population(initial_state)
 
@@ -459,7 +439,7 @@ class GeneticPlanner(AssigningPlanner):
         self.best_fitness = (-1) * np.inf
         self.best_sol = None
         self.restart_counter = 0
-        #self.planning_horizon = self.transitionsPerIteration
+        # self.planning_horizon = self.transitionsPerIteration
 
         while True:
             self.run_ga(self.simulator.current_state)

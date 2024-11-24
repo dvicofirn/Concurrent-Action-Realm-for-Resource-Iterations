@@ -3,23 +3,25 @@ from typing import Dict
 from search import PartialAssigner
 import time
 
-
 class Planner:
     def __init__(self, simulator: Simulator, iterTime: float, transitionsPerIteration: int, **kwargs):
         """
-        :param simulator: An instance of CARRISimulator
-        :param iterTime: float, time allowed for each iteration
-        :param transitionsPerIteration: int, maximum plan length per iteration
+        Base Planner class.
+
+        :param simulator: An instance of CARRISimulator.
+        :param iterTime: Time allowed for each iteration.
+        :param transitionsPerIteration: Maximum plan length per iteration.
         """
         self.simulator = simulator
         self.iterTime = iterTime
         self.maxPlanLength = transitionsPerIteration
         self.kwargs = kwargs
 
-
     def generate_plan(self, state: State, returnDict: Dict):
         """
-        Generate a plan within the time limit using the provided search algorithm and heuristic (if needed).
+        Generate a plan within the time limit.
+
+        Must be implemented by subclasses.
         """
         raise NotImplementedError("Must be implemented by subclasses")
 
@@ -38,9 +40,9 @@ class AssigningPlanner(Planner):
         self._generate_plan(state)
 
     def _generate_plan(self, state: State):
+        """
+        Internal method to generate a plan.
+
+        Must be implemented by subclasses.
+        """
         raise NotImplementedError("Must be implemented by subclasses")
-
-
-
-
-

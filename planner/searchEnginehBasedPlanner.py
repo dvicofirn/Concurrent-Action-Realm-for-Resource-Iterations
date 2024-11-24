@@ -6,9 +6,16 @@ class SearchEngineBasedPlanner(AssigningPlanner):
         super().__init__(simulator, iterTime, transitionsPerIteration, **kwargs)
         # Use the provided search algorithm (default is UCTSearchEngine)
         searchAlgorithm = kwargs.get('searchAlgorithm', UCTSearchEngine)
-        self.searchEngine = searchAlgorithm(simulator, steps=self.maxPlanLength, iterTime=self.iterTime, partialAssigner=self.partialAssigner, **kwargs)
+        self.searchEngine = searchAlgorithm(
+            simulator,
+            steps=self.maxPlanLength,
+            iterTime=self.iterTime,
+            partialAssigner=self.partialAssigner,
+            **kwargs
+        )
 
     def _generate_plan(self, state: State):
+        # Start the search process using the specified search engine
         self.searchEngine.search(
             state,
             planDict=self.planDict,

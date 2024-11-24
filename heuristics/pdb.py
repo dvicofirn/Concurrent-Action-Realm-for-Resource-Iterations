@@ -2,6 +2,9 @@ from CARRI import State
 from .heuristic import Heuristic
 
 class PatternDatabaseHeuristic(Heuristic):
+    """
+    Not tested
+    """
     def __init__(self, pattern_db):
         self.pattern_db = pattern_db
 

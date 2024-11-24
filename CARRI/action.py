@@ -5,10 +5,13 @@ from CARRI.expression import ExpressionNode, ValueParameterNode, Update, CostExp
 
 
 class Step:
+    """Represents a step in the simulation, consisting of effects to apply."""
     def __init__(self, effects: List[Update]):
-        self.effects = effects # List of Effect objects
+        self.effects = effects  # List of Effect objects
+
     def __repr__(self):
         return str(self.effects)
+
     def __str__(self):
         return "Step effects: " + str(self.effects)
 
@@ -18,55 +21,63 @@ class Step:
 
 
 class EnvStep(Step):
+    """Represents an environmental step with a name, effects, and cost."""
     def __init__(self, name: str, effects: List[Update], cost: CostExpression):
         super().__init__(effects)
         self.name = name
         self.cost = cost
+
     def __str__(self):
         return self.name + ":\nEffects: " + str(self.effects) + "\n" + str(self.cost)
 
     def get_cost(self, problem, state):
         return self.cost.evaluate(problem, state)
 
+
 class Action(EnvStep):
+    """Represents an action that can be performed, with preconditions and effects."""
     def __init__(self, name: str, preconditions: List[ExpressionNode],
                  conflictingPreconditions: List[ExpressionNode],
                  effects: List[Update], cost: CostExpression, params: List[ValueParameterNode], baseAction):
         super().__init__(name, effects, cost)
-        self.preconditions = preconditions  # List of Condition objects
-        self.conflictingPreconditions = conflictingPreconditions
-        self.params = params # Currently not implemented
+        self.preconditions = preconditions  # List of precondition expressions
+        self.conflictingPreconditions = conflictingPreconditions  # List of conflicting precondition expressions
+        self.params = params  # List of parameter nodes
         self.baseAction = baseAction
 
     def validate(self, problem, state):
+        """Check if action's preconditions and conflicting preconditions are satisfied in the current state."""
         return (all(precondition.evaluate(problem, state) for precondition in self.preconditions)
                 and all(precondition.evaluate(problem, state) for precondition in self.conflictingPreconditions))
 
     def reValidate(self, problem, state):
+        """Re-validate the conflicting preconditions in the current state."""
         return all(precondition.evaluate(problem, state) for precondition in self.conflictingPreconditions)
 
-    # Todo: implement a system to get string representation of action.
     def __str__(self):
         return str(self.name)
 
 
 class ActionGenerator:
+    """Generates actions based on parameters, preconditions, and effects."""
     def __init__(self, name, entities, params, preconditions,
                  conflictingPreconditions, effects, cost, paramExpressions: List[ValueParameterNode],
                  baseActionName):
         self.name = name
         self.entities = entities
-        self.params = params # List of parameter names
+        self.params = params  # List of parameter names
         self.preconditions = preconditions
         self.conflictingPreconditions = conflictingPreconditions
         self.effects = effects
         self.cost = cost
-        self.paramExpressions = paramExpressions # List of fitting expressions
+        self.paramExpressions = paramExpressions  # List of parameter expressions
         self.applicablePrecsRanges = []
         self.applicableConfPrecsRanges = []
         self.baseActionName = baseActionName
+
     def __repr__(self):
         return self.__str__()
+
     def __str__(self):
         return ("Action: " + self.name + "\nEntities: " + str(self.entities)
                 + "\nParams: " + str(self.params) + "\nPreconditions: " + str(self.preconditions)
@@ -77,6 +88,7 @@ class ActionGenerator:
                 + "\nConflictingPreconditions: " + str(self.applicableConfPrecsRanges))
 
     def generate_action(self):
+        """Generates an Action instance using the current parameter values."""
         # Create an Action instance using the parameter values
         newParams = [par.__copy__() for par in self.paramExpressions]
         preconditions = [pre.copies(newParams) for pre in self.preconditions]
@@ -95,18 +107,21 @@ class ActionGenerator:
         return action
 
     def resetParams(self):
+        """Reset all parameter expressions to None."""
         for param in self.paramExpressions:
             param.updateParam(None)
 
     def reArrangePreconditions(self):
         """
+        Rearranges preconditions to optimize action production.
+
         Motivation: Action production involves parameter elimination process:
-        Inserting entity parameter at a time and checking all preconditions
-        which are applicable on currently inserted set of parameters.
-        To support this method, and to make it more efficient, the function
-        reorders the preconditions by necessity per index of last parameter
-        inserted. This function also provide predefined ranges of precondition
-        indexes to validate per index of last parameter inserted.
+        inserting entity parameters one at a time and checking all preconditions
+        applicable to the currently assigned parameters. To make this process
+        more efficient, this function reorders the preconditions based on the
+        necessity per index of the last parameter inserted. It also provides
+        predefined ranges of precondition indexes to validate per index of the
+        last parameter inserted.
         """
         applicablePrecsLens = [0]
         applicableConfPrecsLens = [0]
@@ -136,27 +151,33 @@ class ActionGenerator:
             self.conflictingPreconditions = notYet
         self.resetParams()
 
-        self.applicablePrecsRanges = [range(applicablePrecsLens[i-1], applicablePrecsLens[i])
+        self.applicablePrecsRanges = [range(applicablePrecsLens[i - 1], applicablePrecsLens[i])
                                       for i in range(1, len(applicablePrecsLens))]
-        self.applicableConfPrecsRanges = [range(applicableConfPrecsLens[i-1], applicableConfPrecsLens[i])
+        self.applicableConfPrecsRanges = [range(applicableConfPrecsLens[i - 1], applicableConfPrecsLens[i])
                                           for i in range(1, len(applicableConfPrecsLens))]
         self.preconditions = newOrderPrecs
         self.conflictingPreconditions = newOrderConfPrecs
 
+
 class ActionStringRepresentor:
+    """Provides string representations of actions based on their generators."""
     def __init__(self, actionGenerators: List[ActionGenerator]):
         self.actionGenerators = {actionGenerator.name: actionGenerator for actionGenerator in actionGenerators}
 
     def represent(self, action: Action) -> str:
+        """Return a string representation of the given action."""
         name = action.name
         generator = self.actionGenerators[name]
         return f"Action {name} {str([parName + ': ' + str(param.value) + ', ' for parName, param in zip(generator.params, action.params)])}"
 
+
 class ActionProducer:
+    """Produces actions by generating and validating possible parameter combinations."""
     def __init__(self, actionGenerators: List[ActionGenerator]):
         self.actionGenerators = actionGenerators  # List of ActionGenerators
 
     def produce_actions(self, problem, state, entityId, entityType):
+        """Produce all valid actions for a given entity in the current state."""
         allActions = []
 
         for actionGenerator in self.actionGenerators:
@@ -179,12 +200,10 @@ class ActionProducer:
     def assign_parameters_recursive(self, actionGenerator: ActionGenerator,
                                     problem: Problem, state: State,
                                     paramIndex: int, actions: List[Action]):
+        """Recursively assign parameters starting from paramIndex, collecting valid actions."""
         if paramIndex >= len(actionGenerator.params):
             # All parameters are assigned, create and validate action
             action = actionGenerator.generate_action()
-            """If action was created after validating all parameters
-            in evaluate_partial_preconditions, no such need for the if statement.
-            if action.validate(problem, state):"""
             actions.append(action)
             return
 
@@ -214,6 +233,7 @@ class ActionProducer:
     def filter_parameter_values(self, actionGenerator: ActionGenerator,
                                 problem: Problem, state: State,
                                 paramIndex: int, possibleValues: Iterable):
+        """Filter possible parameter values based on preconditions up to paramIndex."""
         filtered_values = []
         parameterNode = actionGenerator.paramExpressions[paramIndex]
 
@@ -228,7 +248,8 @@ class ActionProducer:
         return filtered_values
 
     def evaluate_partial_preconditions(self, actionGenerator, problem, state, paramIndex: int):
-        # Evaluate applicable preconditions. Searches in pre determined ranges.
+        """Evaluate preconditions applicable for parameters up to paramIndex."""
+        # Evaluate applicable preconditions. Searches in predetermined ranges.
         for index in actionGenerator.applicablePrecsRanges[paramIndex]:
             if not actionGenerator.preconditions[index].evaluate(problem, state):
                 return False
@@ -237,4 +258,3 @@ class ActionProducer:
             if not actionGenerator.conflictingPreconditions[index].evaluate(problem, state):
                 return False
         return True
-

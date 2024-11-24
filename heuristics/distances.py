@@ -5,6 +5,15 @@ from .heuristic import Heuristic
 
 #Assumes problem has locAdj constant
 def location_map(problem: Problem, startingLocation: int) -> Dict[int, int]:
+    """
+    Unfinished
+    Args:
+        problem:
+        startingLocation:
+
+    Returns:
+
+    """
     queue = PriorityQueue()
     queue.put((startingLocation, 0))
     map = dict()
@@ -28,6 +37,9 @@ def location_map(problem: Problem, startingLocation: int) -> Dict[int, int]:
     return map
 
 class DistanceHeuristic(Heuristic):
+    """
+    Unfinished
+    """
     def __init__(self, problem: Problem):
         super().__init__(problem)
         maps={}

@@ -9,28 +9,28 @@ from CARRI import Simulator
 class Manager:
     def __init__(self, simulator: Simulator, iterations, iterTime: int, transitionsPerIteration, **kwargs):
         """
-        :param Simulator: Simulator object with problem object in it.
-        :param Iterations: List of iterations, with objects to add in each one of them.
-        :param Iter_time: Time per each iteration.
-        :param Transitions_per_iteration: number of transitions per iteration.
-        :param planner_kwargs: Additional data.
+        Manager class to coordinate planning and execution.
+
+        :param simulator: Simulator object with the problem.
+        :param iterations: List of iterations, each containing items to add.
+        :param iterTime: Time allowed per iteration.
+        :param transitionsPerIteration: Number of transitions per iteration.
+        :param kwargs: Additional keyword arguments.
         """
-        self.iterTime = iterTime
-        self.business = Business(simulator, iterations)
-        self.transitionsPerIteration = transitionsPerIteration
+        self.iterTime = iterTime  # Time limit per iteration
+        self.business = Business(simulator, iterations)  # Business instance
+        self.transitionsPerIteration = transitionsPerIteration  # Max transitions per iteration
         plannerClass = kwargs.get("planner", Planner)
+        # Initialize the planner
         self.planner = plannerClass(simulator, iterTime, transitionsPerIteration, **kwargs)
-        #searchAlgorithm = kwargs.get('searchAlgorithm', PartialAssigner)
-        #self.planner = SearchEnginehBasedPlanner(simulator, iterTime, transitionsPerIteration, searchAlgorithm=searchAlgorithm)
-        #self.planner = planner(simulator, init_time, iter_time, transitions_per_iteration, **kwargs)
-        #self.planner = GeneticPlanner(simulator, iterTime, transitionsPerIteration, PartialAssigner)
-        self.totalPlan = []
+        self.totalPlan = []  # Accumulate the total plan
 
     def run(self, printPlan=False):
         startTime = time.time()
         print(f"Start")
         print(self.business)
         print("----------")
+        # Execute iterations as long as possible
         while self.business.canAdvanceIteration():
             try:
                 self.execute_iteration()
@@ -53,6 +53,7 @@ class Manager:
             self.print_plan()
 
     def logRun(self):
+        # Log details of the run for analysis
         costs = []
         times = []
         pickCounts = []
@@ -71,17 +72,21 @@ class Manager:
             pickCounts.append(pickCount)
             deliverCounts.append(deliverCount)
 
-        return {'total plan length': len(self.totalPlan),
-                'run success': completeRun,
-                'costs': costs,
-                'time measures': times,
-                'pick counts': pickCounts,
-                'deliver counts': deliverCounts}
+        return {
+            'total plan length': len(self.totalPlan),
+            'run success': completeRun,
+            'costs': costs,
+            'time measures': times,
+            'pick counts': pickCounts,
+            'deliver counts': deliverCounts
+        }
 
     def planner_process(self, state, return_dict):
+        # Generate a plan using the planner
         self.planner.generate_plan(state, return_dict)
 
     def execute_iteration(self):
+        # Execute a single iteration
         # Create a Manager to handle shared data between processes
         plan_manager = MPManager()
         return_dict = plan_manager.dict()
@@ -96,24 +101,24 @@ class Manager:
 
         # Terminate the process if it's still running
         if p.is_alive():
-            # Terminate the planner subprocess and all its child processes
+            # Terminate the planner subprocess and its children
             parent = psutil.Process(p.pid)
             for child in parent.children(recursive=True):
                 child.terminate()
             parent.terminate()
             p.join()
+
         # Retrieve the plan from the shared dictionary
         plan = return_dict['plan']
 
-        #plan = self.planner.getPlan()
         if len(plan) < self.transitionsPerIteration:
             raise Exception("Not enough transitions")
 
+        # Add the plan to the total plan
         self.totalPlan.extend(plan[:self.transitionsPerIteration])
-        # if len(plan) < self.transitionsPerIteration:
-        #    raise Exception("Plan is too short")
 
         try:
+            # Advance the business state with the plan
             self.business.advanceIteration(plan[:self.transitionsPerIteration])
         except Exception as e:
             print(f'ERROR - Issue with plan execution: {e}')
@@ -121,10 +126,12 @@ class Manager:
             exit()
 
     def print_plan(self):
+        # Print the complete plan
         for i, transitionActions in enumerate(self.totalPlan):
             print(f"{i}.[{[self.business.simulator.actionStringRepresentor.represent(a) for a in transitionActions]}")
 
     def count_pick_deliver(self):
+        # Count 'Pick' and 'Deliver' actions in the total plan
         pick_count, deliver_count = 0, 0
         for transitionActions in self.totalPlan:
             for action in transitionActions:

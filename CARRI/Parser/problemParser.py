@@ -2,16 +2,26 @@ import re
 from typing import Dict, List, Set, Tuple
 
 class CARRIProblemParser:
+    """Parses the problem text and initializes variables and entities, including iterations."""
+
     def __init__(self, problem_text, entities, variables):
+        """
+        Initialize the parser with problem text, entities, and variables.
+
+        Args:
+            problem_text (str): The text of the problem to parse.
+            entities (dict): Dictionary of entities parsed from the domain.
+            variables (dict): Dictionary of variables parsed from the domain.
+        """
         self.problem_text = problem_text
         self.entities = entities  # From domain parsing
         self.variables = variables  # From domain parsing
-        self.initial_values = {}
+        self.initialValues = {}
         self.iterations = []  # To store iterations
-        self.entity_type_instances = {}  # {entity_name: [indices]}
-        self.entity_counts = {}  # {entity_name: count}
-        self.entity_max_indices = {}  # To keep track of maximum index used per entity
-        self.last_item_indices = {}  # To keep track of last item index for each 'items' variable
+        self.entityTypeInstances = {}  # {entity_name: [indices]}
+        self.entityCounts = {}  # {entity_name: count}
+        self.entityMaxIndices = {}  # To keep track of maximum index used per entity
+        self.lastItemIndices = {}  # To keep track of last item index for each 'items' variable
 
         # Create a mapping of entity names (case-insensitive) to indices
         self.entity_name_to_index = {name.lower(): index for name, (index, _) in self.entities.items()}
@@ -19,6 +29,9 @@ class CARRIProblemParser:
     def parse(self):
         """
         Parses the problem text and initializes variables and entities, including iterations.
+
+        Returns:
+            Tuple[dict, List[dict]]: A tuple containing initialValues and iterations.
         """
         # Split the problem text into lines
         lines = self.problem_text.split('\n')
@@ -46,217 +59,262 @@ class CARRIProblemParser:
         self.set_default_values()
 
         # Convert constants associated with entities to tuples
-        for var_name, variable in self.variables.items():
-            is_items = variable.get('is_items', False)
-            is_constant = variable.get('is_constant', False)
-            entity_name = variable.get('entity', '')
-            if var_name in self.initial_values:
-                if is_constant and not is_items and entity_name:
+        for varName, variable in self.variables.items():
+            isItems = variable.get('is items', False)
+            isConstant = variable.get('is constant', False)
+            entityName = variable.get('entity', '')
+            if varName in self.initialValues:
+                if isConstant and not isItems and entityName:
                     # Constants associated with entities
-                    if isinstance(self.initial_values[var_name], list):
-                        self.initial_values[var_name] = tuple(self.initial_values[var_name])
-                elif is_constant and not entity_name:
+                    if isinstance(self.initialValues[varName], list):
+                        self.initialValues[varName] = tuple(self.initialValues[varName])
+                elif isConstant and not entityName:
                     # Global constants
-                    if not isinstance(self.initial_values[var_name], tuple):
-                        self.initial_values[var_name] = (self.initial_values[var_name],)
+                    if not isinstance(self.initialValues[varName], tuple):
+                        self.initialValues[varName] = (self.initialValues[varName],)
 
-        return self.initial_values, self.iterations
+        return self.initialValues, self.iterations
 
     def split_into_sections(self, lines):
         """
-        Splits the lines into initial values and iterations based on '*'
+        Splits the lines into initial values and iterations based on '*'.
+
+        Args:
+            lines (List[str]): List of lines from the problem text.
+
+        Returns:
+            Dict[str, List]: A dictionary with keys 'initial' and 'iterations' containing corresponding lines.
         """
         sections = {'initial': [], 'iterations': []}
-        current_section = 'initial'
-        current_iteration = None
+        currentSection = 'initial'
+        currentIteration = None
 
         for line in lines:
             if line == '*':
-                if current_section == 'initial':
-                    current_section = 'iterations'
-                    current_iteration = []
-                    sections['iterations'].append(current_iteration)
+                # Start a new iteration section
+                if currentSection == 'initial':
+                    currentSection = 'iterations'
+                    currentIteration = []
+                    sections['iterations'].append(currentIteration)
                 else:
-                    current_iteration = []
-                    sections['iterations'].append(current_iteration)
+                    currentIteration = []
+                    sections['iterations'].append(currentIteration)
             else:
-                if current_section == 'initial':
+                if currentSection == 'initial':
                     sections['initial'].append(line)
                 else:
-                    current_iteration.append(line)
+                    currentIteration.append(line)
 
         return sections
 
     def parse_initial_values(self, lines):
         """
         Parses the initial values from the given lines.
+
+        Args:
+            lines (List[str]): List of lines containing initial values.
         """
         index = 0
         while index < len(lines):
             line = lines[index]
-            # Check for entity quantities
+            # Check for entity quantities, e.g., 'EntityName: quantity'
             m = re.match(r"^([A-Z][a-zA-Z0-9_ ]*)\s*:\s*(\d+)", line)
             if m:
-                entity_name = m.group(1)
+                entityName = m.group(1)
                 quantity = int(m.group(2))
-                self.process_entity_quantity(entity_name, quantity)
+                self.process_entity_quantity(entityName, quantity)
                 index += 1
                 continue
 
             # Check for variable initialization with optional default value
             m = re.match(r"^(\w+)\s*:\s*(.*)", line)
             if m:
-                variable_name = m.group(1)
-                default_value_str = m.group(2).strip()
-                index = self.process_variable_initialization(variable_name, default_value_str, lines, index + 1)
+                variableName = m.group(1)
+                defaultValueStr = m.group(2).strip()
+                index = self.processVariableInitialization(variableName, defaultValueStr, lines, index + 1)
                 continue
 
             index += 1
 
-        # Update last_item_indices for items variables
-        for var_name, variable in self.variables.items():
-            if variable.get('is_items', False):
-                if var_name in self.initial_values:
-                    last_index = max(self.initial_values[var_name].keys(), default=-1)
-                    self.last_item_indices[var_name] = last_index
+        # Update lastItemIndices for items variables
+        for varName, variable in self.variables.items():
+            if variable.get('is items', False):
+                if varName in self.initialValues:
+                    lastIndex = max(self.initialValues[varName].keys(), default=-1)
+                    self.lastItemIndices[varName] = lastIndex
                 else:
-                    self.last_item_indices[var_name] = -1
+                    self.lastItemIndices[varName] = -1
 
     def parse_iteration(self, lines):
         """
         Parses a single iteration from the given lines.
+
+        Args:
+            lines (List[str]): List of lines representing an iteration.
+
+        Returns:
+            Dict[str, Any]: A dictionary of iteration values.
         """
-        iteration_values = {}
+        iterationValues = {}
         index = 0
         while index < len(lines):
             line = lines[index]
+            # Check for variable initialization, e.g., 'variableName:'
             m = re.match(r"^(\w+)\s*:", line)
             if m:
-                variable_name = m.group(1)
-                if variable_name not in self.variables:
+                variableName = m.group(1)
+                if variableName not in self.variables:
                     index += 1
                     continue
-                variable = self.variables[variable_name]
-                if not variable.get('is_items', False):
+                variable = self.variables[variableName]
+                if not variable.get('is items', False):
                     index += 1
                     continue
-                index = self.process_iteration_variable(variable_name, lines, index + 1, iteration_values)
+                index = self.processIterationVariable(variableName, lines, index + 1, iterationValues)
                 continue
             index += 1
-        return iteration_values
+        return iterationValues
 
-    def process_iteration_variable(self, variable_name, lines, start_index, iteration_values):
+    def processIterationVariable(self, variableName, lines, startIndex, iterationValues):
         """
         Processes a variable within an iteration.
-        """
-        variable = self.variables[variable_name]
-        if variable_name not in iteration_values:
-            iteration_values[variable_name] = []
 
-        index = start_index
-        value_lines = []
+        Args:
+            variableName (str): The name of the variable.
+            lines (List[str]): List of lines representing the iteration.
+            startIndex (int): The index to start processing from.
+            iterationValues (Dict[str, Any]): The dictionary to store iteration values.
+
+        Returns:
+            int: The updated index after processing the variable.
+        """
+        variable = self.variables[variableName]
+        if variableName not in iterationValues:
+            iterationValues[variableName] = []
+
+        index = startIndex
+        valueLines = []
         while index < len(lines):
             line = lines[index]
             if re.match(r"^\w+\s*:", line) or line == '*':
                 break
-            value_lines.append(line)
+            valueLines.append(line)
             index += 1
 
-        for line in value_lines:
+        for line in valueLines:
             line = line.strip()
             if not line:
                 continue
-            value = self.parse_value(line, variable)
-            iteration_values[variable_name].append(value)
+            value = self.parseValue(line, variable)
+            iterationValues[variableName].append(value)
 
         return index
 
-    def process_entity_quantity(self, entity_name, quantity):
-        entity_name = entity_name.strip()
-        if entity_name not in self.entities:
+    def process_entity_quantity(self, entityName, quantity):
+        """
+        Processes the quantity of an entity.
+
+        Args:
+            entityName (str): The name of the entity.
+            quantity (int): The number of instances to create.
+        """
+        entityName = entityName.strip()
+        if entityName not in self.entities:
             return
         indices = list(range(quantity))
-        self.entity_type_instances[entity_name] = indices
-        self.entity_counts[entity_name] = quantity
-        self.entity_max_indices[entity_name] = max(self.entity_max_indices.get(entity_name, -1), quantity - 1)
+        self.entityTypeInstances[entityName] = indices
+        self.entityCounts[entityName] = quantity
+        self.entityMaxIndices[entityName] = max(self.entityMaxIndices.get(entityName, -1), quantity - 1)
 
-    def process_variable_initialization(self, variable_name, default_value_str, lines, start_index):
-        if variable_name not in self.variables:
-            return start_index
-        variable = self.variables[variable_name]
-        entity_name = variable.get('entity', '')
-        is_items = variable.get('is_items', False)
+    def processVariableInitialization(self, variableName, defaultValueStr, lines, startIndex):
+        """
+        Processes the initialization of a variable.
+
+        Args:
+            variableName (str): The name of the variable.
+            defaultValueStr (str): The default value string.
+            lines (List[str]): List of lines from the problem text.
+            startIndex (int): The index to start processing from.
+
+        Returns:
+            int: The updated index after processing the variable.
+        """
+        if variableName not in self.variables:
+            return startIndex
+        variable = self.variables[variableName]
+        entityName = variable.get('entity', '')
+        isItems = variable.get('is items', False)
 
         # Get default value
-        default_value = self.get_default_value(variable)
-        if default_value_str:
-            default_value = self.parse_value(default_value_str, variable)
+        defaultValue = self.get_default_value(variable)
+        if defaultValueStr:
+            defaultValue = self.parseValue(defaultValueStr, variable)
 
-        index = start_index
-        value_lines = []
+        index = startIndex
+        valueLines = []
         while index < len(lines):
             line = lines[index]
             if re.match(r"^\w+\s*:", line) or line == '*':
                 break
-            value_lines.append(line)
+            valueLines.append(line)
             index += 1
 
-        if is_items:
+        if isItems:
             # Process items variable
-            if variable_name not in self.initial_values:
-                self.initial_values[variable_name] = {}
-            last_item_index = self.last_item_indices.get(variable_name, -1)
-            for line in value_lines:
+            if variableName not in self.initialValues:
+                self.initialValues[variableName] = {}
+            lastItemIndex = self.lastItemIndices.get(variableName, -1)
+            for line in valueLines:
                 line = line.strip()
                 if not line:
                     continue
-                value = self.parse_value(line, variable)
-                last_item_index += 1
-                self.initial_values[variable_name][last_item_index] = value
-            self.last_item_indices[variable_name] = last_item_index
+                value = self.parseValue(line, variable)
+                lastItemIndex += 1
+                self.initialValues[variableName][lastItemIndex] = value
+            self.lastItemIndices[variableName] = lastItemIndex
         else:
             # Process variables associated with entities
-            if variable_name not in self.initial_values:
-                self.initial_values[variable_name] = []
-            values = self.initial_values[variable_name]
-            entity_indices = self.get_entity_indices_by_type(entity_name)
-            entity_count = max(len(entity_indices), self.entity_counts.get(entity_name, 0))
+            if variableName not in self.initialValues:
+                self.initialValues[variableName] = []
+            values = self.initialValues[variableName]
+            entityIndices = self.get_entity_indices_by_type(entityName)
+            entityCount = max(len(entityIndices), self.entityCounts.get(entityName, 0))
 
             # Initialize values with default values
-            while len(values) < entity_count:
-                values.append(default_value)
+            while len(values) < entityCount:
+                values.append(defaultValue)
 
-            last_entity_index = -1
-            for line in value_lines:
+            lastEntityIndex = -1
+            for line in valueLines:
                 line = line.strip()
                 if not line:
                     continue
                 m = re.match(r"(\d+)\.\s*(.*)", line)
                 if m:
-                    entity_idx = int(m.group(1))
-                    value_str = m.group(2).strip()
-                    last_entity_index = entity_idx
+                    entityIdx = int(m.group(1))
+                    valueStr = m.group(2).strip()
+                    lastEntityIndex = entityIdx
                 else:
-                    if last_entity_index == -1:
-                        entity_idx = 0
+                    if lastEntityIndex == -1:
+                        entityIdx = 0
                     else:
-                        entity_idx = last_entity_index + 1
-                    last_entity_index = entity_idx
-                    value_str = line.strip()
+                        entityIdx = lastEntityIndex + 1
+                    lastEntityIndex = entityIdx
+                    valueStr = line.strip()
 
-                # Update entity_max_indices
-                if entity_name:
-                    self.entity_max_indices[entity_name] = max(self.entity_max_indices.get(entity_name, -1), entity_idx)
+                # Update entityMaxIndices
+                if entityName:
+                    self.entityMaxIndices[entityName] = max(self.entityMaxIndices.get(entityName, -1), entityIdx)
 
                 # Parse the value
-                value = self.parse_value(value_str, variable)
+                value = self.parseValue(valueStr, variable)
 
                 # Assign the value
-                while len(values) <= entity_idx:
-                    values.append(default_value)
-                values[entity_idx] = value
+                while len(values) <= entityIdx:
+                    values.append(defaultValue)
+                values[entityIdx] = value
 
-            self.initial_values[variable_name] = values
+            self.initialValues[variableName] = values
 
         return index
 
@@ -264,133 +322,180 @@ class CARRIProblemParser:
         """
         Adjust entity counts and indices based on maximum indices used.
         """
-        for entity_name in self.entities:
-            max_index = self.entity_max_indices.get(entity_name, -1)
-            current_count = self.entity_counts.get(entity_name, 0)
-            new_count = max(max_index + 1, current_count)
-            self.entity_counts[entity_name] = new_count
-            self.entity_type_instances[entity_name] = list(range(new_count))
+        for entityName in self.entities:
+            maxIndex = self.entityMaxIndices.get(entityName, -1)
+            currentCount = self.entityCounts.get(entityName, 0)
+            newCount = max(maxIndex + 1, currentCount)
+            self.entityCounts[entityName] = newCount
+            self.entityTypeInstances[entityName] = list(range(newCount))
 
-            for var_name, variable in self.variables.items():
-                if variable.get('entity') == entity_name and not variable.get('is_items', False):
-                    var_values = self.initial_values.get(var_name, [])
-                    default_value = self.get_default_value(variable)
-                    while len(var_values) < new_count:
-                        var_values.append(default_value)
-                    self.initial_values[var_name] = var_values[:new_count]
+            for varName, variable in self.variables.items():
+                if variable.get('entity') == entityName and not variable.get('is items', False):
+                    varValues = self.initialValues.get(varName, [])
+                    defaultValue = self.get_default_value(variable)
+                    while len(varValues) < newCount:
+                        varValues.append(defaultValue)
+                    self.initialValues[varName] = varValues[:newCount]
 
-    def get_entity_indices_by_type(self, entity_name):
-        return self.entity_type_instances.get(entity_name, [])
+    def get_entity_indices_by_type(self, entityName):
+        """
+        Retrieves the list of entity indices for a given entity type.
+
+        Args:
+            entityName (str): The name of the entity.
+
+        Returns:
+            List[int]: A list of indices for the entity.
+        """
+        return self.entityTypeInstances.get(entityName, [])
 
     def get_default_value(self, variable):
         """
         Returns the default value for a variable based on its type.
+
+        Args:
+            variable (dict): The variable definition.
+
+        Returns:
+            Any: The default value for the variable.
         """
-        var_type = variable['type']
-        if var_type == int:
+        varType = variable['type']
+        if varType == int:
             return 0
-        elif var_type == bool:
+        elif varType == bool:
             return False
-        elif var_type == Set:
+        elif varType == Set:
             return set()
-        elif var_type == Dict:
+        elif varType == Dict:
             return {}
-        elif var_type in (List, Tuple):
+        elif varType in (List, Tuple):
             return []
         else:
             return None
 
-    def parse_value(self, value_str, variable):
-        var_type = variable['type']
-        if var_type == int:
-            return self.convert_value_by_type(value_str, int)
-        elif var_type == bool:
-            return value_str.lower() in ('true', '1', 'yes', 't')
-        elif var_type == Set:
-            items = [self.convert_value_by_type(x.strip(), int) for x in value_str.split(',') if x.strip()]
+    def parseValue(self, valueStr, variable):
+        """
+        Parses a value string based on the variable's type.
+
+        Args:
+            valueStr (str): The string representation of the value.
+            variable (dict): The variable definition.
+
+        Returns:
+            Any: The parsed value.
+        """
+        varType = variable['type']
+        if varType == int:
+            return self.convert_value_by_type(valueStr, int)
+        elif varType == bool:
+            return valueStr.lower() in ('true', '1', 'yes', 't')
+        elif varType == Set:
+            items = [self.convert_value_by_type(x.strip(), int) for x in valueStr.split(',') if x.strip()]
             return set(items)
-        elif var_type == Dict:
+        elif varType == Dict:
             d = {}
-            pairs = value_str.split(',')
+            pairs = valueStr.split(',')
             for pair in pairs:
                 pair = pair.strip()
                 if not pair:
                     continue
                 if '-' in pair:
-                    key_str, value_str = pair.split('-', 1)
+                    key_str, valueStr = pair.split('-', 1)
                     key = self.convert_value_by_type(key_str.strip(), int)
-                    value = self.convert_value_by_type(value_str.strip(), int)
+                    value = self.convert_value_by_type(valueStr.strip(), int)
                     d[key] = value
             return d
-        elif var_type == List:
-            key_types = variable.get('key types', [])
-            values = [x.strip() for x in value_str.split(',') if x.strip()]
-            converted_values = [self.convert_value_by_type(val, kt) for val, kt in zip(values, key_types)]
-            return converted_values
-        elif var_type == Tuple:
-            key_types = variable.get('key types', [])
-            values = [x.strip() for x in value_str.split(',') if x.strip()]
-            converted_values = [self.convert_value_by_type(val, kt) for val, kt in zip(values, key_types)]
-            return tuple(converted_values)
+        elif varType == List:
+            keyTypes = variable.get('key types', [])
+            values = [x.strip() for x in valueStr.split(',') if x.strip()]
+            convertedValues = [self.convert_value_by_type(val, kt) for val, kt in zip(values, keyTypes)]
+            return convertedValues
+        elif varType == Tuple:
+            keyTypes = variable.get('key types', [])
+            values = [x.strip() for x in valueStr.split(',') if x.strip()]
+            convertedValues = [self.convert_value_by_type(val, kt) for val, kt in zip(values, keyTypes)]
+            return tuple(convertedValues)
         else:
-            return value_str
+            return valueStr
 
-    def convert_value_by_type(self, value, key_type):
-        if key_type == int:
+    def convert_value_by_type(self, value, keyType):
+        """
+        Converts a value to the specified type.
+
+        Args:
+            value (str): The value to convert.
+            keyType (type): The target type.
+
+        Returns:
+            Any: The converted value.
+
+        Raises:
+            ValueError: If the value cannot be converted.
+        """
+        if keyType == int:
             try:
                 return int(value)
             except ValueError:
                 # Attempt to interpret value as an entity name
-                entity_index = self.get_entity_index_by_name(value)
-                if entity_index is not None:
-                    return entity_index
+                entityIndex = self.get_entity_index_by_name(value)
+                if entityIndex is not None:
+                    return entityIndex
                 else:
                     raise ValueError(f"Cannot convert value '{value}' to int or known entity name")
-        elif key_type == bool:
+        elif keyType == bool:
             return value.lower() in ('true', '1', 'yes', 't')
         else:
             # Handle other types as needed
             return value
 
     def get_entity_index_by_name(self, name):
+        """
+        Retrieves the index of an entity by its name.
+
+        Args:
+            name (str): The name of the entity.
+
+        Returns:
+            int or None: The index of the entity, or None if not found.
+        """
         name = name.strip().lower()
-        entity_index = self.entity_name_to_index.get(name)
-        if entity_index is not None:
-            return entity_index
+        entityIndex = self.entity_name_to_index.get(name)
+        if entityIndex is not None:
+            return entityIndex
         else:
             return None
 
     def set_default_values(self):
         """
-        Sets default values for variables not initialized.
+        Sets default values for variables that were not initialized.
         """
-        for var_name, variable in self.variables.items():
-            if var_name in self.initial_values:
+        for varName, variable in self.variables.items():
+            if varName in self.initialValues:
                 continue
-            entity_name = variable.get('entity', '')
-            is_items = variable.get('is_items', False)
-            if entity_name:
-                entity_indices = self.get_entity_indices_by_type(entity_name)
+            entityName = variable.get('entity', '')
+            isItems = variable.get('is items', False)
+            if entityName:
+                entityIndices = self.get_entity_indices_by_type(entityName)
             else:
-                entity_indices = []
+                entityIndices = []
 
-            default_value = self.get_default_value(variable)
-            if is_items:
-                self.initial_values[var_name] = {}
+            defaultValue = self.get_default_value(variable)
+            if isItems:
+                self.initialValues[varName] = {}
             else:
-                if variable.get('is_constant', False) and entity_name:
-                    self.initial_values[var_name] = tuple([default_value] * len(entity_indices))
-                elif variable.get('is_constant', False):
-                    self.initial_values[var_name] = default_value
+                if variable.get('is constant', False) and entityName:
+                    self.initialValues[varName] = tuple([defaultValue] * len(entityIndices))
+                elif variable.get('is constant', False):
+                    self.initialValues[varName] = defaultValue
                 else:
-                    self.initial_values[var_name] = [default_value] * len(entity_indices)
+                    self.initialValues[varName] = [defaultValue] * len(entityIndices)
 
     def ensure_entity_instances(self):
         """
         Ensures that all entities have instances based on variable usage.
         """
-        for entity_name in self.entities:
-            if entity_name not in self.entity_type_instances:
-                max_index = self.entity_max_indices.get(entity_name, -1)
-                quantity = max_index + 1 if max_index >= 0 else 0
-                self.process_entity_quantity(entity_name, quantity)
+        for entityName in self.entities:
+            if entityName not in self.entityTypeInstances:
+                maxIndex = self.entityMaxIndices.get(entityName, -1)
+                quantity = maxIndex + 1 if maxIndex >= 0 else 0
+                self.process_entity_quantity(entityName, quantity)

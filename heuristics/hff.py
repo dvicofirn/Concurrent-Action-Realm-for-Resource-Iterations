@@ -2,6 +2,9 @@ from CARRI import State
 from .heuristic import Heuristic
 
 class HFFHeuristic(Heuristic):
+    """
+    Not tested
+    """
     def heurist(self, state: State) -> int:
         total_cost = 0
         for request in state.requests:

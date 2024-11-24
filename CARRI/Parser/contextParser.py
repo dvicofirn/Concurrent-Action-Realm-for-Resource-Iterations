@@ -2,13 +2,16 @@ from CARRI.expression import *
 from CARRI.Parser.expressionParser import ExpressionParser
 
 class ContextParser:
+    """Parses different segments (conditions, effects, cost) within a given context, utilizing parameters and entities."""
+
     def __init__(self, parameters, paramExpressions, parsedEntities):
+        """Initialize the ContextParser with parameters, parameter expressions, and parsed entities."""
         self.parameters = parameters
         self.paramExpressions = paramExpressions
         self.parsedEntities = parsedEntities
 
-# Pass the segment to a matching parsing function
     def parse(self, segment: List[str], type: str):
+        """Pass the segment to a matching parsing function based on the type."""
         if type == "conditions":
             return self.parse_conditions(segment, self.parameters, self.paramExpressions)
         elif type == "effects":
@@ -18,20 +21,23 @@ class ContextParser:
 
     def parse_expression(self, expression: str, parameters: List[str],
                          paramExpressions: List[ParameterNode]) -> ExpressionNode:
+        """Parse an expression string into an ExpressionNode."""
         parser = ExpressionParser(expression, parameters, paramExpressions, self.parsedEntities)
-        expr_node = parser.parse_expression()
-        return expr_node
+        exprNode = parser.parse_expression()
+        return exprNode
 
     def parse_conditions(self, conditions: List[str], parameters: List[str],
                          paramExpressions: List[ParameterNode]) -> List[ExpressionNode]:
-        parsed_conditions = []
-        for condition_str in conditions:
-            condition = self.parse_expression(condition_str, parameters, paramExpressions)
-            parsed_conditions.append(condition)
-        return parsed_conditions
+        """Parse a list of condition strings into a list of ExpressionNodes."""
+        parsedConditions = []
+        for conditionStr in conditions:
+            condition = self.parse_expression(conditionStr, parameters, paramExpressions)
+            parsedConditions.append(condition)
+        return parsedConditions
 
     def parse_effects(self, effectsList: List, parameters: List[str],
                       paramExpressions: List[ParameterNode]) -> List[Update]:
+        """Parse a list of effects into a list of Update objects."""
         updates = []
         for effect in effectsList:
             if isinstance(effect, str):
@@ -39,170 +45,174 @@ class ContextParser:
                 if update is not None:
                     updates.append(update)
             elif isinstance(effect, dict):
-                block_updates = self.parse_effects_block(effect, parameters.copy(), paramExpressions.copy())
-                updates.extend(block_updates)
+                blockUpdates = self.parse_effects_block(effect, parameters.copy(), paramExpressions.copy())
+                updates.extend(blockUpdates)
             else:
                 raise ValueError(f"Invalid effect: {effect}")
         return updates
 
-
     def parse_effect_line(self, effect: str, parameters: List[str],
                           paramExpressions: List[ParameterNode]) -> Update:
+        """Parse a single effect line into an Update object."""
         effect = effect.strip()
         if effect.startswith('NewVal'):
             # Handle 'NewVal' statements
             _, rest = effect.split('NewVal', 1)
             rest = rest.strip()
             if ':' in rest:
-                variable_name, expr_str = rest.split(':', 1)
-                variable_name = variable_name.strip()
-                expr_str = expr_str.strip()
+                variableName, exprStr = rest.split(':', 1)
+                variableName = variableName.strip()
+                exprStr = exprStr.strip()
                 # Parse the expression
-                expr_node = self.parse_expression(expr_str, parameters, paramExpressions)
+                exprNode = self.parse_expression(exprStr, parameters, paramExpressions)
                 # Create a new ParameterNode with the expression's value and the expressionNode
                 param_index = len(paramExpressions)
-                new_param_node = NewValParameterNode(param_index)
+                newParamNode = NewValParameterNode(param_index)
                 # Extend parameters and paramExpressions
-                parameters.append(variable_name)
-                paramExpressions.append(new_param_node)
-                return ParameterUpdate(new_param_node, expr_node)
+                parameters.append(variableName)
+                paramExpressions.append(newParamNode)
+                return ParameterUpdate(newParamNode, exprNode)
             else:
-                raise SyntaxError(f"Invalid New Val syntax: {effect}")
+                raise SyntaxError(f"Invalid NewVal syntax: {effect}")
         elif ' remove' in effect:
-            entity_name, rest = effect.split('remove', 1)
-            entity_name = entity_name.strip()
+            entityName, rest = effect.split('remove', 1)
+            entityName = entityName.strip()
             rest = rest.strip()
             if ':' in rest:
-                _, expr_str = rest.split(':', 1)
-                expr_str = expr_str.strip()
-                expr_node = self.parse_expression(expr_str, parameters, paramExpressions)
-                entity_index = self.parsedEntities.get(entity_name)[0]
-                if entity_index is None:
-                    raise ValueError(f"Unknown entity: {entity_name}")
-                return ExpressionRemoveUpdate(entity_index, expr_node)
+                _, exprStr = rest.split(':', 1)
+                exprStr = exprStr.strip()
+                exprNode = self.parse_expression(exprStr, parameters, paramExpressions)
+                entityIndex = self.parsedEntities.get(entityName)[0]
+                if entityIndex is None:
+                    raise ValueError(f"Unknown entity: {entityName}")
+                return ExpressionRemoveUpdate(entityIndex, exprNode)
             else:
                 raise SyntaxError(f"Invalid remove syntax: {effect}")
         elif ' add' in effect:
-            entity_name, rest = effect.split('add', 1)
-            entity_name = entity_name.strip()
+            entityName, rest = effect.split('add', 1)
+            entityName = entityName.strip()
             rest = rest.strip()
             if ':' in rest:
-                _, expr_list_str = rest.split(':', 1)
-                expr_list_str = expr_list_str.strip()
+                _, exprListStr = rest.split(':', 1)
+                exprListStr = exprListStr.strip()
                 # Parse expressions inside parentheses
-                if expr_list_str.startswith('(') and expr_list_str.endswith(')'):
-                    expr_list_str = expr_list_str[1:-1].strip()
-                    expr_strs = [s.strip() for s in expr_list_str.split(',')]
-                    expr_nodes = [self.parse_expression(expr_str, parameters, paramExpressions)
-                                  for expr_str in expr_strs]
-                    entity_index = self.parsedEntities.get(entity_name)[0]
-                    if entity_index is None:
-                        raise ValueError(f"Unknown entity: {entity_name}")
-                    return ExpressionAddUpdate(entity_index, *expr_nodes)
+                if exprListStr.startswith('(') and exprListStr.endswith(')'):
+                    exprListStr = exprListStr[1:-1].strip()
+                    exprStrs = [s.strip() for s in exprListStr.split(',')]
+                    exprNodes = [self.parse_expression(exprStr, parameters, paramExpressions)
+                                 for exprStr in exprStrs]
+                    entityIndex = self.parsedEntities.get(entityName)[0]
+                    if entityIndex is None:
+                        raise ValueError(f"Unknown entity: {entityName}")
+                    return ExpressionAddUpdate(entityIndex, *exprNodes)
                 else:
                     raise SyntaxError(f"Invalid add syntax: {effect}")
             else:
                 raise SyntaxError(f"Invalid add syntax: {effect}")
         elif ' replace' in effect:
-            entity_name, rest = effect.split('replace', 1)
-            entity_name = entity_name.strip()
+            entityName, rest = effect.split('replace', 1)
+            entityName = entityName.strip()
             rest = rest.strip()
             if ':' in rest:
-                expr_id_str, expr_list_str = rest.split(':', 1)
-                expr_id_str = expr_id_str.strip()
-                expr_list_str = expr_list_str.strip()
+                exprIdStr, exprListStr = rest.split(':', 1)
+                exprIdStr = exprIdStr.strip()
+                exprListStr = exprListStr.strip()
                 # Parse the ID expression
-                expr_id = self.parse_expression(expr_id_str, parameters, paramExpressions)
+                exprId = self.parse_expression(exprIdStr, parameters, paramExpressions)
                 # Parse expressions inside parentheses
-                if expr_list_str.startswith('(') and expr_list_str.endswith(')'):
-                    expr_list_str = expr_list_str[1:-1].strip()
-                    expr_strs = [s.strip() for s in expr_list_str.split(',')]
-                    expr_nodes = [self.parse_expression(expr_str, parameters, paramExpressions)
-                                  for expr_str in expr_strs]
-                    entity_index = self.parsedEntities.get(entity_name)[0]
-                    if entity_index is None:
-                        raise ValueError(f"Unknown entity: {entity_name}")
-                    return ExpressionReplaceUpdate(entity_index, expr_id, *expr_nodes)
+                if exprListStr.startswith('(') and exprListStr.endswith(')'):
+                    exprListStr = exprListStr[1:-1].strip()
+                    exprStrs = [s.strip() for s in exprListStr.split(',')]
+                    exprNodes = [self.parse_expression(exprStr, parameters, paramExpressions)
+                                 for exprStr in exprStrs]
+                    entityIndex = self.parsedEntities.get(entityName)[0]
+                    if entityIndex is None:
+                        raise ValueError(f"Unknown entity: {entityName}")
+                    return ExpressionReplaceUpdate(entityIndex, exprId, *exprNodes)
                 else:
                     raise SyntaxError(f"Invalid replace syntax: {effect}")
+            else:
+                raise SyntaxError(f"Invalid replace syntax: {effect}")
         else:
             # Simple update
             return self.parse_update(effect, parameters, paramExpressions)
 
     def parse_effects_block(self, effect: dict, parameters: List[str],
                             paramExpressions: List[ParameterNode]) -> List[Update]:
+        """Parse an effect block (e.g., case, all, repeat) into a list of Update objects."""
         updates = []
-        block_name = effect.get('name')
-        if block_name == 'case':
-            condition_str = effect['condition']
-            condition = self.parse_expression(condition_str, parameters, paramExpressions)
+        blockName = effect.get('name')
+        if blockName == 'case':
+            conditionStr = effect['condition']
+            condition = self.parse_expression(conditionStr, parameters, paramExpressions)
             segment = effect['segment']
-            updates_segment = self.parse_effects(segment, parameters, paramExpressions)
-            else_segment = effect.get('else segment', [])
-            updates_else = self.parse_effects(else_segment, parameters, paramExpressions)
-            updates.append(CaseUpdate(condition, updates_segment, updates_else))
+            updatesSegment = self.parse_effects(segment, parameters, paramExpressions)
+            elseSegment = effect.get('else segment', [])
+            updatesElse = self.parse_effects(elseSegment, parameters, paramExpressions)
+            updates.append(CaseUpdate(condition, updatesSegment, updatesElse))
 
-        elif block_name == 'all':
+        elif blockName == 'all':
             entityIndex = self.parsedEntities[effect['entity']][0]
-            parameter_name = effect['parameter']
-            parameter_node = ValueParameterNode(len(paramExpressions))
+            parameterName = effect['parameter']
+            parameterNode = ValueParameterNode(len(paramExpressions))
             # Extend parameters and paramExpressions for the new scope
-            parameters.append(parameter_name)
-            paramExpressions.append(parameter_node)
+            parameters.append(parameterName)
+            paramExpressions.append(parameterNode)
             segment = effect['segment']
-            condition_str = effect.get('condition')
-            if condition_str:
-                condition = self.parse_expression(condition_str, parameters, paramExpressions)
+            conditionStr = effect.get('condition')
+            if conditionStr:
+                condition = self.parse_expression(conditionStr, parameters, paramExpressions)
             else:
                 condition = None
-            updates_segment = self.parse_effects(segment, parameters, paramExpressions)
-            updates.append(AllUpdate(entityIndex, parameter_node, updates_segment, condition))
+            updatesSegment = self.parse_effects(segment, parameters, paramExpressions)
+            updates.append(AllUpdate(entityIndex, parameterNode, updatesSegment, condition))
 
-        elif block_name == 'repeat':
-            condition_str = effect['condition']
-            condition = self.parse_expression(condition_str, parameters, paramExpressions)
+        elif blockName == 'repeat':
+            conditionStr = effect['condition']
+            condition = self.parse_expression(conditionStr, parameters, paramExpressions)
             segment = effect['segment']
-            updates_segment = self.parse_effects(segment, parameters, paramExpressions)
-            updates.append(RepeatUpdate(condition, updates_segment))
+            updatesSegment = self.parse_effects(segment, parameters, paramExpressions)
+            updates.append(RepeatUpdate(condition, updatesSegment))
         else:
-            raise ValueError(f"Unknown block name: {block_name}")
+            raise ValueError(f"Unknown block name: {blockName}")
 
         return updates
 
-    def parse_update(self, update_str: str, parameters: List[str], paramExpressions: List[ParameterNode]) -> Update:
-        if ':' not in update_str:
-            raise SyntaxError(f"Invalid update syntax: {update_str}")
-        lhs_str, rhs_str = map(str.strip, update_str.split(':', 1))
+    def parse_update(self, updateStr: str, parameters: List[str], paramExpressions: List[ParameterNode]) -> Update:
+        """Parse an update string into an Update object."""
+        if ':' not in updateStr:
+            raise SyntaxError(f"Invalid update syntax: {updateStr}")
+        lhsStr, rhsStr = map(str.strip, updateStr.split(':', 1))
         # Parse LHS (should result in ValueNode or ValueIndexNode)
-        lhs_parser = ExpressionParser(lhs_str, parameters, paramExpressions, self.parsedEntities)
-        lhs_node = lhs_parser.parse_primary()
+        lhsParser = ExpressionParser(lhsStr, parameters, paramExpressions, self.parsedEntities)
+        lhsNode = lhsParser.parse_primary()
         # Parse RHS as an expression
-        rhs_node = self.parse_expression(rhs_str, parameters, paramExpressions)
+        rhsNode = self.parse_expression(rhsStr, parameters, paramExpressions)
         # Create Update object
-        if isinstance(lhs_node, ValueNode):
-            return ExpressionUpdate(lhs_node.variableName, lhs_node.expression, rhs_node)
-        elif isinstance(lhs_node, ValueIndexNode):
-            return ExpressionIndexUpdate(lhs_node.variableName, lhs_node.index, rhs_node)
-        elif isinstance(lhs_node, NewValParameterNode):
-            return ParameterUpdate(lhs_node, rhs_node)
+        if isinstance(lhsNode, ValueNode):
+            return ExpressionUpdate(lhsNode.variableName, lhsNode.expression, rhsNode)
+        elif isinstance(lhsNode, ValueIndexNode):
+            return ExpressionIndexUpdate(lhsNode.variableName, lhsNode.index, rhsNode)
+        elif isinstance(lhsNode, NewValParameterNode):
+            return ParameterUpdate(lhsNode, rhsNode)
         else:
-            raise SyntaxError(f"Invalid LHS in update: {lhs_str}")
+            raise SyntaxError(f"Invalid LHS in update: {lhsStr}")
 
-    def parse_cost(self, cost_list: List, parameters: List[str],
+    def parse_cost(self, costList: List, parameters: List[str],
                    paramExpressions: List[ParameterNode]) -> ExpressionNode:
-        if not cost_list:
+        """Parse the cost segment into an ExpressionNode, handling any updates if present."""
+        if not costList:
             return ConstNode(0)  # Default cost if none provided
         # The last line is the cost expression
-        cost_expr_str = cost_list[-1]
-        # Parse the cost expression
+        costExprStr = costList[-1]
         # All preceding lines are updates
-        updates_list = cost_list[:-1]
-        # Check if there are updates in updates_list, return costExpression if not
-        if not updates_list:
-            costExpression = self.parse_expression(cost_expr_str, parameters, paramExpressions)
+        updatesList = costList[:-1]
+        # If there are no updates, parse and return the cost expression directly
+        if not updatesList:
+            costExpression = self.parse_expression(costExprStr, parameters, paramExpressions)
             return costExpression
         # Parse updates (may include 'NewVal' declarations)
-        updates = self.parse_effects(updates_list, parameters, paramExpressions)
-        costExpression = self.parse_expression(cost_expr_str, parameters, paramExpressions)
+        updates = self.parse_effects(updatesList, parameters, paramExpressions)
+        costExpression = self.parse_expression(costExprStr, parameters, paramExpressions)
         # Return a structure that includes updates and the cost expression
         return CostExpression(updates, costExpression)

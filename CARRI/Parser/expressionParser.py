@@ -2,6 +2,15 @@ import re
 from CARRI.expression import *
 
 def tokenize(expression_str):
+    """
+    Tokenize the input expression string into a list of tokens.
+
+    Args:
+        expression_str (str): The expression string to tokenize.
+
+    Returns:
+        List[Tuple[str, Any]]: A list of tokens in the form (token_type, token_value).
+    """
     token_specification = [
         ('NUMBER', r'\d+'),
         ('ID', r'[A-Za-z_][A-Za-z0-9_]*'),
@@ -35,14 +44,14 @@ def tokenize(expression_str):
         elif kind in ('LPAREN', 'RPAREN', 'COMMA'):
             tokens.append((kind, value))
         elif kind == 'SKIP':
-            pass
+            pass  # Ignore whitespace
         else:
             raise RuntimeError(f'Unexpected character {value!r} in expression')
         pos = mo.end()
         mo = get_token(line, pos)
     return tokens
 
-operator_map = {
+operatorMap = {
     '+': operator.add,
     '-': operator.sub,
     '*': operator.mul,
@@ -62,92 +71,113 @@ operator_map = {
 }
 
 class ExpressionParser:
+    """Parses expressions into ExpressionNode objects using recursive descent parsing."""
+
     def __init__(self, expression: str, parameters: List[str], paramExpressions: List[ParameterNode], parsedEntities):
+        """
+        Initialize the ExpressionParser.
+
+        Args:
+            expression (str): The expression string to parse.
+            parameters (List[str]): A list of parameter names.
+            paramExpressions (List[ParameterNode]): A list of ParameterNode objects corresponding to the parameters.
+            parsedEntities (Dict): A dictionary of parsed entities.
+        """
         self.tokens = tokenize(expression)
         self.position = 0
         self.parameters = parameters
         self.paramExpressions = paramExpressions
-        self.operator_map = operator_map  # Ensure operator_map is accessible
+        self.operatorMap = operatorMap  # Ensure operatorMap is accessible
         self.parsedEntities = parsedEntities
 
     def parse_expression(self) -> ExpressionNode:
+        """Parse an expression and return the root ExpressionNode."""
         return self.parse_or_expression()
 
     def parse_or_expression(self) -> ExpressionNode:
+        """Parse an 'or' expression."""
         node = self.parse_and_expression()
         while self.match('KEYWORD', 'or'):
             self.consume('KEYWORD', 'or')
             right = self.parse_and_expression()
-            node = OperatorNode(self.operator_map['or'], node, right)
+            node = OperatorNode(self.operatorMap['or'], node, right)
         return node
 
     def parse_and_expression(self) -> ExpressionNode:
+        """Parse an 'and' expression."""
         node = self.parse_not_expression()
         while self.match('KEYWORD', 'and'):
             self.consume('KEYWORD', 'and')
             right = self.parse_not_expression()
-            node = OperatorNode(self.operator_map['and'], node, right)
+            node = OperatorNode(self.operatorMap['and'], node, right)
         return node
 
     def parse_not_expression(self) -> ExpressionNode:
+        """Parse a 'not' expression."""
         if self.match('KEYWORD', 'not'):
             self.consume('KEYWORD', 'not')
             operand = self.parse_not_expression()
-            node = OperatorNode(self.operator_map['not'], operand)
+            node = OperatorNode(self.operatorMap['not'], operand)
             return node
         else:
             return self.parse_comparison()
 
     def parse_comparison(self) -> ExpressionNode:
+        """Parse a comparison expression."""
         node = self.parse_add_expr()
         while self.match('OP', ('=', '!=', '>', '<', '>=', '<=', '?')):
-            op_token = self.consume('OP')
-            operator_fn = self.operator_map[op_token[1]]
+            opToken = self.consume('OP')
+            operatorFn = self.operatorMap[opToken[1]]
             right = self.parse_add_expr()
-            node = OperatorNode(operator_fn, node, right)
+            node = OperatorNode(operatorFn, node, right)
         return node
 
     def parse_add_expr(self) -> ExpressionNode:
+        """Parse an addition or subtraction expression."""
         node = self.parse_mul_expr()
         while self.match('OP', ('+', '-')):
-            op_token = self.consume('OP')
-            operator_fn = self.operator_map[op_token[1]]
+            opToken = self.consume('OP')
+            operatorFn = self.operatorMap[opToken[1]]
             right = self.parse_mul_expr()
-            node = OperatorNode(operator_fn, node, right)
+            node = OperatorNode(operatorFn, node, right)
         return node
 
     def parse_mul_expr(self) -> ExpressionNode:
+        """Parse a multiplication or division expression."""
         node = self.parse_unary_expr()
         while self.match('OP', ('*', '/')):
-            op_token = self.consume('OP')
-            operator_fn = self.operator_map[op_token[1]]
+            opToken = self.consume('OP')
+            operatorFn = self.operatorMap[opToken[1]]
             right = self.parse_unary_expr()
-            node = OperatorNode(operator_fn, node, right)
+            node = OperatorNode(operatorFn, node, right)
         return node
 
     def parse_unary_expr(self) -> ExpressionNode:
+        """Parse a unary expression with optional '+' or '-' operators."""
         if self.match('OP', ('+', '-')):
-            op_token = self.consume('OP')
-            operator_fn = self.operator_map[op_token[1]]
+            opToken = self.consume('OP')
+            operatorFn = self.operatorMap[opToken[1]]
             operand = self.parse_unary_expr()
-            node = OperatorNode(operator_fn, operand)
+            node = OperatorNode(operatorFn, operand)
             return node
         else:
             return self.parse_postfix_expr()
 
     def parse_postfix_expr(self) -> ExpressionNode:
+        """Parse a postfix expression, handling the '@' operator."""
         node = self.parse_primary()
         while True:
             if self.match('OP', '@'):
-                op_token = self.consume('OP')
-                operator_fn = self.operator_map[op_token[1]]
+                opToken = self.consume('OP')
+                operatorFn = self.operatorMap[opToken[1]]
                 right = self.parse_primary()
-                node = OperatorNode(operator_fn, node, right)
+                node = OperatorNode(operatorFn, node, right)
             else:
                 break
         return node
 
     def parse_primary(self) -> ExpressionNode:
+        """Parse a primary expression, which could be a number, boolean, entity reference, variable, or expression in parentheses."""
         if self.match('NUMBER'):
             value = self.consume('NUMBER')[1]
             return ConstNode(value)
@@ -168,6 +198,7 @@ class ExpressionParser:
             raise SyntaxError('Expected expression at token position {}'.format(self.position))
 
     def parse_entity_reference(self) -> ExpressionNode:
+        """Parse an entity reference."""
         self.consume('KEYWORD', 'entity')
         # Collect the entity name, which may consist of multiple IDs
         entity_name_parts = []
@@ -184,114 +215,108 @@ class ExpressionParser:
         return ConstNode(entity_index)
 
     def parse_variable_or_parameter_or_exists(self) -> ExpressionNode:
-        id_token = self.consume('ID')
-        name = id_token[1]
+        """Parse a variable, parameter, or 'exists' condition."""
+        idToken = self.consume('ID')
+        name = idToken[1]
 
         # Check if 'exists' follows
         if self.match('KEYWORD', 'exists'):
             self.consume('KEYWORD', 'exists')
             # The next token should be a parameter
             if self.match('ID'):
-                param_name = self.consume('ID')[1]
-                if param_name in self.parameters:
-                    index = self.parameters.index(param_name)
-                    param_expr = self.paramExpressions[index]
+                paramName = self.consume('ID')[1]
+                if paramName in self.parameters:
+                    index = self.parameters.index(paramName)
+                    paramExpr = self.paramExpressions[index]
                     # Get entity index from parsedEntities
-                    entity_index = self.parsedEntities.get(name)[0]
-                    if entity_index is None:
+                    entityIndex = self.parsedEntities.get(name)[0]
+                    if entityIndex is None:
                         raise ValueError(f"Unknown entity: {name}")
-                    return ExistingExpressionNode(entity_index, param_expr)
+                    return ExistingExpressionNode(entityIndex, paramExpr)
                 else:
-                    raise SyntaxError(f"Unknown parameter: {param_name}")
+                    raise SyntaxError(f"Unknown parameter: {paramName}")
             else:
                 raise SyntaxError('Expected parameter after "exists"')
         else:
-            # Not an 'exists' condition, proceed as before
+            # Not an 'exists' condition, proceed as variable or parameter
             return self.parse_variable_or_parameter_continued(name)
 
     def parse_variable_or_parameter_continued(self, name) -> ExpressionNode:
+        """Continue parsing a variable or parameter, possibly with an index expression."""
         if name in self.parameters:
             # It's a parameter
             index = self.parameters.index(name)
             return self.paramExpressions[index]
 
         # It's the start of a variable name
-        name_parts = [name]
+        nameParts = [name]
         while True:
             if self.match('ID'):
-                next_token = self.tokens[self.position]
-                next_name = next_token[1]
-                if next_name in self.parameters or self.is_operator_ahead() or self.is_end_of_expression():
+                nextToken = self.tokens[self.position]
+                nextName = nextToken[1]
+                if nextName in self.parameters or self.is_operator_ahead() or self.is_end_of_expression():
                     # Next ID is a parameter or an operator, so stop collecting variable name
                     break
                 else:
                     # Consume and add to variable name
                     self.consume('ID')
-                    name_parts.append(next_name)
+                    nameParts.append(nextName)
             else:
                 break
-        variable_name = ' '.join(name_parts)
+        variableName = ' '.join(nameParts)
 
         # Now check for index expression
-        index_expr = None
+        indexExpr = None
         if self.match('LPAREN'):
             self.consume('LPAREN')
-            index_expr = self.parse_expression()
+            indexExpr = self.parse_expression()
             self.consume('RPAREN')
         elif self.match('ID') or self.match('NUMBER') or self.match('LPAREN'):
             # Parse index expression
-            index_expr = self.parse_primary()
+            indexExpr = self.parse_primary()
         else:
             # No index expression
-            index_expr = None
+            indexExpr = None
 
-        if index_expr is None:
+        if indexExpr is None:
             # No index expression
-            return ValueIndexNode(variable_name, 0)  # Default index if needed
+            return ValueIndexNode(variableName, 0)  # Default index if needed
         else:
-            return ValueNode(variable_name, index_expr)
+            return ValueNode(variableName, indexExpr)
 
     def is_operator_ahead(self) -> bool:
-        # Check if an operator is ahead
+        """Check if an operator token is ahead."""
         if self.position < len(self.tokens):
-            token_kind, token_value = self.tokens[self.position]
-            return token_kind == 'OP' or (token_kind == 'KEYWORD' and token_value in self.operator_map)
+            tokenKind, token_value = self.tokens[self.position]
+            return tokenKind == 'OP' or (tokenKind == 'KEYWORD' and token_value in self.operatorMap)
         return False
 
     def is_end_of_expression(self) -> bool:
-        # Check if end of tokens
+        """Check if the end of the token list has been reached."""
         return self.position >= len(self.tokens)
-
-    def get_parameter_expression(self, name):
-        # Todo: check if redundant
-        if name in self.parameters:
-            index = self.parameters.index(name)
-            return self.paramExpressions[index]
-        else:
-            # Variable without index (assuming index 0 or handle appropriately)
-            return ValueIndexNode(name, 0)
 
     # Helper methods
     def match(self, kind, value=None):
+        """Check if the next token matches the expected kind and value."""
         if self.position >= len(self.tokens):
             return False
-        token_kind, token_value = self.tokens[self.position]
-        if kind != token_kind:
+        tokenKind, tokenValue = self.tokens[self.position]
+        if kind != tokenKind:
             return False
         if value is None:
             return True
         if isinstance(value, tuple):
-            return token_value in value
+            return tokenValue in value
         else:
-            return token_value == value
+            return tokenValue == value
 
     def consume(self, kind, value=None):
+        """Consume the next token if it matches the expected kind and value."""
         if not self.match(kind, value):
             expected = f"{kind} {value}" if value else kind
-            actual_kind, actual_value = self.tokens[self.position] if self.position < len(self.tokens) else (None, None)
-            actual = f"{actual_kind} {actual_value}" if actual_value else actual_kind
+            actualKind, actualValue = self.tokens[self.position] if self.position < len(self.tokens) else (None, None)
+            actual = f"{actualKind} {actualValue}" if actualValue else actualKind
             raise SyntaxError(f'Expected {expected}, got {actual}')
         token = self.tokens[self.position]
         self.position += 1
         return token
-

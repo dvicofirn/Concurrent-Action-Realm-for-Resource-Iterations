@@ -2,6 +2,9 @@ from CARRI import State
 from .heuristic import Heuristic
 
 class HMaxHeuristic(Heuristic):
+    """
+    Not tested
+    """
     def heurist(self, state: State) -> int:
         # Compute the maximum cost among all sub-goals.
         max_cost = 0

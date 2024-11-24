@@ -2,6 +2,9 @@ from CARRI import State
 from .heuristic import Heuristic
 
 class action_based_delivery_heuristic(Heuristic):
+    """
+    Not tested
+    """
     def evaluate(self, state: State) -> float:
         """
         Heuristic estimating the minimum number of actions required to deliver all undelivered packages

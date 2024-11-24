@@ -1,18 +1,20 @@
 from CARRI.Parser.actionLinesParser import parse_action_segments, parse_action_header, parse_segment
 from CARRI.Parser.problemParser import CARRIProblemParser
 from CARRI.Parser.actionGeneratorParser import ActionGeneratorParser
-from CARRI.stepsParser import EnvStepParser, IterParser
+from CARRI.Parser.stepsParser import EnvStepParser, IterParser
 from CARRI.problem import Problem
 from CARRI.simulator import Simulator
 
 
 class Parser:
+    """Main parser class to parse CARRI domain and problem files into a simulator and iterations."""
+
     def parse(self, carriDomainPath, carriProblemPath) -> tuple:
+        """Parse the domain and problem files and return a simulator and the number of iterations."""
         self.domainFile = self.read_file(carriDomainPath)
         self.problemFile = self.read_file(carriProblemPath)
-        """
-        Split and send sections to their respective parsers.
-        """
+
+        # Split and send sections to their respective parsers.
         sections = self.split_sections()
         parsedSections = {
             "Entities": {},
@@ -21,6 +23,7 @@ class Parser:
             "EnvSteps": {},
             "IterStep": {}
         }
+
         # Send sections to respective parsers
         if "Entities" in sections:
             parsedSections["Entities"] = self.parse_entities(sections["Entities"])
@@ -39,67 +42,68 @@ class Parser:
         iterStep = IterParser(parsedSections["IterStep"], parsedSections["Entities"]).parse()
 
         # Parse the problem file to get initial values
-        problem_text = self.extract_problem_text()
-        problem_parser = CARRIProblemParser(problem_text, parsedSections["Entities"],
-                                            parsedSections["Variables"])
-        initial_values, iterations = problem_parser.parse()
+        problemText = self.extract_problem_text()
+        problemParser = CARRIProblemParser(problemText, parsedSections["Entities"],
+                                           parsedSections["Variables"])
+        initialValues, iterations = problemParser.parse()
 
-        problem = Problem(initialValues=initial_values,
+        problem = Problem(initialValues=initialValues,
                           variablesInfo=parsedSections["Variables"],
                           entities=parsedSections["Entities"])
         simulator = Simulator(problem, actionGenerators, envSteps, iterStep, parsedSections["Entities"])
 
         return simulator, iterations
 
-    def read_file(self, file_path):
+    def read_file(self, filePath):
         """
-        Reads a .CARRI file from the given path and returns its content as a string.
+        Read a .CARRI file from the given path and return its content as a string.
+        Removes comments starting with '#'.
         """
-        with open(file_path, 'r', encoding='utf-8') as file:
+        with open(filePath, 'r', encoding='utf-8') as file:
             return re.sub(r"#.*", "", file.read())
 
     def extract_domain_text(self):
         """
-        Extracts the text between "Start Domain" and "End Domain".
+        Extract the text between "Start Domain" and "End Domain" from the domain file.
         """
-        domain_pattern = r"Start Domain:\n(.*?)\nEnd Domain"
-        match = re.search(domain_pattern, self.domainFile, re.DOTALL)
+        domainPattern = r"Start Domain:\n(.*?)\nEnd Domain"
+        match = re.search(domainPattern, self.domainFile, re.DOTALL)
         if match:
             return match.group(1).strip()
         return ""
 
     def extract_problem_text(self):
         """
-        Extracts the text between "Start Problem" and "End Problem".
+        Extract the text between "Start Problem" and "End Problem" from the problem file.
         """
-        problem_pattern = r"Start Problem:\n(.*?)\nEnd Problem"
-        match = re.search(problem_pattern, self.problemFile, re.DOTALL)
+        problemPattern = r"Start Problem:\n(.*?)\nEnd Problem"
+        match = re.search(problemPattern, self.problemFile, re.DOTALL)
         if match:
             return match.group(1).strip()
         return ""
 
     def split_sections(self):
         """
-        Splits the .CARRI text into sections.
+        Split the domain text into sections such as Entities, Variables, Actions, IterStep, and EnvSteps.
         """
-        domain_text = self.extract_domain_text()
+        domainText = self.extract_domain_text()
         sections = {}
 
         # Define allowed section names explicitly
-        allowed_section_names = [
+        allowedSectionNames = [
             "Entities", "Variables", "Actions", "IterStep", "EnvSteps"
         ]
 
         # Regex to identify sections by allowed section names
-        section_pattern = r"(?P<section_name>(" + "|".join(
-            allowed_section_names) + r")):\s*\n(?P<section_content>.*?)(?=\n(" + "|".join(
-            allowed_section_names) + r")|$)"
-        matches = re.finditer(section_pattern, domain_text, re.DOTALL)
+        sectionPattern = r"(?P<sectionName>(" + "|".join(
+            allowedSectionNames) + r")):\s*\n(?P<sectionContent>.*?)(?=\n(" + "|".join(
+            allowedSectionNames) + r")|$)"
+        matches = re.finditer(sectionPattern, domainText, re.DOTALL)
 
         for match in matches:
-            section_name = match.group("section_name")
-            section_content = match.group("section_content").strip()
-            sections[section_name] = section_content
+            sectionName = match.group("sectionName")
+            sectionContent = match.group("sectionContent").strip()
+            sections[sectionName] = sectionContent
 
         # Remove the last line from each section content if it starts with 'End'
         for section in sections:
@@ -109,45 +113,45 @@ class Parser:
 
         return sections
 
-    def parse_entities(self, entities_text):
-        return CARRIEntitiesParser(entities_text).parse()
+    def parse_entities(self, entitiesText):
+        """Parse the Entities section using CARRIEntitiesParser."""
+        return CARRIEntitiesParser(entitiesText).parse()
 
-    def parse_variables(self, variables_text):
-        """
-        Pass the variables section to the Variables Parser.
-        """
-        return CARRIVariablesParser(variables_text).parse()
+    def parse_variables(self, variablesText):
+        """Parse the Variables section using CARRIVariablesParser."""
+        return CARRIVariablesParser(variablesText).parse()
 
-    def parse_actions(self, actions_text):
-        """
-        Pass the actions section to the Actions Parser.
-        """
-        return CARRIActionsParser(actions_text).parse()
+    def parse_actions(self, actionsText):
+        """Parse the Actions section using CARRIActionsParser."""
+        return CARRIActionsParser(actionsText).parse()
 
     def parse_env_steps(self, envsStepsText):
-        """
-        Pass the actions section to the Actions Parser.
-        """
+        """Parse the EnvSteps section using CARRIEnvStepsParser."""
         return CARRIEnvStepsParser(envsStepsText).parse()
 
     def parse_iter_step(self, envsStepsText):
-        """
-        Pass the actions section to the Actions Parser.
-        """
+        """Parse the IterStep section using CARRIIterStepParser."""
         return CARRIIterStepParser(envsStepsText).parse()
 
 
 class CARRIEntitiesParser:
-    def __init__(self, entities_text):
-        self.entities_text = entities_text
+    """Parses the Entities section into a dictionary of entity names and their inheritance."""
+
+    def __init__(self, entitiesText):
+        """Initialize the parser with the entities text."""
+        self.entitiesText = entitiesText
         self.entities = {}
 
     def parse(self):
+        """
+        Parse the entities text and return a dictionary with entity names as keys.
+        Each entity is assigned a unique index and optional inheritance.
+        """
         # Define a regex pattern to capture entities and their optional origins
         pattern = r'([a-zA-Z_][a-zA-Z0-9_\s]*)(?:\s*\(\s*([a-zA-Z_][a-zA-Z0-9_\s]*)\s*\))?(?=,|$)'
 
-        # Use regex findall to match each entity and optional origin in the text
-        matches = re.findall(pattern, self.entities_text)
+        # Use regex findall to match each entity and optional inheritance in the text
+        matches = re.findall(pattern, self.entitiesText)
 
         for entity, inherits in matches:
             entityName = entity.strip()
@@ -164,100 +168,104 @@ import re
 from typing import Set, Dict, List, Tuple
 
 class CARRIVariablesParser:
-    def __init__(self, variables_text):
-        self.variables_text = variables_text
+    """Parses the Variables section into a dictionary containing constants, variables, and items."""
+
+    def __init__(self, variablesText):
+        """Initialize the parser with the variables text."""
+        self.variablesText = variablesText
 
     def parse(self):
         """
-        Parses the Variables section to a dictionary containing constants, variables, and items.
+        Parse the variables text and return a dictionary with variable names as keys.
+        Each variable includes details like type, entity, base name, and whether it is constant or items.
         """
         variables = {}
-        lines = [line.strip() for line in self.variables_text.split("\n") if line.strip()]
+        lines = [line.strip() for line in self.variablesText.split("\n") if line.strip()]
 
         # Patterns to match variable and items definitions
-        variable_pattern = r'^(const|var)\s+(.+?)\s+([A-Z]+)\s*-\s*([A-Za-z0-9_]+)(?:\s*\(([^)]+)\))?$'
-        items_pattern = r'^items\s+(.+?)\s+(var|const)\s+(.*)$'
+        variablePattern = r'^(const|var)\s+(.+?)\s+([A-Z]+)\s*-\s*([A-Za-z0-9_]+)(?:\s*\(([^)]+)\))?$'
+        itemsPattern = r'^items\s+(.+?)\s+(var|const)\s+(.*)$'
 
         for line in lines:
-            variable_match = re.match(variable_pattern, line)
-            items_match = re.match(items_pattern, line)
-            if variable_match:
+            variableMatch = re.match(variablePattern, line)
+            itemsMatch = re.match(itemsPattern, line)
+            if variableMatch:
                 # Parse const or var line
-                var_type = variable_match.group(1)   # 'const' or 'var'
-                name = variable_match.group(2).strip()
-                variable_type_str = variable_match.group(3)  # 'INT', 'BOOL', 'MULTY', 'MATCH'
-                entity_name = variable_match.group(4)   # '-'
-                base_name = line.split('(')
-                if len(base_name) > 1:
-                    base_name = base_name[1].strip(')')
+                varType = variableMatch.group(1)   # 'const' or 'var'
+                name = variableMatch.group(2).strip()
+                variableTypeStr = variableMatch.group(3)  # 'INT', 'BOOL', 'MULTY', 'MATCH'
+                entityName = variableMatch.group(4)   # Entity name after '-'
+                baseName = line.split('(')
+                if len(baseName) > 1:
+                    baseName = baseName[1].strip(')')
                 else:
-                    base_name = None
+                    baseName = None
 
                 # Determine the data structure type
-                if variable_type_str == "MULTY":
-                    variable_type = Set
-                elif variable_type_str == "MATCH":
-                    variable_type = Dict
-                elif variable_type_str == "BOOL":
-                    variable_type = bool
+                if variableTypeStr == "MULTY":
+                    variableType = Set
+                elif variableTypeStr == "MATCH":
+                    variableType = Dict
+                elif variableTypeStr == "BOOL":
+                    variableType = bool
                 else:
-                    variable_type = int
+                    variableType = int
 
                 details = {
-                    "type": variable_type,
-                    "entity": entity_name,
-                    "base_name": base_name,
-                    "is_constant": var_type == "const",
-                    "is_items": False
+                    "type": variableType,
+                    "entity": entityName,
+                    "base name": baseName,
+                    "is constant": varType == "const",
+                    "is items": False
                 }
 
                 variables[name] = details
 
-            elif items_match:
+            elif itemsMatch:
                 # Parse items line
-                entity_name = items_match.group(1).strip()
-                is_var_const = items_match.group(2)  # 'var' or 'const'
-                key_definitions_str = items_match.group(3)
+                entityName = itemsMatch.group(1).strip()
+                isVarConst = itemsMatch.group(2)  # 'var' or 'const'
+                keyDefinitionsStr = itemsMatch.group(3)
 
-                structure_type = Tuple if is_var_const == 'const' else List
+                structureType = Tuple if isVarConst == 'const' else List
 
-                key_names = []
-                key_types = []
-                key_base_names = []
+                keyNames = []
+                keyTypes = []
+                keyBaseNames = []
 
                 # Split key definitions by commas
-                key_parts = [kp.strip() for kp in key_definitions_str.split(',') if kp.strip()]
-                for key_part in key_parts:
-                    # Each key_part may be: keyName type [ '(' baseName ')' ]
-                    key_pattern = r'(\w+)\s+([A-Z]+)(?:\s*\(([^)]+)\))?'
-                    key_match = re.match(key_pattern, key_part)
-                    if key_match:
-                        key_name = key_match.group(1)
-                        key_type_str = key_match.group(2)
-                        key_base_name = key_match.group(3)  # May be None
-                        key_names.append(key_name)
-                        key_type = None
-                        if key_type_str == "INT":
-                            key_type = int
-                        elif key_type_str == "BOOL":
-                            key_type = bool
-                        key_types.append(key_type)
-                        key_base_names.append(key_base_name)
+                keyParts = [kp.strip() for kp in keyDefinitionsStr.split(',') if kp.strip()]
+                for keyPart in keyParts:
+                    # Each keyPart may be: keyName type [ '(' base name ')' ]
+                    keyPattern = r'(\w+)\s+([A-Z]+)(?:\s*\(([^)]+)\))?'
+                    keyMatch = re.match(keyPattern, keyPart)
+                    if keyMatch:
+                        keyName = keyMatch.group(1)
+                        keyTypeStr = keyMatch.group(2)
+                        keyBaseName = keyMatch.group(3)  # Could be None
+                        keyNames.append(keyName)
+                        keyType = None
+                        if keyTypeStr == "INT":
+                            keyType = int
+                        elif keyTypeStr == "BOOL":
+                            keyType = bool
+                        keyTypes.append(keyType)
+                        keyBaseNames.append(keyBaseName)
                     else:
-                        raise ValueError(f"Invalid key definition: {key_part}")
+                        raise ValueError(f"Invalid key definition: {keyPart}")
 
                 details = {
-                    "type": structure_type,
-                    "entity": entity_name,
-                    "base_name": None,
-                    "key names": tuple(key_names),
-                    "key types": tuple(key_types),
-                    "key base names": tuple(key_base_names),
-                    "is_constant": False,
-                    "is_items": True
+                    "type": structureType,
+                    "entity": entityName,
+                    "base name": None,
+                    "key names": tuple(keyNames),
+                    "key types": tuple(keyTypes),
+                    "key base names": tuple(keyBaseNames),
+                    "is constant": False,
+                    "is items": True
                 }
 
-                variables[entity_name] = details
+                variables[entityName] = details
 
             else:
                 raise ValueError(f"Invalid line format: {line}")
@@ -265,25 +273,28 @@ class CARRIVariablesParser:
         return variables
 
 
-
 class CARRIActionsParser:
-    def __init__(self, actions_text):
-        self.actions_text = actions_text
+    """Parses the Actions section into a dictionary of actions with their details."""
+
+    def __init__(self, actionsText):
+        """Initialize the parser with the actions text."""
+        self.actionsText = actionsText
 
     def parse(self):
         """
-        Parses the Actions section to a dictionary of actions with preconditions, effects, and costs.
+        Parse the actions text and return a dictionary with action names as keys.
+        Each action includes parameters, entities, inherits, preconditions, effects, and costs.
         """
         actions = {}
         # Split the entire actions text by "End Action" to isolate each action block
-        action_blocks = self.actions_text.split("End Action")
+        actionBlocks = self.actionsText.split("End Action")
 
-        for action_block in action_blocks:
-            action_block = action_block.strip()
-            if not action_block:
+        for actionBlock in actionBlocks:
+            actionBlock = actionBlock.strip()
+            if not actionBlock:
                 continue
-            # Identify the start of an action using the line format "<action_name>: ..."
-            lines = action_block.split("\n")
+            # Identify the start of an action using the line format "<actionName>: ..."
+            lines = actionBlock.split("\n")
             actionHeader = lines[0].strip()
             actionName, parameters, entities, inherits = parse_action_header(actionHeader)
             # Initialize the current action dictionary
@@ -297,22 +308,26 @@ class CARRIActionsParser:
 
 
 class CARRIEnvStepsParser:
+    """Parses the EnvSteps section into a dictionary of environment steps with their effects and costs."""
+
     def __init__(self, envStepsText):
+        """Initialize the parser with the environment steps text."""
         self.envStepsText = envStepsText
 
     def parse(self):
         """
-        Parses the EnvSteps section to a dictionary of env steps with effects, and costs.
+        Parse the environment steps text and return a dictionary with step names as keys.
+        Each step includes effects and costs.
         """
         envSteps = {}
-        # Split the entire actions text by "End EnvStep" to isolate each action block
+        # Split the entire text by "End EnvStep" to isolate each env step block
         envStepsBlocks = self.envStepsText.split("End EnvStep")
 
         for envStepBlock in envStepsBlocks:
             envStepBlock = envStepBlock.strip()
             if not envStepBlock:
                 continue
-            # Identify the start of an action using the line format "<action_name>: ..."
+            # Identify the start of an env step using the line format "<step_name>: ..."
             lines = envStepBlock.split("\n")
             name = lines[0].split(":", 1)[0].strip()
             # Initialize the current envSteps dictionary
@@ -322,14 +337,17 @@ class CARRIEnvStepsParser:
 
 
 class CARRIIterStepParser:
+    """Parses the IterStep section into a list of effects."""
+
     def __init__(self, iterStepText):
+        """Initialize the parser with the iteration step text."""
         self.iterStepText = iterStepText
 
     def parse(self):
         """
-        Parses the IterStep section to a list of effects.
+        Parse the iteration step text and return a list of effects.
         """
-        # Identify the start of an action using the line format "<action_name>: ..."
+        # Split the text into lines and remove empty lines
         lines = self.iterStepText.split("\n")
         segmentLines = []
         for line in lines:
@@ -337,5 +355,3 @@ class CARRIIterStepParser:
             if line:
                 segmentLines.append(line)
         return parse_segment(segmentLines)
-
-

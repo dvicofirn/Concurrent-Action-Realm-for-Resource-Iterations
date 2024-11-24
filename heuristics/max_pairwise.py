@@ -2,6 +2,9 @@ from CARRI import State
 from .heuristic import Heuristic
 
 class MaxPairwiseDistanceHeuristic(Heuristic):
+    """
+    Not tested
+    """
     def heurist(self, state: State) -> int:
         max_distance = 0
         for req in state.requests:

@@ -4,17 +4,20 @@ from CARRI.expression import *
 from CARRI.Parser.contextParser import ContextParser
 
 baseActionNames = ("Wait", "Travel", "Pick", "Deliver")
-class ActionGeneratorParser:
-    def __init__(self, parsedActions: Dict, parsedEntities: Dict) -> None:
-        self.parsed_actions = parsedActions
-        self.parsedEntities = parsedEntities
-        self.implementedActions = {} # Dict[str, ActionGenerator]
-        self.baseActionsDict = {} # baseActionsDict: Dict[str, str]
 
+class ActionGeneratorParser:
+    """Parses action definitions into ActionGenerator instances."""
+    def __init__(self, parsedActions: Dict, parsedEntities: Dict) -> None:
+        """Initialize the parser with parsed actions and entities."""
+        self.parsedActions = parsedActions
+        self.parsedEntities = parsedEntities
+        self.implementedActions = {}  # Dict[str, ActionGenerator]
+        self.baseActionsDict = {}  # baseActionsDict: Dict[str, str]
 
     def parse(self) -> List[ActionGenerator]:
+        """Parse the actions and return a list of ActionGenerator instances."""
         actionGenerators = []
-        for actionName, actionData in self.parsed_actions.items():
+        for actionName, actionData in self.parsedActions.items():
             baseActionName = None
             inherits = actionData.get('inherits')
             if inherits and inherits in self.implementedActions:
@@ -23,13 +26,12 @@ class ActionGeneratorParser:
                     baseActionName = self.baseActionsDict[inheritedActionGeneartor.name]
                     self.baseActionsDict[actionName] = baseActionName
 
-
                 """
-                Copies should be shallow
-                Inheriting generators "impact" each other, but currently that doesn't
-                Really come to action, as each generator resets parameters after action.
+                Copies should be shallow.
+                Although inheriting generators might affect each other,
+                in practice they do not, since each generator resets parameters after action.
                 """
-                paramExpressions = inheritedActionGeneartor.paramExpressions.copy() # Should be shallow copy.
+                paramExpressions = inheritedActionGeneartor.paramExpressions.copy()  # Should be shallow copy.
                 preconditions = inheritedActionGeneartor.preconditions.copy()
                 conflictingPreconditions = inheritedActionGeneartor.conflictingPreconditions.copy()
                 effects = inheritedActionGeneartor.effects.copy()
@@ -48,14 +50,12 @@ class ActionGeneratorParser:
             parameters = actionData["parameters"]
 
             """
-            Actions parameters, updated each time a new parameter is created
-            Create new parameters for newly introduced entities.
-            Don't re arrange existing parameter's order.
+            Action parameters are updated each time a new parameter is created.
+            For newly introduced entities, create new parameters.
+            Do not rearrange the existing parameters' order.
             """
             paramExpressions.extend([ValueParameterNode(len(paramExpressions) + i)
                                      for i in range(len(parameters) - len(paramExpressions))])
-            # Parse parameter types (you may need to define how parameter types are provided)
-            # For this example, we'll assume parameter types are provided in actionData
 
             # Parse Preconditions, Effects & Cost
             parser = ContextParser(parameters, paramExpressions, self.parsedEntities)
@@ -90,7 +90,7 @@ class ActionGeneratorParser:
                 conflictingPreconditions=conflictingPreconditions,
                 effects=effects,
                 cost=cost,
-                paramExpressions=paramExpressions, # Parameter objects
+                paramExpressions=paramExpressions,  # Parameter objects
                 baseActionName=baseActionName
             )
             # Reorder the preconditions for more efficient valid action production.
@@ -100,13 +100,3 @@ class ActionGeneratorParser:
             self.implementedActions[actionName] = actionGenerator
 
         return actionGenerators
-
-
-
-
-
-
-
-
-
-
