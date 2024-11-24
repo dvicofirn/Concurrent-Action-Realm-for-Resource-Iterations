@@ -1,0 +1,107 @@
+Domain Cars
+Start Domain:
+Entities:
+Location (Location), Car (Vehicle), Package (Package), Request (Request)
+Variables:
+const locStation BOOL - Location
+const locAdj MATCH - Location (adjacency)
+
+var carLoc INT - Car (location)
+var carCap INT - Car
+var carFuel INT - Car
+var carDebt INT - Car
+
+items Package var type INT (type), loc INT (location), onEntity INT (entity)
+items Request const type INT (type), loc INT (location)
+
+End Variables
+
+Actions:
+
+CarTravel: id - Car, to - Location (Travel)
+	Precs:
+		locAdj (carLoc id) ? to
+		carFuel id > locAdj (carLoc id) @ to
+	Effects:
+		carDebt id : locAdj (carLoc id) @ to
+		carFuel id : carFuel id - carDebt id
+		carLoc id : to
+Cost:
+	carDebt id
+End Action
+
+CarWait: id - Car (Wait)
+	Effects:
+		Case (carFuel id > 0):
+			carFuel id : carFuel id - 1
+		End Case
+	Cost:
+		1
+End Action
+
+CarPick: id - Car, pack - Package (Pick)
+	Precs:
+		carLoc id = Package loc pack
+		carCap id < 2
+	Confs:
+		Package onEntity pack = entity Location
+	Effects:
+		Case (carFuel id > 0):
+			carFuel id : carFuel id - 1
+		End Case
+		carCap id : carCap id + 1
+		Package loc pack: id
+		Package onEntity pack: entity Car
+	Cost:
+		1
+End Action
+
+CarDeliver: id - Car, req - Request, pack - Package (Deliver)
+	Precs:
+		carCap id > 0
+		carLoc id = Request loc req
+		Package onEntity pack = entity Car
+		Package loc pack = id
+		Package type pack = Request type req
+	Confs:
+		Request exists req
+	Effects:
+		Case (carFuel id > 0):
+			carFuel id : carFuel id - 1
+		End Case
+		carCap id : carCap id - 1
+		Package remove : pack
+		Request remove : req
+	Cost:
+		1
+End Action
+
+CarFuel: id - Car
+	Precs:
+		carFuel id < 40
+	Effects:
+		carDebt id : 40 - carFuel id
+		carFuel id : 40
+	Cost:
+		NewVal multiplayer : 4
+		Case (locStation(carLoc id) ):
+			multiplayer : 1
+		End Case
+		multiplayer * carDebt id
+End Action
+
+End Actions
+
+EnvSteps:
+
+Storage: 
+	Cost:
+		NewVal c : 0
+		All (pack - Package):
+			c : c + 5
+		End All
+		c
+End EnvStep
+End EnvSteps
+
+End Domain

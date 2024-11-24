@@ -1,0 +1,213 @@
+Problem Trucks and Drones 3	
+Start Problem:
+Location: 51
+Drone: 14
+Truck: 6
+
+locType: 0
+27. 1
+1
+1
+1
+1
+1 #32
+1
+1
+1
+1
+1
+1 #38
+1
+1
+1
+1 #42
+2 #43
+2
+2
+2 #46
+2
+2
+2
+2 #50
+
+locAdj:
+1, 35
+0, 2, 3, 35
+1, 5, 29, 34
+1, 4, 6, 29, 43
+3, 46
+2, 7, 29, 32 #5
+3, 8, 29
+5, 9, 27, 30
+6, 10, 27, 49
+7, 10, 27
+8, 9, 27, 49 #10
+12, 13, 37, 45
+11, 14, 37
+11, 15, 36, 37
+12, 16, 36, 37, 39
+13, 16, 36, 47, 48 #15
+14, 15, 17, 36
+16, 18
+17, 19, 39
+21, 22, 40, 48 #20
+20, 24, 50
+20, 23, 41
+22, 24
+21, 23
+26, 49, 50 #25
+25, 42
+7, 8, 9, 10, 28
+27, 29
+2, 3, 5, 6, 28
+7, 31, 32 #30
+30, 33
+5, 30, 33, 34
+31, 32
+2, 32
+0, 1 #35
+13, 14, 15, 16, 37
+11, 12, 13, 14, 36, 38
+37
+14, 18
+20, 41 #40
+22, 40
+26
+3, 44
+43, 45
+11, 44 #45
+4, 47
+15, 46
+15, 20
+8, 10, 25
+21, 25 #50
+droneLoc:
+1
+1
+29
+7 #3
+31
+9
+37 #6
+14
+14
+18 #9
+16
+22
+41 #12
+24
+droneCharge: 10
+droneBoard: Location
+truckLoc:
+0
+7
+12
+15 #3
+20
+25
+
+#Items:
+Package:
+0, 1, Location
+0, 6, Location
+0, 6, Location
+0, 27, Location
+0, 11, Location
+1, 34, Location
+1, 31, Location
+1, 24, Location
+1, 40, Location
+2, 9, Location
+2, 9, Location
+2, 9, Location
+2, 28, Location
+3, 13, Location
+3, 19, Location
+3, 39, Location
+4, 27, Location
+4, 41, Location
+5, 34, Location
+5, 40, Location
+Request:
+0, 33, 0
+0, 13, 0
+0, 21, 0
+0, 42, 0
+1, 10, 0
+1, 36, 0
+2, 23, 0
+2, 39, 0
+3, 30, 0
+3, 22, 0
+4, 15, 0
+5, 25, 0
+5, 41, 0
+*
+Package:
+0, 8, Location
+2, 26, Location
+6, 22, Location
+Request:
+0, 16, 0
+4, 22, 0
+*
+Package:
+0, 6, Location
+1, 40, Location
+5, 35, Location
+7, 35, Location
+Request:
+3, 5, 0
+6, 42, 0
+*
+Request:
+7, 39, 0
+*
+Package:
+1, 4, Location
+2, 30, Location
+6, 20, Location
+Request:
+0, 12, 0
+2, 2, 0
+*
+*
+Package:
+0, 2, Location
+0, 9, Location
+0, 23, Location
+1, 4, Location
+1, 32, Location
+2, 8, Location
+2, 9, Location
+Request:
+0, 6, 0
+0, 32, 0
+1, 28, 0
+1, 42, 0
+2, 40, 0
+2, 38, 0
+*
+Package:
+7, 42, Location
+Request:
+6, 42, 0
+*
+Request:
+7, 0, 0
+*
+Package:
+0, 10, Location
+3, 7, Location
+3, 26, Location
+5, 4, Location
+Request:
+0, 4, 0
+*
+Request:
+3, 22, 0
+*
+Request:
+5, 16, 0
+*
+End Problem

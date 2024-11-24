@@ -1,0 +1,140 @@
+Domain Rail System Factory
+This domain assumes Profile entities are never added to stations with storage = true.
+Start Domain:
+Entities:
+Station (Location), Rail, Carriage (Vehicle), Profile (Package), Order (Request)
+End Entities	
+
+Variables:
+const storage BOOL - Station
+var weightStore INT - Station
+
+#Near station variable is redundant. You may or may not
+#Provide values to it, depending on your preferences / planners.
+const nearStation MULTY - Station (adjacency) # Station -> Station
+const nearRail MULTY - Station # Station -> Rail
+const connectedRail MULTY - Rail # Rail -> Rail
+const connectedStation MULTY - Rail # Rail -> Station
+
+var located INT - Carriage (location)
+var weightCap INT - Carriage
+
+var stationCap INT - Station
+var railFree BOOL - Rail
+
+items Profile var type INT (type), loc INT (location), onEntity INT (entity), weight INT
+items Order var type INT (type), loc INT (location), weight INT
+
+End Variables
+
+Actions:
+
+Traverse: car - Carriage, fRail - Rail, sRail - Rail, destiny - Station (Travel)
+Precs:
+	#nearStation (located car) ? destiny # This condition is redundant.
+	nearRail (located car) ? fRail
+	connectedRail fRail ? sRail
+	connectedStation sRail ? destiny
+Confs:
+	stationCap destiny < 4
+	railFree fRail
+	railFree sRail
+Effects:
+	stationCap (located car) : stationCap (located car) - 1
+	stationCap destiny : stationCap destiny + 1
+	railFree fRail : false
+	railFree sRail : false
+	located car : destiny
+End Action
+
+#For Halt I intended to check "stationCap (located car) < 4".
+#I realized that it would be overall redundant.
+Halt: car - Carriage (Wait)
+End Action 
+
+Load: car - Carriage, p - Profile (Pick)
+Precs:
+	located car = Profile loc p
+	weightCap car + Profile weight p <= 50
+Confs:
+	Profile onEntity p = entity Station
+Effects:
+	weightCap car : weightCap car + Profile weight p
+	Case (storage (located car)):
+		weightStore (located car) : weightStore (located car) - Profile weight p
+	End Case
+	Profile loc p : car
+	Profile onEntity p : entity Carriage
+End Action
+
+Store: car - Carriage, p - Profile
+Precs:
+	storage (located car)
+	Profile onEntity p = entity Carriage
+	Profile loc p = car
+Confs:
+	weightStore (located car) + Profile weight p < 100
+Effects:
+	Profile onEntity p : entity Station
+	Profile loc p : located car
+	weightStore (located car) : weightStore (located car) + Profile weight p
+	weightCap car : weightCap car - Profile weight p
+End Action
+
+Combine: car - Carriage, fp - Profile, sp - Profile
+Precs:
+	Profile onEntity fp = entity Carriage
+	Profile loc fp = car
+	fp < sp
+	Profile onEntity sp = entity Carriage
+	Profile loc sp = car
+	Profile type fp = Profile type sp
+Effects:
+	Profile weight fp : Profile weight fp + Profile weight sp
+	Profile remove : sp
+End Action
+
+Transfer: car - Carriage, p - Profile, o - Order (Deliver)
+Precs:
+	located car = Order loc o
+	Profile onEntity p = entity Carriage
+	Profile loc p = car
+	Profile type p = Order type o
+Confs:
+	Profile exists p
+	Order exists o
+Effects:
+	Case (Profile weight p <= Order weight o):
+		weightCap car : weightCap car - Profile weight p
+		Case(Profile weight p = Order weight o):
+			Order remove : o
+		Else:
+			Order weight o : Order weight o - Profile weight p
+		End Case:
+		Profile remove : p
+	Else
+		weightCap car : weightCap car - Order weight o
+		Profile weight p : Profile weight p - Order weight o
+		Order remove : o
+	End Case
+End Action
+
+End Actions
+
+EnvSteps:
+
+ResetAndGo:
+Effects:
+	All (rail - Rail): # Could check if railFree rail = false, but feels redundant
+	railFree rail : true
+Cost:
+	NewVal c : 0
+	All (o - Order):
+		c : c + Order weight o
+	End All
+	c
+End EnvStep
+
+End EnvSteps
+
+End Domain

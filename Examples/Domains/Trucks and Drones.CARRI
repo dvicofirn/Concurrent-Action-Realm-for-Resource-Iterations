@@ -1,0 +1,239 @@
+Start Domain:
+Entities:
+#Entities and their related origin. If type of entity has no origin, will not have brackets.
+Location (Location), Drone (Vehicle), Truck (Vehicle), Package (Package), Request (Request)
+End Entities	
+
+Variables:
+#Right now no use for entity in brackets
+const locType INT - Location #Related to Location entity, is constant therefore tuple, and expected having #integers
+const locAdj MULTY - Location (adjacency) #Have Set - meaning tuple of Sets. Sets will have integers.
+
+var droneLoc INT - Drone (location) #Variable, meaning it is a list
+var droneCap INT - Drone
+var droneCharge INT - Drone
+var droneBoard INT - Drone (entity)
+
+var truckLoc INT - Truck (location)
+var truckDroneCap INT - Truck
+var truckPackCap INT - Truck
+
+items Package var type INT (type) , loc INT (location), onEntity INT (entity)
+# Dictionary of lists, each list has 3 integers (Later will give example how interpreted)
+items Request const type INT (type), loc INT (location), urgency INT
+#Dictionary of tuples. Despite urgency is changing, because it only changes between iterations, it will be #considered const.
+
+End Variables
+
+#Actions have 4 fields:
+#Precs - preconditions that are aren't possibly conflicting
+#Confs - preconditions that other entities can (create conflict) 
+#Effects - Effects on variables
+#Cost - cost of action
+#In reality I plan on Implementing base Wait, Travel, Pick & Deliver
+#If not using Add it overrides implementation.
+
+Actions:
+DroneWait: id - Drone (Wait) #Action name, var related to acting entity, other required vars, inheriting action
+Precs:
+droneCharge id  > 0
+droneBoard id = entity Location
+Effects:
+droneCharge id  : droneCharge id - 1
+Cost:
+1
+End Action
+
+DroneTravel: id - Drone, to - Location (Travel) 
+Precs:
+	locAdj (droneLoc id) ? to # In this case because locAdj is tuple of sets, it should do 'is to in locAdj[from]'
+	not (locType to = 2)
+	droneCharge id > 0
+	droneBoard id = entity Location
+Effects:
+	droneCharge id  : droneCharge id - 1
+	droneLoc id : to
+Cost:
+1
+End Action
+
+DronePick: id - Drone, pack - Package (Pick)
+Precs:
+	droneCharge id > 0
+	droneBoard id = entity Location 
+	droneLoc id = Package loc pack
+	droneCap id = 0
+Confs:
+	Package onEntity pack = entity Location
+Effects:
+	droneCap id : 1
+	droneCharge id  : droneCharge id - 1
+	Package loc pack : id
+	Package onEntity pack : entity Drone
+Cost:
+1
+End Action
+
+DroneDeliver: id - Drone, pack - Package, req - Request (Deliver)
+Precs:
+	droneCap id = 1
+	droneCharge id > 0
+	droneBoard id = entity Location
+	droneLoc id = Request loc req
+	Package onEntity pack = entity Drone
+	Package loc pack = id
+	Package type pack = Request type req
+Confs:
+	Request exists req # Check if request still exists (Did other drone delivered ?)
+Effects:
+	droneCap id : 0
+	droneCharge id  : droneCharge id - 1
+	Package remove : pack
+	Request remove : req
+Cost:
+1
+End Action
+
+DroneEmergencyCharge: id - Drone
+Precs:
+droneCharge id = 0
+Effects:
+droneCharge id : 10
+Cost:
+40
+End Action
+
+DroneBoard: id - Drone, trk - Truck
+Precs:
+	droneBoard id = entity Location
+	droneLoc id = truckLoc trk
+Confs:
+	truckDroneCap trk < 4
+	(truckPackCap trk < 8) or (droneCap id = 0) #In case of overloading packs, using or so it won't matter for drone with no packs 
+Effects:
+	truckDroneCap trk : truckDroneCap trk + 1
+	droneLoc id : trk
+	droneBoard id : entity Truck
+	Case (droneCharge id < 8):
+		droneCharge id : droneCharge id + 3
+	Else:
+		droneCharge id : 10
+	End Case
+	Case (droneCap id = 1):
+		All(pack - Package) ((Package onEntity pack = entity Drone) and (Package loc pack = id)):
+			Package onEntity pack : entity Truck
+			Package loc pack : trk
+			truckPackCap trk : truckPackCap trk + 1
+		End All
+		droneCap id : 0 
+	End Case
+Cost:
+2
+End Action
+
+DroneStayBoard: id - Drone
+Precs:
+	droneBoard id = entity Truck
+Effects:
+	Case (droneCharge id < 8):
+		droneCharge id : droneCharge id + 3
+	Else:
+		droneCharge id : 10
+	End Case
+Cost:
+	2
+End Action
+
+DroneExitBoard: id - Drone
+Precs:
+droneBoard id = entity Truck
+not (locType(truckLoc (droneLoc id)) = 2)
+Effects:
+	truckDroneCap (droneLoc id) : truckDroneCap (droneLoc id) - 1
+	droneLoc id : truckLoc (droneLoc id)
+	droneBoard id : entity Location
+Cost:
+1
+End Action
+
+DroneExitBoardWithPack: id - Drone, pack - Package (DroneExitBoard) #This is an example of addition to existing action
+Precs Add:
+	Package loc pack = droneLoc id
+Confs: #Could also implement as Confs Add
+	Package onEntity pack = entity Truck #Other drone might want to take it. It's fine to not re check package location
+Effects:
+	truckDroneCap (droneLoc id) : truckDroneCap (droneLoc id) - 1
+	truckPackCap (droneLoc id) : truckPackCap (droneLoc id) - 1
+	droneLoc id : truckLoc (droneLoc id)
+	droneBoard id : entity Location
+	Package loc pack : id
+	Package onEntity pack : entity Drone
+	
+End Action
+
+TruckWait: id - Truck (Wait)
+End Action
+#Action with no preconditions or effects or costs. Default cost is 0.
+
+TruckTravel: id - Truck, to - Location (Travel)
+Precs:
+locAdj (truckLoc id) ? to
+not (locType to = 1)
+Effects:
+truckLoc id : to
+Cost:
+1
+End Action
+
+TruckTurbo: id - Truck, to - Location, through - Location (TruckTravel) #Here using TruckTravel's Effcts
+Precs:
+locAdj (truckLoc id) ? through
+locAdj through ? to
+not (locAdj (truckLoc id) ? to)
+not (locType to = 1)
+not (locType through = 1)
+Cost:
+3
+End Action
+
+End Actions
+
+EnvSteps:
+#Should be like actions, except it's kinda different. Didn't think of fitting implementation yet.
+Urgency: 
+Cost:
+NewVal c : 0
+All (req - Request): #Fancy way to say "for req in Request"
+	c : c + 5
+	c : c + (Request urgency req) * 5 #Could be c + (Request urgency req *5) + 5 if possible
+End All	
+c
+End EnvStep
+
+End EnvSteps
+
+# There is only one IterStep per Domain. Addition of new packs and requests is automatic so not refered to.
+IterStep:
+All (req - Request):
+Case (Request urgency req < 3):
+	Request replace req: (Request type req, Request loc req, Request urgency req + 1)
+	#Some fancy way to replace the whole tuple...
+#If it's too complicated, I'm fine with request urgency req: request urgency req +1
+#And making items request var
+End Case
+End All
+End IterStep
+
+End Domain
+
+#From now on this is comments#
+Example how variables should look like:
+const locType INT (Location) = (0, 1, 0, 2, 0, 0,...)
+const locAdj MULTY (Location)  = ({1,3}, {0,2}, {4,5,8}, {}, {10}, ...)
+const locAdjCost MATCH (Location) = ({1: 2, 2: 3, 4: 1}, {0: 2, 4: 2}, {}, ...)
+var droneLoc INT (Drone) = (1, 5, 8, 2,...)
+var droneBoard BOOL (Drone) = (False, False, True, False, ...)
+items Package var: type INT, loc INT, onEntity INT (Package) =
+{0: [1, 2, 0], 1: [2, 4, 1], 3: [0, 0, 0], ...}
+items Request const: type INT, loc INT, urgency INT (Request) =
+{ 0: (2, 5, 0), 2: (0, 10, 0), 3: (1, 0, 1), ... }

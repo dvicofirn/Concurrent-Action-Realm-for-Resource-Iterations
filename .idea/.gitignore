@@ -12,3 +12,7 @@
 !.idea/misc.xml
 !.idea/vcs.xml
 !.idea/modules.xml
+# Ignore compiled Python files and cache folders
+*.pyc
+__pycache__/
+

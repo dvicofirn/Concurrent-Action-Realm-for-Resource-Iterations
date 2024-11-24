@@ -1,0 +1,86 @@
+# Items with # are comments,
+as well as items before or after Start *something*... End *something*
+Start Problem:
+Location: 6
+Drone : 3
+Drone : 3
+Truck: 1
+locType:
+2. 1
+5. 2
+locAdj:
+#Because this is MULTY : this is {1, 2}, {0, 3},...
+#Empty line means empty set
+1, 2
+0, 3
+0, 4, 5
+1, 5
+2, 5
+2, 4
+droneLoc:
+0
+
+
+droneCap: 0
+droneCharge: 10
+#droneBoard: False - this is a comment, droneBoard is "missing" meaning
+#To initiate False droneBoard for every Drone
+truckLoc:
+2
+# Again, truckDroneCap & truckPackCap having 0 default value.
+# While it is not intended for Packages and requests to
+# be defined in here, let's do this.
+#Package variable used by Package entity.
+#Because there is no defined quantity, create as much
+#as logical.
+Package:
+0, 0, 0 # type: 0, loc: 0, onEntity: 0
+1, 1, 0
+0, 2, 0
+Request:
+0, 4, 0
+0, 5, 0
+1, 3, 0
+1, 5, 0
+*
+Package:
+0, 0, 0
+Request:
+1, 0, 0
+2, 0, 0
+*
+Request:
+1, 1, 0
+*
+*
+Package:
+1, 0, 1
+0, 2, 0
+Request:
+1, 0, 0
+
+End Problem
+
+
+
+
+MATCH variable example
+1 - 2, 3 - 5, 6 - 3
+4. 3 - 1, 4 - 0, 5 -2
+means the first entity has {1: 2, 3: 5, 6: 3}
+the fith entity (index 4) has {3 :1, 4: 0, 5:2}
+All of the other entities are empty dicitonaries
+
+
+Entity: quantity
+If there is quantity - create exactly quantity variables for entity
+If there is none - create as much as logical.
+
+variable: Default value
+if there is no default value, default is 0 for int, false for bool,
+empty set / dictionary for MULTI / MATCH.
+Check for each variable, so if a variable is missing, it means to use default value.
+each line is per entity. If there is a index like "2." it means the entity
+with the index 2 - the third entity
+If there is no index - entity's index is last index + 1
+If there is - use human index.
